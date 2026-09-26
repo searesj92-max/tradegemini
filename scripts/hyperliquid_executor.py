@@ -207,6 +207,23 @@ class HyperliquidExecutor:
                 "message": "VETO INSTITUCIONAL: Proibido abrir posição sem Stop Loss técnico definido."
             }
 
+        # Check free margin in perps account (Saldo Disponível)
+        try:
+            account_status = self.get_account_status()
+            free_margin = float(account_status.get("withdrawable", 0.0))
+            if free_margin <= 0:
+                perps_val = float(account_status.get("perps_account_value", 0.0))
+                tot_margin = float(account_status.get("total_margin_used", 0.0))
+                free_margin = max(0.0, perps_val - tot_margin)
+
+            if free_margin < usdc_margin:
+                return {
+                    "status": "blocked_by_guardrail",
+                    "message": f"SALDO INSUFICIENTE: Margem livre disponível (${free_margin:.2f} USDC) é inferior ao valor da operação (${usdc_margin:.2f} USDC). Nenhuma ordem foi enviada."
+                }
+        except Exception as e:
+            print(f"[Aviso Guardrail Saldo] {e}")
+
         # Get latest mid-price
         all_mids = self.info.all_mids()
         current_price = float(all_mids.get(coin, 0))

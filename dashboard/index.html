@@ -3967,16 +3967,24 @@
       const slPct = $("rc-sl-pct").textContent;
       const tp = $("rc-tp2").textContent;
       const tpPct = $("rc-tp2-pct").textContent;
+      const avail = window.latestAvailableMargin !== undefined ? window.latestAvailableMargin : 0.0;
+      
+      let balanceWarning = "";
+      if (avail < 5.0) {
+        balanceWarning = `\n\n⚠️ SALDO LIVRE INSUFICIENTE: Você possui apenas $${avail.toFixed(2)} USDC de margem livre disponível. O bot está em modo de espera e novas operações serão bloqueadas até que as posições ativas sejam encerradas por TP ou SL.`;
+      }
       
       const msg = `🚀 PLANO PRÉ-VOO HYPERLIQUID MAINNET\n\n` +
         `• Ativo: ${coin}/USDT\n` +
         `• Entrada: ${entry}\n` +
         `• Margem de Entrada: $5.00 USDC\n` +
+        `• Margem Livre Atual: $${avail.toFixed(2)} USDC\n` +
         `• Alavancagem: 10x\n` +
         `• Stop Loss Inicial: ${sl} (${slPct})\n` +
         `• Alvo Principal (TP2): ${tp} (${tpPct})\n` +
         `• 🛡️ Trailing Stop Automático: A cada +30% de lucro (ROE), o Stop Loss sobe para proteger e garantir ganho no bolso!\n` +
-        `• Modo: Carteira Agente (Sem Permissão de Saque)\n\n` +
+        `• Modo: Carteira Agente (Sem Permissão de Saque)` +
+        balanceWarning + `\n\n` +
         `Para disparar no terminal:\n` +
         `python scripts/hyperliquid_executor.py --trade --symbol ${coin} --side buy --margin 5 --leverage 10 --sl ${sl.replace("$","").replace(",","")} --tp ${tp.replace("$","").replace(",","")} --confirm`;
       alert(msg);
@@ -4003,18 +4011,30 @@
         const pnlSign = totalUnrealizedPnl >= 0 ? "+" : "";
         const pnlColor = totalUnrealizedPnl >= 0 ? "var(--green)" : "var(--red)";
 
+        window.latestAvailableMargin = data.available_margin !== undefined ? data.available_margin : 0.0;
+        const isBalanceLow = window.latestAvailableMargin < 5.0;
+
         // Update Top Header & Consolidated Bar
         if ($("lm-total-equity")) $("lm-total-equity").textContent = "$" + (data.total_equity || 0).toFixed(2);
         if ($("lm-margin-used")) $("lm-margin-used").textContent = "$" + (data.margin_used || 0).toFixed(2);
-        if ($("lm-avail-margin")) $("lm-avail-margin").textContent = "$" + (data.available_margin || 0).toFixed(2);
+        if ($("lm-avail-margin")) {
+          $("lm-avail-margin").textContent = "$" + window.latestAvailableMargin.toFixed(2);
+          $("lm-avail-margin").style.color = isBalanceLow ? "var(--amber)" : "var(--green)";
+        }
         if ($("hdr-total-equity")) $("hdr-total-equity").textContent = "$" + (data.total_equity || 0).toFixed(2);
-        if ($("hdr-free-margin")) $("hdr-free-margin").textContent = "$" + (data.available_margin || 0).toFixed(2);
+        if ($("hdr-free-margin")) {
+          $("hdr-free-margin").textContent = "$" + window.latestAvailableMargin.toFixed(2);
+          $("hdr-free-margin").style.color = isBalanceLow ? "var(--amber)" : "var(--green)";
+        }
         if ($("hdr-active-margin")) $("hdr-active-margin").textContent = "$" + (data.margin_used || 0).toFixed(2);
 
         // Mission Control & Consolidated Elements
         if ($("lm-total-equity-display")) $("lm-total-equity-display").textContent = "$" + (data.total_equity || 0).toFixed(2);
         if ($("lm-margin-used-display")) $("lm-margin-used-display").textContent = "$" + (data.margin_used || 0).toFixed(2);
-        if ($("lm-avail-margin-display")) $("lm-avail-margin-display").textContent = "$" + (data.available_margin || 0).toFixed(2);
+        if ($("lm-avail-margin-display")) {
+          $("lm-avail-margin-display").textContent = "$" + window.latestAvailableMargin.toFixed(2);
+          $("lm-avail-margin-display").style.color = isBalanceLow ? "var(--amber)" : "var(--green)";
+        }
         if ($("lm-total-pnl-display")) {
           $("lm-total-pnl-display").textContent = `${pnlSign}$${totalUnrealizedPnl.toFixed(4)}`;
           $("lm-total-pnl-display").style.color = pnlColor;

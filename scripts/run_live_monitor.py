@@ -237,6 +237,10 @@ def run_monitor():
             spot_usdc = status.get("spot_usdc_balance", 0.0)
             total_equity = perps_equity + spot_usdc
             margin_used = status.get("total_margin_used", 0.0)
+            withdrawable = float(status.get("withdrawable", 0.0))
+            if withdrawable <= 0:
+                withdrawable = max(0.0, perps_equity - margin_used)
+            available_margin = max(0.0, round(withdrawable, 2))
 
             payload = {
                 "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -246,7 +250,8 @@ def run_monitor():
                 "perps_equity": round(perps_equity, 2),
                 "spot_usdc": round(spot_usdc, 2),
                 "margin_used": round(margin_used, 2),
-                "available_margin": round(total_equity - margin_used, 2),
+                "available_margin": available_margin,
+                "withdrawable": available_margin,
                 "positions_count": len(formatted_positions),
                 "positions": formatted_positions,
                 "recent_orders": recent_orders[-10:]

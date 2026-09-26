@@ -263,6 +263,16 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
             # Check BTC Macro Circuit Breaker
             allow_macro, macro_reason = check_btc_macro_circuit_breaker(executor)
 
+            # Check Free Margin (Saldo Livre Real na Hyperliquid)
+            free_margin = float(status.get("withdrawable", 0.0))
+            if free_margin <= 0:
+                perps_val = float(status.get("perps_account_value", 0.0))
+                tot_margin = float(status.get("total_margin_used", 0.0))
+                free_margin = max(0.0, perps_val - tot_margin)
+
+            min_required_margin = max(5.0, margin_usdc)
+            has_sufficient_balance = free_margin >= min_required_margin
+
             # Update heartbeat state
             state_payload = {
                 "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -272,6 +282,10 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                 "max_positions": max_positions,
                 "macro_status": macro_reason,
                 "macro_allowed": allow_macro,
+                "free_margin": round(free_margin, 2),
+                "required_margin": round(min_required_margin, 2),
+                "has_sufficient_balance": has_sufficient_balance,
+                "status_message": "Aguardando saldo" if not has_sufficient_balance else ("Pausado" if is_paused else ("Disjuntor macro ativo" if not allow_macro else "Operando normalmente")),
                 "auto_trade": auto_trade,
                 "margin_usdc": margin_usdc
             }
@@ -282,7 +296,8 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
 
             now_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
             print(f"\n[{now_str}] Status da Carteira: {current_open_count}/{max_positions} posições abertas ({', '.join(open_coins) if open_coins else 'Nenhuma'})")
-            print(f"  -> Filtro Macro: {macro_reason}")
+            print(f"  -> Margem Livre Disponível: ${free_margin:.2f} USDC | Mínimo por trade: ${min_required_margin:.2f} USDC")
+            print(f"  -> Filtro Macro Bitcoin: {macro_reason}")
 
             if is_paused:
                 print(f"  -> ⏸️ SNIPER EM PAUSA PELO COCKPIT. Aguardando liberação para novas entradas.")
@@ -294,80 +309,90 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                 time.sleep(interval_sec)
                 continue
 
+            # Trava de Saldo Insuficiente: Não escaneia, não tenta abrir ordens e não envia calls
+            if not has_sufficient_balance:
+                print(f"  -> 🔒 SALDO DISPONÍVEL INSUFICIENTE: ${free_margin:.2f} USDC livres (mínimo necessário: ${min_required_margin:.2f} USDC).")
+                print(f"  -> Capital alocado nas posições atuais ({', '.join(open_coins) if open_coins else 'sem posições'}).")
+                print(f"  -> O robô suspende varreduras, novas calls e tentativas de compra até que uma posição encerre e libere margem.")
+                time.sleep(interval_sec)
+                continue
+
             # Check if capacity allows opening a new position
             if current_open_count >= max_positions:
                 print(f"  -> Capacidade máxima de risco atingida ({current_open_count}/{max_positions} trades em andamento: {', '.join(open_coins)}).")
                 print(f"  -> O robô monitora as posições e aguarda liberação de vaga para novas entradas.")
-            else:
-                watchlist = get_watchlist()
-                vagas_disponiveis = max_positions - current_open_count
-                print(f"  -> Temos {vagas_disponiveis} vaga(s) disponível(is)! Varrendo {len(watchlist)} moedas campeãs em busca de Confluência Score >= 5/6...")
+                time.sleep(interval_sec)
+                continue
 
-                candidates_found = []
-                for item in watchlist:
-                    coin = item["coin"]
-                    if coin in open_coins:
-                        continue # Already in this position
+            watchlist = get_watchlist()
+            vagas_disponiveis = max_positions - current_open_count
+            print(f"  -> Temos {vagas_disponiveis} vaga(s) disponível(is) e ${free_margin:.2f} USDC livres! Varrendo {len(watchlist)} moedas campeãs em busca de Confluência Score >= 5/6...")
 
-                    res = evaluate_asset(executor, coin)
-                    if res and res["score"] >= 5:
-                        candidates_found.append(res)
-                        print(f"    ⭐ SINAL DETECTADO: {coin} (Score {res['score']}/6 | Preço ${res['current_price']})")
-                    
-                    time.sleep(0.08) # Polite rate limit
+            candidates_found = []
+            for item in watchlist:
+                coin = item["coin"]
+                if coin in open_coins:
+                    continue # Already in this position
 
-                # Sort: 2h pullbacks first (highest alpha priority), then highest score, then lowest SL distance
-                candidates_found.sort(key=lambda x: (1 if x.get("is_2h_pullback") else 0, x["score"], -x["sl_pct"]), reverse=True)
+                res = evaluate_asset(executor, coin)
+                if res and res["score"] >= 5:
+                    candidates_found.append(res)
+                    print(f"    ⭐ SINAL DETECTADO: {coin} (Score {res['score']}/6 | Preço ${res['current_price']})")
+                
+                time.sleep(0.08) # Polite rate limit
 
-                if candidates_found:
-                    best = candidates_found[0]
-                    coin = best["coin"]
-                    px = best["current_price"]
-                    sl = best["sl_price"]
-                    tp = best["tp1_price"]
-                    strategy_label = best.get("strategy", "Confluência Técnica")
+            # Sort: 2h pullbacks first (highest alpha priority), then highest score, then lowest SL distance
+            candidates_found.sort(key=lambda x: (1 if x.get("is_2h_pullback") else 0, x["score"], -x["sl_pct"]), reverse=True)
 
-                    print(f"\n[!] MELHOR OPORTUNIDADE DO MERCADO ENCONTRADA: {coin} ({strategy_label})")
-                    print(f"    Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp} | Score: {best['score']}/6")
+            if candidates_found:
+                best = candidates_found[0]
+                coin = best["coin"]
+                px = best["current_price"]
+                sl = best["sl_price"]
+                tp = best["tp1_price"]
+                strategy_label = best.get("strategy", "Confluência Técnica")
 
-                    if auto_trade:
-                        print(f"    🚀 DISPARANDO EXECUÇÃO AUTOMÁTICA NA HYPERLIQUID (${margin_usdc:.2f} @ 10x)...")
-                        trade_res = executor.execute_trade(
-                            coin=coin,
-                            side="buy",
-                            usdc_margin=margin_usdc,
-                            leverage=10,
-                            sl_price=sl,
-                            tp_price=tp,
-                            confirm=True
-                        )
+                print(f"\n[!] MELHOR OPORTUNIDADE DO MERCADO ENCONTRADA: {coin} ({strategy_label})")
+                print(f"    Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp} | Score: {best['score']}/6")
 
-                        if trade_res.get("status") in ("ok", "executed"):
-                            print(f"    ✅ SUCESSO! Ordem de {coin} executada e Stop Loss registrado na Hyperliquid!")
-                            send(
-                                f"🚀 *NOVA OPERAÇÃO DISPARADA AUTOMATICAMENTE!*\n\n"
-                                f"• Ativo: *{coin} / USDC (LONG)*\n"
-                                f"• Estratégia: *{strategy_label}*\n"
-                                f"• Vagas Ocupadas: *{current_open_count + 1}/{max_positions}*\n"
-                                f"• Preço de Entrada: *${px:.4f}*\n"
-                                f"• Margem Alocada: *${margin_usdc:.2f} USDC @ 10x* (Notional: ~${margin_usdc*10:.2f} USD)\n"
-                                f"• Stop Loss Obrigatório: *${sl:.4f}* (-{best['sl_pct']}%)\n"
-                                f"• Alvo 1 (TP1): *${tp:.4f}*\n"
-                                f"• Confluência Técnica: *Score {best['score']}/6*\n\n"
-                                f"🛡️ *Ratchet Trailing Stop* já ativado para proteger no 0x0 ao atingir +30% ROE.\n"
-                                f"🌐 *Painel:* https://botrade-hyperliquid.onrender.com/"
-                            )
-                        else:
-                            print(f"    [-] Falha na execução: {trade_res.get('error') or trade_res.get('message')}")
-                    else:
+                if auto_trade:
+                    print(f"    🚀 DISPARANDO EXECUÇÃO AUTOMÁTICA NA HYPERLIQUID (${margin_usdc:.2f} @ 10x)...")
+                    trade_res = executor.execute_trade(
+                        coin=coin,
+                        side="buy",
+                        usdc_margin=margin_usdc,
+                        leverage=10,
+                        sl_price=sl,
+                        tp_price=tp,
+                        confirm=True
+                    )
+
+                    if trade_res.get("status") in ("ok", "executed"):
+                        print(f"    ✅ SUCESSO! Ordem de {coin} executada e Stop Loss registrado na Hyperliquid!")
                         send(
-                            f"📡 *OPORTUNIDADE DE OURO DETECTADA!*\n\n"
-                            f"• Ativo: *{coin}* (Score: *{best['score']}/6*)\n"
-                            f"• Preço Atual: *${px:.4f}*\n"
-                            f"• Stop Loss Sugerido: *${sl:.4f}* (-{best['sl_pct']}%)\n"
-                            f"• Alvo Estimado: *${tp:.4f}*\n\n"
-                            f"Acesse o Cockpit para executar com 1 clique: http://192.168.18.12:8765/"
+                            f"🚀 *NOVA OPERAÇÃO DISPARADA AUTOMATICAMENTE!*\n\n"
+                            f"• Ativo: *{coin} / USDC (LONG)*\n"
+                            f"• Estratégia: *{strategy_label}*\n"
+                            f"• Vagas Ocupadas: *{current_open_count + 1}/{max_positions}*\n"
+                            f"• Preço de Entrada: *${px:.4f}*\n"
+                            f"• Margem Alocada: *${margin_usdc:.2f} USDC @ 10x* (Notional: ~${margin_usdc*10:.2f} USD)\n"
+                            f"• Stop Loss Obrigatório: *${sl:.4f}* (-{best['sl_pct']}%)\n"
+                            f"• Alvo 1 (TP1): *${tp:.4f}*\n"
+                            f"• Confluência Técnica: *Score {best['score']}/6*\n\n"
+                            f"🛡️ *Ratchet Trailing Stop* já ativado para proteger no 0x0 ao atingir +30% ROE.\n"
+                            f"🌐 *Painel:* https://botrade-hyperliquid.onrender.com/"
                         )
+                    else:
+                        print(f"    [-] Falha na execução: {trade_res.get('error') or trade_res.get('message')}")
+                else:
+                    send(
+                        f"📡 *OPORTUNIDADE DE OURO DETECTADA!*\n\n"
+                        f"• Ativo: *{coin}* (Score: *{best['score']}/6*)\n"
+                        f"• Preço Atual: *${px:.4f}*\n"
+                        f"• Stop Loss Sugerido: *${sl:.4f}* (-{best['sl_pct']}%)\n"
+                        f"• Alvo Estimado: *${tp:.4f}*\n\n"
+                        f"Acesse o Cockpit para executar com 1 clique: http://192.168.18.12:8765/"
+                    )
 
             time.sleep(interval_sec)
 

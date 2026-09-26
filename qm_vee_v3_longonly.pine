@@ -1,0 +1,71 @@
+//@version=6
+// QM-VEE-v3-longonly — Pure Breakout Continuation (LONG ONLY)
+// Hypothesis: breakout of low with follow-through -> continuation upward.
+// Removed shorts entirely. Entry on bar after breakout of low with close beyond low.
+// Exit: fixed SL/TP in ATR ticks (stored entry price + entry ATR). No trailing. No repaint, no lookahead.
+
+strategy(
+  title="QM-VEE-v3-longonly — Pure Breakout Continuation (Long Only)",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+sweepN       = input.int(20, "Extreme lookback (bars)", minval=5, group="Entry")
+expMult      = input.float(1.0, "Expansion bar range min (x ATR)", minval=0.2, step=0.1, group="Entry")
+slMult       = input.float(1.5, "SL distance (x ATR)", minval=0.5, step=0.1, group="Exit")
+tpMult       = input.float(2.0, "TP distance (x ATR)", minval=0.5, step=0.1, group="Exit")
+cooldownBars = input.int(3, "Cooldown bars after exit", minval=0, group="Exit")
+timeExitBars = input.int(20, "Time exit (max bars)", minval=1, group="Exit")
+
+atrVal    = ta.atr(14)
+prevHigh  = ta.highest(high[2], sweepN)
+prevLow   = ta.lowest(low[2], sweepN)
+
+// Long-only: breakout of LOW with follow-through (close < prevLow)
+breakoutLow  = low[1]  < prevLow  and close[1] < prevLow
+rangeExpanded = (high[1] - low[1]) > atrVal * expMult
+
+longSig  = breakoutLow and rangeExpanded
+
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+if longSig and canTrade and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+var float longEntryPrice = na
+var float longEntryATR = na
+
+if longSig and canTrade and strategy.position_size == 0
+    longEntryPrice := close
+    longEntryATR := atrVal
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L",
+                 stop=longEntryPrice - longEntryATR * slMult,
+                 limit=longEntryPrice + longEntryATR * tpMult)
+
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade >= timeExitBars
+    strategy.close_all()
+
+plot(longSig, "Long Signal", color=color.green, style=plot.style_circles, linewidth=2)
+plot(prevLow, "Prev Low Ref", color=color.new(color.orange, 50), style=plot.style_linebr)

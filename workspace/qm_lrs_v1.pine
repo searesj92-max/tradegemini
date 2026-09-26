@@ -1,0 +1,88 @@
+//@version=6
+strategy("QM-LRS-v1 — Liquidity Rebalance Snapback",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+// === INPUTS ===
+sweepLen      = input.int(20, "Sweep lookback (bars for HH/LL)", minval=5)
+rangeAvgLen   = input.int(20, "Range average length", minval=5)
+rangeAnomMult = input.float(1.5, "Range anomaly multiplier (vs avg range)", minval=1.0, step=0.1)
+cooldownBars  = input.int(1, "Cooldown after exit (bars)", minval=0)
+timeExitBars  = input.int(20, "Max bars in trade (time exit)", minval=1)
+atrLen        = input.int(14, "ATR length", minval=5)
+
+// === CORE INDICATORS ===
+atr = ta.atr(atrLen)
+smaRange = ta.sma(ta.range, rangeAvgLen)
+hh = ta.highest(high, sweepLen)
+ll = ta.lowest(low, sweepLen)
+hl2 = (high + low) / 2
+rangeAnom = (high - low) > smaRange * rangeAnomMult
+
+// === SWEEP DETECTION (candle t-1) ===
+sweepHigh = high[1] > hh
+sweepLow  = low[1]  < ll
+
+// === FAILED-CLOSE FILTER (candle t-1) ===
+failedHigh = close[1] < hh   // long: close volta para dentro do HH
+failedLow  = close[1] > ll   // short: close volta para dentro do LL
+
+// === VOID SIDE (candle t-1) ===
+longVoid  = close[1] < hl2[1]  // close abaixo do centro → void é para cima → rebalance UP
+shortVoid = close[1] > hl2[1]  // close acima do centro → void é para baixo → rebalance DOWN
+
+// === VOLATILITY FILTER ===
+atrOk = atr > ta.sma(atr, 20) * 0.8
+
+// === ENTRY SIGNALS ===
+longSig  = sweepHigh and failedHigh and longVoid and rangeAnom and atrOk
+shortSig = sweepLow  and failedLow  and shortVoid and rangeAnom and atrOk
+
+// === COOLDOWN ===
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+// === ENTRY EXECUTION ===
+if longSig and canTrade
+    strategy.entry("L", strategy.long)
+
+if shortSig and canTrade
+    strategy.entry("S", strategy.short)
+
+// === FIXED SL/TP VIA strategy.exit (ATR-based) ===
+if strategy.position_size > 0
+    longStop  = close - atr * 0.5
+    longLimit = (hh + ll) / 2
+    strategy.exit("LX", from_entry="L", stop=longStop, limit=longLimit)
+
+if strategy.position_size < 0
+    shortStop  = close + atr * 0.5
+    shortLimit = (hh + ll) / 2
+    strategy.exit("SX", from_entry="S", stop=shortStop, limit=shortLimit)
+
+// === TIME EXIT ===
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// === SIGNAL PLOTS ===
+plotshape(longSig and canTrade, "Long Signal", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(shortSig and canTrade, "Short Signal", shape.triangledown, location.abovebar, color.red, size=size.small)

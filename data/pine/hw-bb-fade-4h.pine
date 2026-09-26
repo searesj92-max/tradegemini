@@ -1,0 +1,47 @@
+//@version=6
+strategy("BB Regime Fade 20/2/ADX<25",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+len = input.int(20)
+mult = input.float(2.0)
+adxLen = input.int(14)
+adxMax = input.float(25.0)
+atrLen = input.int(14)
+slM = input.float(2.0)
+tpM = input.float(1.2)
+
+[middle, upper, lower] = ta.bb(close, len, mult)
+diPlus = ta.rma(ta.change(high), adxLen)
+diMinus = ta.rma(ta.change(low), adxLen)
+trs = ta.rma(ta.tr, adxLen)
+plus = 100 * diPlus / trs
+minus = 100 * diMinus / trs
+adx = 100 * ta.rma(math.abs(plus - minus) / (plus + minus), adxLen)
+a = ta.atr(atrLen)
+
+rangeOk = adx < adxMax
+// close back inside band after pierce — higher WR than catching the knife
+longCond = rangeOk and low <= lower and close > lower
+shortCond = rangeOk and high >= upper and close < upper
+
+if longCond
+    strategy.entry("L", strategy.long)
+if shortCond
+    strategy.entry("S", strategy.short)
+
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    // TP toward middle band approx via tight ATR target; SL beyond band
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("Sx", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

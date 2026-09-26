@@ -1,0 +1,84 @@
+//@version=6
+strategy("QM-FBR-v1 · Failed Breakout Reversal", 
+  overlay=true, 
+  pyramiding=1, 
+  process_orders_on_close=true, 
+  commission_type=strategy.commission.percent, 
+  commission_value=0.05, 
+  initial_capital=10000, 
+  default_qty_type=strategy.percent_of_equity, 
+  default_qty_value=100, 
+  margin_long=100, 
+  margin_short=100)
+
+// === INPUTS ===
+lookback    = input.int(20,  "Sweep lookback (bars)")
+volLen      = input.int(20,  "ATR ratio smoothing")
+volThresh   = input.float(1.5, "Vol ratio threshold (ATR > thresh·SMA → skip)")
+slBuffer    = input.float(0.5, "SL buffer (×ATR above/below sweep extreme)")
+tpMult      = input.float(2.0, "TP multiplier (×ATR)")
+maxBars     = input.int(30,  "Max duration (bars) — time exit")
+cooldown    = input.int(5,   "Cooldown bars between same-direction entries")
+
+// === SERIES ===
+sweepLow  = ta.lowest(low, lookback)
+sweepHigh = ta.highest(high, lookback)
+atr       = ta.atr(14)
+atrRatio  = atr / ta.sma(atr, volLen)
+
+// === FILTERS ===
+volOk = atrRatio < volThresh
+
+// === CONDITIONS ===
+// Long: low swept below lookback-low, close back inside, close > close[1]
+longCond = (low <= sweepLow[1]) and (close > sweepLow[1]) and (close > close[1]) and volOk
+
+// Short: high swept above lookback-high, close back inside, close < close[1]
+shortCond = (high >= sweepHigh[1]) and (close < sweepHigh[1]) and (close < close[1]) and volOk
+
+// === COOLDOWN ===
+var int lastLongBar  = na
+var int lastShortBar = na
+longCooldownOk  = na(lastLongBar)  or (bar_index - lastLongBar  >= cooldown)
+shortCooldownOk = na(lastShortBar) or (bar_index - lastShortBar >= cooldown)
+
+// === ENTRIES ===
+longEntry  = longCond  and longCooldownOk
+shortEntry = shortCond and shortCooldownOk
+
+if longEntry
+    strategy.entry("L", strategy.long)
+    lastLongBar := bar_index
+
+if shortEntry
+    strategy.entry("S", strategy.short)
+    lastShortBar := bar_index
+
+// === SL / TP ===
+// Long: SL below sweepLow[1] - buffer*atr; TP at entry + tpMult*atr
+if longEntry
+    slPrice = sweepLow[1] - slBuffer * atr
+    tpPrice = strategy.position_avg_price + tpMult * atr
+    strategy.exit("L_exit", from_entry="L", stop=slPrice, limit=tpPrice)
+
+// Short: SL above sweepHigh[1] + buffer*atr; TP at entry - tpMult*atr
+if shortEntry
+    slPrice = sweepHigh[1] + slBuffer * atr
+    tpPrice = strategy.position_avg_price - tpMult * atr
+    strategy.exit("S_exit", from_entry="S", stop=slPrice, limit=tpPrice)
+
+// === TIME EXIT (max duration) ===
+// Release SL/TP and close if maxBars elapsed
+if strategy.position_size > 0
+    if bar_index - lastLongBar >= maxBars
+        strategy.close("L")
+        lastLongBar := na
+
+if strategy.position_size < 0
+    if bar_index - lastShortBar >= maxBars
+        strategy.close("S")
+        lastShortBar := na
+
+// === PLOTS ===
+plot(sweepLow,  "Sweep Low",  color=color.new(color.green, 70), style=plot.style_circles)
+plot(sweepHigh, "Sweep High", color=color.new(color.red,   70), style=plot.style_circles)

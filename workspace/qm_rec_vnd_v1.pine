@@ -1,0 +1,120 @@
+//@version=6
+// QM-REC-VND-v1 — Range Efficiency Collapse + Normalized Displacement Reversion
+// Hipótese: candle de displacement eficiente (body / ATR alto, range efficiency alto)
+// seguido de follow-through fraco nos próximos N candles → reversão sistemática.
+// Entrada somente no candle após confirmação do follow-through (sem lookahead).
+// SL: extremo do candle de reference + buffer ATR. TP: retorno ao open do candle de reference.
+
+strategy("QM-REC-VND-v1 — Range Efficiency Collapse + Normalized Displacement Reversion",
+         overlay=true,
+         commission_type=strategy.commission.percent,
+         commission_value=0,
+         percent_of_equity=100,
+         default_qty_type=strategy.cash,
+         default_qty_value=1000,
+         pyramiding=1,
+         default_qty_type=strategy.cash)
+
+// ── Inputs ──────────────────────────────────────────────────────────
+disp_thresh  = input.float(0.6,  "Displacement threshold (× ATR)", minval=0.1, maxval=3.0, step=0.1)
+eff_thresh   = input.float(0.65, "Range efficiency threshold (|body|/range)", minval=0.3, maxval=1.0, step=0.05)
+ft_candles   = input.int(2,      "Follow-through candles to check (N)", minval=1, maxval=5)
+ft_max_pass  = input.int(1,      "Max follow-through candles in same direction", minval=0, maxval=5)
+atr_len      = input.int(14,     "ATR length", minval=5, maxval=50)
+sl_atr_mult  = input.float(0.5,  "SL buffer (× ATR above/below extreme)", minval=0.1, maxval=3.0, step=0.1)
+cooldown_b   = input.int(3,      "Cooldown candles after same-direction entry", minval=0, maxval=10)
+time_exit_b  = input.int(5,      "Max candles held (time exit)", minval=1, maxval=20)
+use_regime   = input.bool(true,  "Filtro regime: só fade contra-tendência (long se preço < SMA20 no ref candle)")
+
+// ── Indicators ──────────────────────────────────────────────────────
+atr   = ta.atr(atr_len)
+sma20 = ta.sma(close, 20)
+
+// ── Cooldown state per direction ────────────────────────────────────
+var int last_long_bar  = 0
+var int last_short_bar = 0
+
+// ── Reference candle (ft_candles ago) ───────────────────────────────
+ref_bar  = bar_index - ft_candles
+ref_body = close[ref_bar] - open[ref_bar]
+ref_range = high[ref_bar] - low[ref_bar]
+ref_atr  = atr[ref_bar]
+ref_close = close[ref_bar]
+ref_open  = open[ref_bar]
+ref_high  = high[ref_bar]
+ref_low   = low[ref_bar]
+
+// ── Reference candle quality ────────────────────────────────────────
+abs_body   = math.abs(ref_body)
+eff        = abs_body / math.max(ref_range, 0.0001)
+disp_long  = ref_body > 0 and abs_body >= disp_thresh * ref_atr
+disp_short = ref_body < 0 and abs_body >= disp_thresh * ref_atr
+eff_long   = eff >= eff_thresh
+eff_short  = eff >= eff_thresh
+
+// ── Follow-through counting ────────────────────────────────────────
+var int ft_above = 0
+var int ft_below = 0
+
+// Reset every bar
+ft_above := 0
+ft_below := 0
+
+// Count for each candle ref_bar+1 to bar_index-1
+for i = 1 to ft_candles
+    if ref_bar + i < bar_index
+        if close[ref_bar + i] > ref_close
+            ft_above += 1
+        if close[ref_bar + i] < ref_close
+            ft_below += 1
+
+// ── Follow-through weak ──────────────────────────────────────────────
+ft_weak_long  = ft_above <= ft_max_pass
+ft_weak_short = ft_below <= ft_max_pass
+
+// ── Regime filter ────────────────────────────────────────────────────
+regime_long_ok  = not use_regime or (close[ref_bar] < sma20[ref_bar])
+regime_short_ok = not use_regime or (close[ref_bar] > sma20[ref_bar])
+
+// ── Position flags ───────────────────────────────────────────────────
+in_long  = strategy.position_size > 0
+in_short = strategy.position_size < 0
+
+// ── LONG entry ───────────────────────────────────────────────────────
+long_condition = eff_long and ft_weak_long and regime_long_ok
+long_cooldown  = bar_index - last_long_bar > cooldown_b
+long_entry     = long_condition and long_cooldown and not in_long
+
+if long_entry
+    sl_price_long = ref_low - sl_atr_mult * ref_atr
+    tp_price_long = ref_open
+    strategy.entry("Long", strategy.long)
+    last_long_bar := bar_index
+
+// ── SHORT entry ──────────────────────────────────────────────────────
+short_condition = eff_short and ft_weak_short and regime_short_ok
+short_cooldown  = bar_index - last_short_bar > cooldown_b
+short_entry     = short_condition and short_cooldown and not in_short
+
+if short_entry
+    sl_price_short = ref_high + sl_atr_mult * ref_atr
+    tp_price_short = ref_open
+    strategy.entry("Short", strategy.short)
+    last_short_bar := bar_index
+
+// ── Time exit ────────────────────────────────────────────────────────
+long_time_exit  = bar_index > last_long_bar + time_exit_b and in_long
+short_time_exit = bar_index > last_short_bar + time_exit_b and in_short
+
+if long_time_exit
+    strategy.close("Long")
+
+if short_time_exit
+    strategy.close("Short")
+
+// ── SL / TP via strategy.exit ────────────────────────────────────────
+if in_long
+    strategy.exit("SL-Long", from_entry="Long", loss=sl_price_long, limit=tp_price_long)
+
+if in_short
+    strategy.exit("SL-Short", from_entry="Short", loss=sl_price_short, limit=tp_price_short)

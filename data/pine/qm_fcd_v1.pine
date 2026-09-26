@@ -1,0 +1,114 @@
+//@version=6
+// QM-FCD-v1 - Failed Continuation After Normalized Displacement
+// --------------------------------------------------------------
+// After a large displacement candle, follow-through fails and price reverts
+// toward the equilibrium corridor. Fade-only, symmetric, SL+TP fixed.
+// Key math: displacement in ATR multiples, vol regime filter, no extremes,
+// entry on the bar AFTER the failed-continuation signal closes.
+
+strategy(
+  title  = "QM-FCD-v1 - Failed Continuation After Normalized Displacement",
+  overlay = true,
+  pyramiding = 1,
+  process_orders_on_close = true,
+  commission_type = strategy.commission.percent,
+  commission_value = 0.05,
+  initial_capital = 10000,
+  default_qty_type = strategy.percent_of_equity,
+  default_qty_value = 100,
+  margin_long = 100,
+  margin_short = 100
+)
+
+// --- Inputs ----------------------------------------------
+dispThresh      = input.float(1.75,  "Displacement threshold (xATR)", minval=0.5, step=0.05)
+failZone        = input.float(0.30,  "Failed follow zone (% of prev body)", minval=0.0, maxval=1.0, step=0.02)
+windowLen       = input.int(130,     "RMA(ATR) lookback for vol regime", minval=20, step=10)
+regimeThresh    = input.float(1.15,  "Vol contraction threshold (RMA/ATR)", minval=0.5, step=0.05)
+eqLookback      = input.int(21,      "Equilibrium SMA lookback", minval=9, step=2)
+slTicks         = input.int(40,      "SL in ATR ticks", minval=5, step=5)
+tpTicks         = input.int(35,      "TP in ATR ticks", minval=5, step=5)
+maxBars         = input.int(25,      "Max bars in trade (time exit)", minval=5, step=5)
+allowLong       = input.bool(true,   "Allow long entries")
+allowShort      = input.bool(true,   "Allow short entries")
+// -------------------------------------------------------
+
+// --- Series ----------------------------------------------
+atr14           = ta.atr(14)
+atrRma          = ta.rma(atr14, windowLen)
+prevOpen1       = open[1]
+prevClose1      = close[1]
+high1           = high[1]
+low1            = low[1]
+close1          = close[1]
+range1          = high1 - low1
+body1           = math.abs(close1 - open1)
+
+isVolContracted = atrRma / atr14 < regimeThresh
+atrTicks        = atr14 / syminfo.mintick
+smaClose        = ta.sma(close, eqLookback)
+upBand          = smaClose + atr14
+dnBand          = smaClose - atr14
+
+// Displacement state (bars since last extreme)
+var int barsFromHigh = 999
+var int barsFromLow  = 999
+if high > prevHigh
+    barsFromHigh := 0
+else if barsFromHigh < 999
+    barsFromHigh := barsFromHigh + 1
+if low < prevLow
+    barsFromLow := 0
+else if barsFromLow < 999
+    barsFromLow := barsFromLow + 1
+
+// Signal: short fade after failed bearish displacement
+shortSignal = allowShort
+    and isVolContracted
+    and body1 >= dispThresh * atr14
+    and close1 > prevOpen1
+    and close1 < prevClose1
+    and close1 < smaClose
+    and strategy.position_size == 0
+
+// Signal: long fade after failed bullish displacement
+longSignal  = allowLong
+    and isVolContracted
+    and body1 >= dispThresh * atr14
+    and close1 < prevOpen1
+    and close1 > prevClose1
+    and close1 > smaClose
+    and strategy.position_size == 0
+
+// --- Entry -------------------------------------------------
+if longSignal
+    strategy.entry("L", strategy.long)
+if shortSignal
+    strategy.entry("S", strategy.short)
+
+// --- SL / TP (fixed ATR ticks, engine-safe) ----------------
+if strategy.position_size > 0
+    slPrice = strategy.position_avg_price - slTicks * atrTicks * syminfo.mintick
+    tpPrice = strategy.position_avg_price + tpTicks * atrTicks * syminfo.mintick
+    strategy.exit("L-SL", from_entry="L", stop=slPrice, limit=tpPrice)
+
+if strategy.position_size < 0
+    slPrice = strategy.position_avg_price + slTicks * atrTicks * syminfo.mintick
+    tpPrice = strategy.position_avg_price - tpTicks * atrTicks * syminfo.mintick
+    strategy.exit("S-SL", from_entry="S", stop=slPrice, limit=tpPrice)
+
+// --- Time exit --------------------------------------------
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade := barsInTrade + 1
+else
+    barsInTrade := 0
+
+if barsInTrade >= maxBars and strategy.position_size != 0
+    strategy.close(strategy.position_size > 0 ? "L" : "S")
+
+// --- Plots ------------------------------------------------
+plotshape(longSignal, title="Long FCD", style=shape.triangleup,
+          location=location.belowbar, color=color.lime, size=size.small)
+plotshape(shortSignal, title="Short FCD", style=shape.triangledown,
+          location=location.abovebar, color=color.red, size=size.small)

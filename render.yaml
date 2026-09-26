@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: botrade-hyperliquid
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "bash start.sh"
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PORT
+        value: "10000"
+      - key: HYPERLIQUID_MAX_TRADE_USDC
+        value: "15.0"
+      - key: HYPERLIQUID_MAX_LEVERAGE
+        value: "10"
+      - key: HYPERLIQUID_TRAILING_STEP_PCT
+        value: "30.0"
+      - key: HYPERLIQUID_IS_MAINNET
+        value: "true"
+      - key: HYPERLIQUID_MAIN_ADDRESS
+        sync: false
+      - key: HYPERLIQUID_AGENT_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false

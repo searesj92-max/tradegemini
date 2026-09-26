@@ -1,0 +1,79 @@
+//@version=6
+strategy("QM-VPA-v1 [wip] — Volume-Price Anomaly", 
+  overlay=true, pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000, default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100, margin_long=100, margin_short=100)
+
+// Inputs
+retThresh       = input.float(0.008, "Return threshold (fractional)", minval=0.0, step=0.001, group="Entry")
+volAnomMult     = input.float(0.5, "Volume anomaly multiplier (vs SMA)", minval=0.1, step=0.1, group="Entry")
+smaPeriod       = input.int(20, "SMA period (equilibrium)", minval=5, group="Entry")
+atrLen          = input.int(14, "ATR length", minval=2, group="Risk")
+slAtrMult       = input.float(1.5, "SL ATR multiplier", minval=0.5, step=0.1, group="Risk")
+cooldownBars    = input.int(1, "Cooldown bars", minval=0, group="Risk")
+timeExitBars    = input.int(20, "Max bars in trade", minval=1, group="Risk")
+
+// Calculations
+atr = ta.atr(atrLen)
+smaClose = ta.sma(close, smaPeriod)
+smaVol = ta.sma(volume, smaPeriod)
+
+// Bar [1] conditions (anomalous bar)
+retBar1 = math.abs(close[1] - open[1]) / open[1]
+volAnom = volume[1] < smaVol * volAnomMult
+bigMoveBear = retBar1 > retThresh and close[1] < open[1]
+bigMoveBull = retBar1 > retThresh and close[1] > open[1]
+priceAboveEq = close[1] > smaClose
+priceBelowEq = close[1] < smaClose
+
+// Long signal: anomalous bearish bar (big move down, low vol) + price below equilibrium
+longSig = bigMoveBear and volAnom and priceBelowEq
+
+// Short signal: anomalous bullish bar (big move up, low vol) + price above equilibrium
+shortSig = bigMoveBull and volAnom and priceAboveEq
+
+// Cooldown logic
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+// Entries
+if longSig and canTrade
+    strategy.entry("L", strategy.long)
+
+if shortSig and canTrade
+    strategy.entry("S", strategy.short)
+
+// Exits
+if strategy.position_size > 0
+    longEntryPrice = strategy.position_avg_price
+    strategy.exit("LX", from_entry="L",
+        limit=smaClose,            // TP: return to equilibrium
+        stop=longEntryPrice - atr * slAtrMult,  // SL: ATR-based
+        loss=0, profit=0)         // disable ticks-based exits
+
+if strategy.position_size < 0
+    shortEntryPrice = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S",
+        limit=smaClose,            // TP: return to equilibrium
+        stop=shortEntryPrice + atr * slAtrMult,  // SL: ATR-based
+        loss=0, profit=0)
+
+// Time exit
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// Plots (debugging)
+plot(longSig, "Long Signal", color=color.green, style=plot.style_circles, linewidth=2)
+plot(shortSig, "Short Signal", color=color.red, style=plot.style_circles, linewidth=2)

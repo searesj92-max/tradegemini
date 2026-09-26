@@ -1,0 +1,91 @@
+//@version=6
+strategy(
+  title="QM-VND-v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100,
+)
+// QM-VND-v1 — Volatility-Normalized Displacement after single-bar extreme
+//
+// Math basis (see report): a single candle whose body displacement |ba|/atr
+// exceeds a vol-normalized threshold and whose close sits near one extreme
+// (but NOT followed through) tends to retrace in the bar after.
+//
+// Long  entry: prior bar bearish, huge body, close near LOW  → fade down
+// Short entry: prior bar bullish, huge body, close near HIGH → fade up
+//
+// ATR-normalized threshold uses the golden ratio φ=1.618 as a structural scale.
+// SL and TP are fixed ATR ticks (symmetric, no trailing — latency rule).
+
+// ── inputs ──
+thrMul   = input.float(1.618, "Displacement multiplier (φ)", minval=0.5, step=0.001)
+atrLen   = input.int(14, "ATR length", minval=1)
+tpTicks  = input.int(40, "TP ticks (1 tick = 0.0001 for USDT pairs)", minval=1)
+slTicks  = input.int(25, "SL ticks", minval=1)
+cooldown = input.int(1, "Bars cooldown after exit", minval=0)
+trendLen = input.int(200, "Trend SMA length (0 = off)")
+trendSMA = ta.sma(close, trendLen)
+
+// ── normalized displacement of the body ──
+body   = close - open
+absBody = math.abs(body)
+atr    = ta.atr(atrLen)
+displ  = absBody / atr
+
+// ── single-bar dominance: body covers > 60% of the range ──
+rangeBar = high - low
+bodyShare = rangeBar != 0 ? absBody / rangeBar : 0
+dominant = bodyShare > 0.60
+
+// ── close position within the bar (0 = low, 1 = high) ──
+clPr = rangeBar != 0 ? (close - low) / rangeBar : 0.5
+
+// ── signal: excessive displacement + close near one extreme ──
+// Long setup: prior bar bearish, close near LOW (clPr small), body dominant, high displ
+setupLong = close[1] < open[1] and clPr[1] < 0.30 and dominant[1] and displ[1] > thrMul
+
+// Short setup: prior bar bullish, close near HIGH (clPr large), body dominant, high displ
+setupShort = close[1] > open[1] and clPr[1] > 0.70 and dominant[1] and displ[1] > thrMul
+
+// ── regime filter: only take setups that agree with the trend SMA if enabled ──
+useTrend = trendLen > 0
+longOk  = useTrend ? (close > trendSMA and close[1] > trendSMA) : true
+shortOk = useTrend ? (close < trendSMA and close[1] < trendSMA) : true
+
+longEntry  = setupLong and longOk
+shortEntry = setupShort and shortOk
+
+// ── cooldown guard ──
+var int lastTradeBar = -cooldown - 1
+okToTrade = bar_index - lastTradeBar > cooldown
+
+// ── entries ──
+if longEntry and okToTrade
+    strategy.entry("L", strategy.long)
+
+if shortEntry and okToTrade
+    strategy.entry("S", strategy.short)
+
+// ── exits (SL/TP in price ticks from entry price) ──
+// 1 tick = 0.0001 USD on USDT linear perps; multiply accordingly.
+oneTick = 0.0001
+slPrice  = strategy.position_avg_price - slTicks * oneTick
+tpPrice  = strategy.position_avg_price + tpTicks * oneTick
+slPriceS = strategy.position_avg_price + slTicks * oneTick
+tpPriceS = strategy.position_avg_price - tpTicks * oneTick
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=slPrice, limit=tpPrice)
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=slPriceS, limit=tpPriceS)
+
+// record cooldown
+if strategy.position_size != 0 and strategy.position_size[1] == 0
+    lastTradeBar := bar_index

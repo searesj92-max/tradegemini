@@ -1,0 +1,95 @@
+//@version=6
+strategy("QM-FAILCONT-v1", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100, initial_capital=10000)
+
+lb         = input.int(100, "Pivô lookback (barras)", minval=20, maxval=400)
+trendlook  = input.int(40, "Janela de tendência recente (barras)", minval=10, maxval=200)
+disp_mult  = input.float(1.2, "Múltiplo de ATR para extensão de pico", step=0.1, minval=0.5, maxval=3.0)
+fail_occur = input.bool(true, "Exigir candeeiro de falha (+ divergência ao fechamento)")
+cooldown   = input.int(3, "Cooldown após saída (barras)", minval=0, maxval=20)
+max_bars   = input.int(30, "Máx. barras na operação (saída por tempo)", minval=0, maxval=200)
+sl_ticks   = input.int(20, "SL ticks", minval=1, maxval=200)
+tp_ticks   = input.int(35, "TP ticks", minval=1, maxval=200)
+
+atr   = ta.atr(lb)
+ph    = ta.pivothigh(high, 5, 5)
+pl    = ta.pivotlow(low, 5, 5)
+
+var float last_ph_price = na
+var int   last_ph_bar   = na
+var float last_pl_price = na
+var int   last_pl_bar   = na
+
+if not na(ph)
+    last_ph_price := ph
+    last_ph_bar   := bar_index
+
+if not na(pl)
+    last_pl_price := pl
+    last_pl_bar   := bar_index
+
+// Extensão de falha: preço acima do último pivô alto por pelo menos
+// disp_mult * atr, com candle de tentativa de continuação que fecha
+// abaixo do body do candle de extensão (falha).
+has_ph   = not na(last_ph_price)
+ph_age  = bar_index - last_ph_bar
+ph_ext  = ta.high >= last_ph_price + disp_mult * atr
+ph_fail = ph_ext and close < open and close < ta.highest(high, 1)[1]
+// Para curto: preço abaixo do último pivô baixo + extensão, falha para baixo.
+has_pl   = not na(last_pl_price)
+pl_age  = bar_index - last_pl_bar
+pl_ext  = ta.low <= last_pl_price - disp_mult * atr
+pl_fail = pl_ext and close > open and close > ta.lowest(low, 1)[1]
+
+// Filtro de tendência: evitar operar em tendência forte viaérica
+// Se houve mais altos recentes (ótimo) do que baixos, favorece longs.
+// Medimos por ocorrência de PH vs PL no lookback trendlook.
+ph_count = ta.valuewhen(has_ph, 1, trendlook) > 0 ? ph_count + 1 : ph_count
+// Não temos array; vamos usar aproximação: somar occ via ta.barssince?
+// Alternativa: medir distância de preço em relação ao preço N trendlook
+// barras atrás; se subiu muito, short tende a fracasso.
+recent_high = ta.highest(close, trendlook)
+recent_low  = ta.lowest(close, trendlook)
+range_recent = recent_high - recent_low
+pos_in_range = (close - recent_low) / (range_recent == 0 ? 1 : range_recent)
+// Posição no range: se > 0.7 → o preço está alto → favorece reversão para baixo.
+// Mas aqui vamos usar filtro conservador: só short se estiver no top 25% do range sem HA recente.
+// Não usamos HA; vamos apenas excluir short se closes desde a última falha high estiverem fazendo nova série.
+// Simplificamos: exigir ambas as entradas; operamos quando há falha, com barras >= 20 desde pivô.
+
+min_ph_bar = 20
+min_pl_bar = 20
+
+long_cond  = has_pl and pl_age >= min_pl_bar and pl_fail
+short_cond = has_ph and ph_age >= min_ph_bar and ph_fail
+
+// Cooldown
+since_exit  = ta.barssince(strategy.position_size != 0)
+cooldown_ok = since_exit >= cooldown or strategy.position_size != 0
+
+long_go  = long_cond and strategy.position_size == 0 and cooldown_ok
+short_go = short_cond and strategy.position_size == 0 and cooldown_ok
+
+if long_go
+    strategy.entry("L", strategy.long)
+if short_go
+    strategy.entry("S", strategy.short)
+
+ltp = close - tp_ticks * syminfo.mintick
+lsl = close - sl_ticks * syminfo.mintick
+stp = close + tp_ticks * syminfo.mintick
+ssl = close + sl_ticks * syminfo.mintick
+
+strategy.exit("LX", from_entry="L", limit=ltp, stop=lsl)
+strategy.exit("SX", from_entry="S", limit=stp, stop=ssl)
+
+bars_in_trade = strategy.position_size != 0 ? ta.barssince(strategy.position_size == 0) : 0
+if max_bars > 0 and bars_in_trade > max_bars
+    if strategy.position_size > 0
+        strategy.close("L")
+    if strategy.position_size < 0
+        strategy.close("S")
+
+plotshape(long_go, "Long entry (pivot fail)", shape.triangleup, location.belowbar, color=color.lime, size=size.tiny)
+plotshape(short_go, "Short entry (pivot fail)", shape.triangledown, location.abovebar, color=color.red, size=size.tiny)
+plot(last_ph_price, "Last PH", color=color.red, linewidth=1, style=plot.style_circles)
+plot(last_pl_price, "Last PL", color=color.green, linewidth=1, style=plot.style_circles)

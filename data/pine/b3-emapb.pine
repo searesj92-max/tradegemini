@@ -1,0 +1,34 @@
+//@version=6
+strategy("EMAPB 20/50",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+f = ta.ema(close, 20)
+s = ta.ema(close, 50)
+t = ta.ema(close, 200)
+up = f > s and close > t
+dn = f < s and close < t
+longB = up and low <= f and close >= f and close > close[1]
+shortB = dn and high >= f and close <= f and close < close[1]
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if shortB and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+a = ta.atr(14)
+slM = input.float(2.0, "SL x ATR")
+tpM = input.float(1.8, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

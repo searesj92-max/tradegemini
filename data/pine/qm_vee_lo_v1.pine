@@ -1,0 +1,79 @@
+//@version=6
+// QM-VEE-LO-v1 - Pure Long Breakout Continuation (FCD-inspired, long-only)
+// -------------------------------------------------------------------------
+// Hypothesis: crypto markets have upward bias. Follow-through of LOW breakout
+// has consistent positive edge. Follow-through of HIGH breakout (short) is
+// contrarian in most symbols.
+// Inspiration: lesson from VEE-v3 (longs positive, shorts negative) and
+// failed continuation math.
+// LONG only. Breakout of low with close confirmation above recent high.
+// Entry on next bar after signal.
+
+strategy(
+  title  = "QM-VEE-LO-v1 - Pure Long Breakout Continuation",
+  overlay = true,
+  pyramiding = 1,
+  process_orders_on_close = true,
+  commission_type = strategy.commission.percent,
+  commission_value = 0.05,
+  initial_capital = 10000,
+  default_qty_type = strategy.percent_of_equity,
+  default_qty_value = 100,
+  margin_long = 100,
+  margin_short = 100
+)
+
+// --- Inputs ----------------------------------------------
+sweepNbars   = input.int(18, "Sweep lookback (recent highs)", minval=5, maxval=60, step=1)
+breakPct     = input.float(0.012, "Breakout threshold above recent high", minval=0.001, maxval=0.05, step=0.001)
+minVol       = input.float(0.70, "Min volume relative to SMA volume", minval=0.1, maxval=3.0, step=0.05)
+slMult       = input.float(2.0, "SL multiplier x ATR from entry", minval=0.5, step=0.1)
+tpMult       = input.float(1.5, "TP multiplier x ATR from entry", minval=0.5, step=0.1)
+cooldown     = input.int(3, "Cooldown bars after exit", minval=0, step=1)
+maxBars      = input.int(25, "Max bars in trade (time exit)", minval=5, step=5)
+useVolFilter = input.bool(true, "Require volume above threshold")
+// -------------------------------------------------------
+
+// --- Series ----------------------------------------------
+atr      = ta.atr(14)
+smaVol   = ta.sma(volume, 20)
+swHigh   = ta.highest(high, sweepNbars)[1]
+valid    = not na(atr) and not na(smaVol)
+
+// --- Signal: LOW breakout with follow-through ------------
+breakOut   = valid and high[1] > swHigh
+followThru = valid and close[1] > swHigh
+volOk      = useVolFilter ? (volume[1] >= smaVol[1] * minVol) : true
+longSignal = breakOut and followThru and volOk and strategy.position_size == 0
+
+// --- Entry -------------------------------------------------
+if longSignal
+    strategy.entry("L", strategy.long)
+
+// --- SL / TP (fixed ATR multiples, reissued each bar) -----
+if strategy.position_size > 0
+    slPrice = strategy.position_avg_price - slMult * atr
+    tpPrice = strategy.position_avg_price + tpMult * atr
+    strategy.exit("L-SL", from_entry="L", stop=slPrice, limit=tpPrice)
+
+// --- Time exit --------------------------------------------
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade := barsInTrade + 1
+else
+    barsInTrade := 0
+
+if barsInTrade >= maxBars and strategy.position_size > 0
+    strategy.close("L")
+
+// --- Cooldown ---------------------------------------------
+var int cd = 0
+if strategy.position_size == 0
+    cd := cd + 1
+else
+    cd := 0
+
+// --- Plots ------------------------------------------------
+plotshape(longSignal, title="Long Breakout", style=shape.triangleup,
+          location=location.belowbar, color=color.lime, size=size.small)
+plot(swHigh, "Recent High", color=color.gray, linewidth=1, style=plot.style_dashed)

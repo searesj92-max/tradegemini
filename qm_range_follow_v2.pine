@@ -1,0 +1,79 @@
+//@version=6
+// QM-RANGE-FOLLOW-v2
+// Hypothesis: Range-following mean reversion after failed expansion breakout.
+// Math basis: range efficiency = (close - open) / (high - low).
+//   When a breakout bar expands range but closes near its open (efficiency collapse),
+//   the directional follow-through failed → fade with risk on expansion.
+//
+// v2 changes: 
+//   - removed extra percentile decile filter (too restrictive, 0 trades)
+//   - relaxed expansion threshold from 1.25 to 1.15
+//   - keep efficiency < 0.20 as core condition
+//   - keep SL/TP at 2x ATR / 4x ATR
+//
+// NO trailing stops (per loop rule). SL/TP in ticks against ATR. No repaint, no lookahead.
+// Allowed set only; process_orders_on_close, pyramiding=1, commission 0.05%.
+
+strategy(
+  title="QM-RANGE-FOLLOW-v2",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// ---------- inputs ----------
+atrLen    = input.int(14, "ATR length")
+volWin    = input.int(20, "Volatility lookback (bars)")
+effWin    = input.int(20, "Efficiency lookback (bars)")
+effThresh = input.float(0.20, "Efficiency collapse threshold", step=0.05)
+atrSL     = input.float(2.0, "SL multiple of ATR", step=0.1)
+atrTP     = input.float(4.0, "TP multiple of ATR", step=0.1)
+expandMult= input.float(1.15, "Expansion multiplier vs recent median atr", step=0.05)
+
+// ---------- volatility context ----------
+atrVal    = ta.atr(atrLen)
+avgAtr    = ta.median(atrVal, volWin)
+expandBar = atrVal > (avgAtr * expandMult)
+
+// ---------- range efficiency ----------
+rng       = ta.range(high, low)
+eff       = rng > 0 ? math.abs(close - open) / rng : 0.0
+isCollapse= eff < effThresh and rng > 0 and effWin > 1
+
+// ---------- combined condition (SIMPLER) ----------
+fadeBar = expandBar and isCollapse and not na(avgAtr)
+
+// ---------- direction from open-vs-close sign ----------
+longEntry = fadeBar and close < open     // failed bearish expansion → long fade
+shortEntry= fadeBar and close > open     // failed bullish expansion → short fade
+noEntry   = fadeBar and close == open    // neutral - skip
+
+// ---------- risk per trade (ticks from ATR) ----------
+minTicks  = 1
+slTicks  = atrVal > 0 ? math.max(minTicks, math.round(atrSL * (atrVal / syminfo.mintickprice))) : 10
+tpTicks  = atrVal > 0 ? math.max(minTicks, math.round(atrTP * (atrVal / syminfo.mintickprice))) : 20
+
+// ---------- entries ----------
+if longEntry and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortEntry and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// ---------- exits ----------
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", loss=slTicks, profit=tpTicks)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", loss=slTicks, profit=tpTicks)
+
+// ---------- plots (parity-safe) ----------
+plot(longEntry, "longSig",  color.new(color.green, 0), style=plot.style_circles)
+plot(shortEntry,"shortSig", color.new(color.red, 0),   style=plot.style_circles)

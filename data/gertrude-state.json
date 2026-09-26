@@ -1,0 +1,20 @@
+{
+  "lastProcessed": "2026-09-26T15:30:00Z",
+  "cycle": "2026-09-26T15:30:00Z",
+  "reportsProcessed": 6,
+  "verdicts": {
+    "approve": 0,
+    "parked": 3,
+    "rejected": 3,
+    "question": 0
+  },
+  "dispatch": "risk-audit-2026-09-26.md",
+  "credits_mcp": 0,
+  "blockers": [
+    "MCP credits zerados — backtests via MCP bloqueados (reset em 'Invalid Date')",
+    "Fork de estratégias de terceiros bloqueado (403, plano pago necessário)",
+    "3 estratégias rejeitadas (H2-H1, LSN, REC) — sem edge, strikes acumulando",
+    "2 estratégias em parked: FCS-v1 (sinal real em ETH, amostra insuficiente) e AEGIS/FTMO (bloqueio infra)",
+    "Nenhuma estratégia apta para incubação neste ciclo"
+  ]
+}

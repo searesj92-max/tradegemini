@@ -1,0 +1,47 @@
+[
+  {
+    "symbol": "ETHUSDT",
+    "tf": "30",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "ETHUSDT",
+    "tf": "60",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "ETHUSDT",
+    "tf": "120",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "ETHUSDT",
+    "tf": "240",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "SOLUSDT",
+    "tf": "15",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "SOLUSDT",
+    "tf": "30",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "SOLUSDT",
+    "tf": "60",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "XRPUSDT",
+    "tf": "15",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "symbol": "XRPUSDT",
+    "tf": "30",
+    "error": "HTTP Error 403: Forbidden"
+  }
+]

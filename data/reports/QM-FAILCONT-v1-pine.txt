@@ -1,0 +1,71 @@
+//@version=6
+strategy("QM-FAILCONT-v1 — Failed Continuation / Liquidity Sweep + Snapback", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100)
+
+// === Inputs ===
+leftBars    = input.int(5,  "Pivot left bars")
+rightBars   = input.int(5,  "Pivot right bars")
+atrWin      = input.int(14, "ATR window")
+slMult      = input.float(1.5, "SL multiple of ATR", step=0.1)
+tpMult      = input.float(3.0, "TP multiple of ATR", step=0.1)
+timeExitBars = input.int(40, "Time exit (bars)")
+
+// === Pivot detection (confirmed after rightBars — NOT lookahead) ===
+ph = ta.pivothigh(high, leftBars, rightBars)
+pl = ta.pivotlow(low, leftBars, rightBars)
+
+// === ATR ===
+atr = ta.atr(atrWin)
+
+// === Failed breakout: pivot high confirmed, then price closed back below it ===
+// ph non-na at bar i => bar i-rightBars was the pivot high
+// At bar i, close < ph means the breakout above the pivot failed
+failedBreakHigh = not na(ph) and close < ph
+
+// === Failed breakdown: pivot low confirmed, then price closed back above it ===
+failedBreakLow = not na(pl) and close > pl
+
+// === Snapback entries ===
+// Long: after failed breakout high, enter when close recovers above open of the failure bar
+longEntry = failedBreakHigh and close > open
+
+// Short: after failed breakdown low, enter when close drops below open of the failure bar
+shortEntry = failedBreakLow and close < open
+
+// === Entries ===
+if longEntry
+    strategy.entry("L", strategy.long)
+if shortEntry
+    strategy.entry("S", strategy.short)
+
+// === SL/TP levels captured at entry ===
+var float longStop  = na
+var float longLimit = na
+var float shortStop  = na
+var float shortLimit = na
+
+if longEntry
+    longStop  := close - atr * slMult
+    longLimit := close + atr * tpMult
+if shortEntry
+    shortStop  := close + atr * slMult
+    shortLimit := close - atr * tpMult
+
+// === Exits ===
+if strategy.position_size > 0
+    strategy.exit("L_SLTP", from_entry="L", stop=longStop, limit=longLimit)
+if strategy.position_size < 0
+    strategy.exit("S_SLTP", from_entry="S", stop=shortStop, limit=shortLimit)
+
+// === Time exit ===
+if strategy.position_size > 0 and barssince(longEntry) >= timeExitBars
+    strategy.close("L")
+if strategy.position_size < 0 and barssince(shortEntry) >= timeExitBars
+    strategy.close("S")
+
+// === Plots ===
+plot(longEntry ? 1 : 0,  "Long entry",  style=plot.style_circles, color=color.green, linewidth=2)
+plot(shortEntry ? 1 : 0, "Short entry", style=plot.style_circles, color=color.red,   linewidth=2)
+
+// Plot pivots when confirmed (visual only)
+plot(ph, "Pivot High", color=color.new(color.red, 50), linewidth=1, style=plot.style_cross)
+plot(pl, "Pivot Low",  color=color.new(color.green, 50), linewidth=1, style=plot.style_cross)

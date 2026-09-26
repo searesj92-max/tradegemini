@@ -1,0 +1,105 @@
+// =============================================================================
+// VED-1 — Volatility-Expansion Displacement Reversion (attempt 1)
+// Hipótese: quando o preço distancia da média por k desvios padrão (normalizados
+// pelo range/ATR) após um período de compressão, tende a se reverter para a média.
+// Matemática: z = (close - SMA) / (ATR . clamp(CV))  onde CV = ATR / |deslocamento|
+// Entradas em next-bar, SL/TP em ATR, time exit, filtro de tendência EMA200.
+// =============================================================================
+//@version=6
+strategy("VED-1 — Displacement Reversion v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// --- Inputs ---------------------------------------------------------------
+smaLen     = input.int(200,  "SMA período",   minval=50)
+atrLen     = input.int(50,   "ATR período",   minval=10)
+zThresh    = input.float(2.2, "Z-score threshold", minval=0.5, step=0.1)
+cvClamp    = input.float(0.04, "CV clamp", minval=0.01, step=0.01, tooltip="Limita CV para evitar desestabilização em casos extremos")
+maxBars    = input.int(6,    "Max bars in trade", minval=2)
+useTrendF  = input.bool(true, "Filtro de tendência (EMA200 slope)")
+
+// --- Core indicators -----------------------------------------------------
+sma = ta.sma(close, smaLen)
+atr = ta.atr(atrLen)
+disp = close - sma                    // deslocamento bruto
+absDisp = math.abs(disp)
+
+// CV = ATR / |deslocamento| com clamp para evitar explosão quando disp ≈ 0
+cv = atr / math.max(absDisp, syminfo.mintick)
+cvNorm = math.min(cv, cvClamp)
+
+// Z-score normalizado pelo range de volatilidade
+z = disp / math.max(atr, syminfo.mintick) / cvNorm
+
+// Filtro de tendência: inclinação da EMA 200 sobre 5 bares
+ema200 = ta.ema(close, 200)
+ema200Slope = ema200 - ema200[5]
+
+// --- Regime state (computed on bar-close, no lookahead) --------------------
+zCrossedBelow = z < -zThresh and z[1] >= -zThresh
+zCrossedAbove = z >  zThresh and z[1] <=  zThresh
+zBeyondBelow  = z < -zThresh and z[1] < -zThresh   // já estava além, confirmação
+zBeyondAbove  = z >  zThresh and z[1] >  zThresh
+
+// Tendência: long-friendly quando EMA200 está subindo
+trendFavLong  = useTrendF ? (ema200Slope > 0) : true
+trendFavShort = useTrendF ? (ema200Slope < 0) : true
+
+var int tradeEntryBar = na
+
+// --- Entry conditions (long) ----------------------------------------------
+longSetup = zCrossedBelow or (zBeyondBelow and not na(strategy.position_size))
+longEntrySignal = longSetup and trendFavLong
+
+// --- Entry conditions (short) ---------------------------------------------
+shortSetup = zCrossedAbove or (zBeyondAbove and not na(strategy.position_size))
+shortEntrySignal = shortSetup and trendFavShort
+
+// --- Execute on bar close (no repaint, no lookahead) ----------------------
+if longEntrySignal
+    strategy.entry("L", strategy.long)
+    tradeEntryBar := bar_index
+
+if shortEntrySignal
+    strategy.entry("S", strategy.short)
+    tradeEntryBar := bar_index
+
+// --- Exit levels (recalculated each bar on position) ----------------------
+// SL/TP em ATR, escalados pelo quanto o z-score ultrapassou o threshold
+zExtL = math.max(-zThresh - z, 0.0)   // quanto além para longs (quanto maior → mais território de reversão)
+zExtS = math.max(z - zThresh, 0.0)    // quanto além para shorts
+
+slTicksL = math.max(atr * zThresh * 1.5, atr * 1.2)
+tpTicksL = math.max(atr * (zThresh + math.max(zExtL, 0.5)), atr * 2.0)
+
+slTicksS = math.max(atr * zThresh * 1.5, atr * 1.2)
+tpTicksS = math.max(atr * (zThresh + math.max(zExtS, 0.5)), atr * 2.0)
+
+longSL  = close - slTicksL
+longTP  = close + tpTicksL
+shortSL = close + slTicksS
+shortTP = close - tpTicksS
+
+// --- Exit management (strategy.exit re-emitido todo bar) -------------------
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longSL, limit=longTP, loss=slTicksL, profit=tpTicksL)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortSL, limit=shortTP, loss=slTicksS, profit=tpTicksS)
+
+// --- Time exit: força encerramento se o trade durper maxBars bars ----------
+if strategy.position_size != 0 and bar_index - tradeEntryBar >= maxBars
+    strategy.close_all(comment="time_exit")
+
+// --- Plots (para visualização no chart) -----------------------------------
+plot(sma, "SMA", color=color.blue, linewidth=1)
+plot(ema200, "EMA200", color=color.gray, linewidth=1)
+plot(longEntrySignal, "LongSignal", display=display.data_window, style=plot.style_columns, color=color.green)
+plot(shortEntrySignal, "ShortSignal", display=display.data_window, style=plot.style_columns, color=color.red)

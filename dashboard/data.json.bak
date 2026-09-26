@@ -1,0 +1,54 @@
+{
+  "lastCycle": "2026-09-26T15:30:00Z",
+  "strategies": {
+    "QM-SAT-SweepSnap-v1 (H2)": {
+      "status": "rejected",
+      "verdict": "REJEITAR",
+      "reason": "PF max 0.73, 2 strikes, sem edge cross-symbol",
+      "lastReport": "2026-09-26-1530-researcher-h2-h1-greenfield.md"
+    },
+    "QM-MeanReversion-ADR-v1 (H1)": {
+      "status": "rejected",
+      "verdict": "REJEITAR",
+      "reason": "PF max 0.87, 1 strike, sem edge",
+      "lastReport": "2026-09-26-1530-researcher-h2-h1-greenfield.md"
+    },
+    "QM-LSN-v1": {
+      "status": "rejected",
+      "verdict": "REJEITAR",
+      "reason": "0/10 símbolos com PF ≥ 1, DD max 49.4% (ADA), strike 1",
+      "lastReport": "2026-09-24-2300-researcher-lsn-v1-batch.md"
+    },
+    "QM-REC-v2": {
+      "status": "rejected",
+      "verdict": "REJEITAR",
+      "reason": "Zero trades em 6 símbolos × 15m, causado por filtros muito apertados",
+      "lastReport": "2026-09-24-1824-researcher-rec-greenfield.md"
+    },
+    "QM-FCS-v1": {
+      "status": "parked",
+      "verdict": "ESTACIONAR",
+      "reason": "PF 1.57 em ETH 15m (117 trades), mas só 2 pares positivos, BTC negativo, amostra insuficiente para incubação",
+      "lastReport": "2026-09-24-1618-researcher-qm-fcs-v1.md"
+    },
+    "AEGIS Volatility Expansion": {
+      "status": "parked",
+      "verdict": "ESTACIONAR",
+      "reason": "Candidato interessante (PF 2.4, 63k trades) mas bloqueado por infra (fork 403 + credits 0). Sem validação.",
+      "lastReport": "2026-09-24-1700-optimizer-aegis-v1-cycle001.md"
+    },
+    "FTMO Guardrailed SOL Donchian": {
+      "status": "parked",
+      "verdict": "ESTACIONAR",
+      "reason": "Números gritantes (PF 12.96) mas sem validação própria. Bloqueado por credits 0 + fork 403.",
+      "lastReport": "2026-09-24-1618-optimizer-ftmo-sol-donchian.md"
+    }
+  },
+  "credits": {
+    "balance": 0,
+    "weeklyGrant": 1000,
+    "resetAt": "Invalid Date",
+    "tier": "free"
+  },
+  "blockers": ["credits=0", "fork_requires_paid_plan"]
+}

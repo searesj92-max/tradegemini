@@ -1,0 +1,85 @@
+//@version=6
+// QM-VEE-v1 — Volatility Expansion Entry
+// Hypothesis: after vol compression, breakout with follow-through (close beyond extreme) -> continuation.
+// Entry: bar [1] shows range expansion + close beyond recent extreme -> enter on next bar in breakout direction.
+// Exit: fixed SL/TP in ATR ticks. No trailing. No repaint, no lookahead.
+// Allowed ta.* only; process_orders_on_close=true, pyramiding=1, commission 0.05%.
+
+strategy(
+  title="QM-VEE-v1 — Volatility Expansion Entry",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// === Inputs ===
+compLen     = input.int(50, "Compression lookback (bars)", minval=10, group="Entry")
+compThresh  = input.float(0.7, "Compression threshold (ATR / ATR_avg)", minval=0.3, maxval=0.95, step=0.05, group="Entry")
+sweepN      = input.int(20, "Extreme lookback (bars)", minval=5, group="Entry")
+expMult     = input.float(2.0, "Expansion bar range min (x ATR)", minval=0.5, step=0.5, group="Entry")
+slTicks     = input.int(40, "SL ticks", minval=5, group="Exit")
+tpTicks     = input.int(80, "TP ticks", minval=5, group="Exit")
+timeExitBars = input.int(20, "Time exit (max bars)", minval=1, group="Exit")
+
+// === Indicators ===
+atrVal      = ta.atr(14)
+atrAvg      = ta.sma(atrVal, 20)
+compPhase   = atrVal < atrAvg * compThresh              // vol compression regime
+
+sweepHigh   = high[1] >= ta.highest(high[2], sweepN)   // bar[1] touched/above recent high
+sweepLow    = low[1]  <= ta.lowest(low[2], sweepN)     // bar[1] touched/below recent low
+
+rangeBar1   = high[1] - low[1]
+rangeExpanded = rangeBar1 > atrVal * expMult           // bar[1] range sufficiently expanded
+
+// Follow-through: close[1] beyond the extreme (not just touch). Real breakout, not fakeout.
+breakoutHigh = sweepHigh and close[1] > high[1]         // confirmed break above
+breakoutLow  = sweepLow  and close[1] < low[1]          // confirmed break below
+
+longSig  = compPhase and breakoutLow  and rangeExpanded
+shortSig = compPhase and breakoutHigh and rangeExpanded
+
+// === Cooldown ===
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > 0
+
+// === Entries ===
+if longSig and canTrade and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortSig and canTrade and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// === Exits (ATR-based fixed SL/TP, set on entry) ===
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", loss=slTicks, profit=tpTicks)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", loss=slTicks, profit=tpTicks)
+
+// === Time exit ===
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// === Plots ===
+plot(compPhase, "Compression Phase", color=color.new(color.teal, 50), style=plot.style_linebr)
+plot(sweepHigh, "Sweep High", color=color.red, style=plot.style_circles, linewidth=2)
+plot(sweepLow, "Sweep Low", color=color.green, style=plot.style_circles, linewidth=2)

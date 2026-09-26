@@ -1,0 +1,362 @@
+[
+  {
+    "base": "BTC",
+    "bybit_symbol": "BTCUSDT",
+    "binance_symbol": "BTCUSDT",
+    "bybit_turnover": 7065439905.7514,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 1
+  },
+  {
+    "base": "ETH",
+    "bybit_symbol": "ETHUSDT",
+    "binance_symbol": "ETHUSDT",
+    "bybit_turnover": 3768343848.9239,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 2
+  },
+  {
+    "base": "XRP",
+    "bybit_symbol": "XRPUSDT",
+    "binance_symbol": "XRPUSDT",
+    "bybit_turnover": 1128276211.7272,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 3
+  },
+  {
+    "base": "SOL",
+    "bybit_symbol": "SOLUSDT",
+    "binance_symbol": "SOLUSDT",
+    "bybit_turnover": 941030218.628,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 4
+  },
+  {
+    "base": "ZEC",
+    "bybit_symbol": "ZECUSDT",
+    "binance_symbol": "ZECUSDT",
+    "bybit_turnover": 865219255.3851,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 5
+  },
+  {
+    "base": "NEAR",
+    "bybit_symbol": "NEARUSDT",
+    "binance_symbol": "NEARUSDT",
+    "bybit_turnover": 594127201.0713,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 6
+  },
+  {
+    "base": "DOGE",
+    "bybit_symbol": "DOGEUSDT",
+    "binance_symbol": "DOGEUSDT",
+    "bybit_turnover": 328692368.786,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 7
+  },
+  {
+    "base": "HYPE",
+    "bybit_symbol": "HYPEUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 302102512.7684,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 8
+  },
+  {
+    "base": "SOXL",
+    "bybit_symbol": "SOXLUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 228122745.3058,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 9
+  },
+  {
+    "base": "BCH",
+    "bybit_symbol": "BCHUSDT",
+    "binance_symbol": "BCHUSDT",
+    "bybit_turnover": 212697456.843,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 10
+  },
+  {
+    "base": "UNI",
+    "bybit_symbol": "UNIUSDT",
+    "binance_symbol": "UNIUSDT",
+    "bybit_turnover": 208970465.4967,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 11
+  },
+  {
+    "base": "CL",
+    "bybit_symbol": "CLUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 196082621.5856,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 12
+  },
+  {
+    "base": "SUI",
+    "bybit_symbol": "SUIUSDT",
+    "binance_symbol": "SUIUSDT",
+    "bybit_turnover": 187057212.416,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 13
+  },
+  {
+    "base": "PEPE",
+    "bybit_symbol": "1000PEPEUSDT",
+    "binance_symbol": "PEPEUSDT",
+    "bybit_turnover": 183277335.3786,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 14
+  },
+  {
+    "base": "ENA",
+    "bybit_symbol": "ENAUSDT",
+    "binance_symbol": "ENAUSDT",
+    "bybit_turnover": 158459158.2091,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 15
+  },
+  {
+    "base": "ARB",
+    "bybit_symbol": "ARBUSDT",
+    "binance_symbol": "ARBUSDT",
+    "bybit_turnover": 150043459.9711,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 16
+  },
+  {
+    "base": "XAU",
+    "bybit_symbol": "XAUUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 141112285.7478,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 17
+  },
+  {
+    "base": "ADA",
+    "bybit_symbol": "ADAUSDT",
+    "binance_symbol": "ADAUSDT",
+    "bybit_turnover": 125299280.2552,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 18
+  },
+  {
+    "base": "AVAX",
+    "bybit_symbol": "AVAXUSDT",
+    "binance_symbol": "AVAXUSDT",
+    "bybit_turnover": 104616472.4443,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 19
+  },
+  {
+    "base": "LTC",
+    "bybit_symbol": "LTCUSDT",
+    "binance_symbol": "LTCUSDT",
+    "bybit_turnover": 101993785.764,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 20
+  },
+  {
+    "base": "TAO",
+    "bybit_symbol": "TAOUSDT",
+    "binance_symbol": "TAOUSDT",
+    "bybit_turnover": 100724430.5813,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 21
+  },
+  {
+    "base": "ONDO",
+    "bybit_symbol": "ONDOUSDT",
+    "binance_symbol": "ONDOUSDT",
+    "bybit_turnover": 93079804.056,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 22
+  },
+  {
+    "base": "WLD",
+    "bybit_symbol": "WLDUSDT",
+    "binance_symbol": "WLDUSDT",
+    "bybit_turnover": 92835125.0706,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 23
+  },
+  {
+    "base": "MUBARAK",
+    "bybit_symbol": "MUBARAKUSDT",
+    "binance_symbol": "MUBARAKUSDT",
+    "bybit_turnover": 92832817.352,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 24
+  },
+  {
+    "base": "SNDK",
+    "bybit_symbol": "SNDKUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 90556970.871,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 25
+  },
+  {
+    "base": "PENGU",
+    "bybit_symbol": "PENGUUSDT",
+    "binance_symbol": "PENGUUSDT",
+    "bybit_turnover": 84791814.6195,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 26
+  },
+  {
+    "base": "AKE",
+    "bybit_symbol": "AKEUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 82699821.4873,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 27
+  },
+  {
+    "base": "TRUMP",
+    "bybit_symbol": "TRUMPUSDT",
+    "binance_symbol": "TRUMPUSDT",
+    "bybit_turnover": 76077299.7362,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 28
+  },
+  {
+    "base": "AAVE",
+    "bybit_symbol": "AAVEUSDT",
+    "binance_symbol": "AAVEUSDT",
+    "bybit_turnover": 73126401.2093,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 29
+  },
+  {
+    "base": "ZRO",
+    "bybit_symbol": "ZROUSDT",
+    "binance_symbol": "ZROUSDT",
+    "bybit_turnover": 69792223.7306,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 30
+  },
+  {
+    "base": "LINK",
+    "bybit_symbol": "LINKUSDT",
+    "binance_symbol": "LINKUSDT",
+    "bybit_turnover": 68643685.1712,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 31
+  },
+  {
+    "base": "PUMPFUN",
+    "bybit_symbol": "PUMPFUNUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 67839994.5697,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 32
+  },
+  {
+    "base": "FARTCOIN",
+    "bybit_symbol": "FARTCOINUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 63806560.1424,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 33
+  },
+  {
+    "base": "TSLA",
+    "bybit_symbol": "TSLAUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 63413842.7097,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 34
+  },
+  {
+    "base": "XPL",
+    "bybit_symbol": "XPLUSDT",
+    "binance_symbol": "XPLUSDT",
+    "bybit_turnover": 53346302.977,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 35
+  },
+  {
+    "base": "XAG",
+    "bybit_symbol": "XAGUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 53058948.9431,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 36
+  },
+  {
+    "base": "XLM",
+    "bybit_symbol": "XLMUSDT",
+    "binance_symbol": "XLMUSDT",
+    "bybit_turnover": 51414734.9519,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 37
+  },
+  {
+    "base": "BNB",
+    "bybit_symbol": "BNBUSDT",
+    "binance_symbol": "BNBUSDT",
+    "bybit_turnover": 50664739.469,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 38
+  },
+  {
+    "base": "BONK",
+    "bybit_symbol": "1000BONKUSDT",
+    "binance_symbol": "BONKUSDT",
+    "bybit_turnover": 50551603.6049,
+    "source_rank": "bybit",
+    "kline_provider": "binance",
+    "rank": 39
+  },
+  {
+    "base": "LIT",
+    "bybit_symbol": "LITUSDT",
+    "binance_symbol": null,
+    "bybit_turnover": 50328610.1707,
+    "source_rank": "bybit",
+    "kline_provider": "bybit",
+    "rank": 40
+  }
+]

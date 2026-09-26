@@ -1,0 +1,33 @@
+//@version=6
+strategy("MomZ 1.5/L20",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+ret = close - close[1]
+mu = ta.sma(ret, 20)
+sd = ta.stdev(ret, 20)
+z = sd > 0 ? (ret - mu) / sd : 0
+longB = ta.crossover(z, 1.5) and close > ta.ema(close, 100)
+shortB = ta.crossunder(z, -1.5) and close < ta.ema(close, 100)
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if shortB and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+a = ta.atr(14)
+slM = input.float(2.0, "SL x ATR")
+tpM = input.float(1.5, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

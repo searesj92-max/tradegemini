@@ -1,0 +1,79 @@
+//@version=6
+// PHI1-v2 — Failed-Expansion Compression (range-based, greenfield)
+// Ineficiência: candle de expansão seguido por candle de compressão (range pequeno, close dentro do range do expansivo),
+// sinalizando desgaste de momentum → mean-reversion fraca para o corpo do expansivo.
+// Regra: após candle com range > ATR(14)*expMult e body significativo, o próximo candle fecha dentro do range do expansivo
+// com range próprio < comprRange * compRatio. Long se close abaixo da mediana do range expansivo; short se acima.
+// SL: além do extremo do candle de expansão + ATR; TP: R:R fixo.
+// Sem repaint ([1] e [2]); sem lookahead; sem martingale.
+
+strategy("PHI1-v2: Failed-Expansion Compression v1", overlay=true,
+  pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// === INPUTS ===
+atrLen       = input.int(14, "ATR length")
+expMult      = input.float(1.5, "Expansion candle min range (ATR mult)")
+bodyMinPct  = input.float(0.25, "Candle-body min % of price (significance filter)")
+compRatio    = input.float(0.5, "Compression candle max range (fraction of expansion range)")
+atrSlMult    = input.float(1.0, "SL ATR mult beyond expansion extreme")
+rrRatio      = input.float(1.5, "TP R:R ratio")
+minAtrPct    = input.float(0.06, "Min ATR % filter (vol protection)")
+
+// === VOL & FILTERS ===
+atr = ta.atr(atrLen)
+atrPct = atr / close * 100
+volOk = atrPct > minAtrPct
+
+// === EXPANSION CANDLE (candle [1] = sem repainting) ===
+expHigh = high[1]
+expLow  = low[1]
+expRange = expHigh - expLow
+expBody = math.abs(close[1] - open[1])
+expBodyPct = expBody / close[1] * 100
+expCandle = expRange > atr * expMult and expBodyPct > bodyMinPct and volOk
+
+// === COMPRESSION CANDLE (candle atual [0], range pequeno dentro do range do expansivo) ===
+cmpRange = high - low
+cmpInside = cmpRange < expRange * compRatio and cmpRange > 0
+cmpCloseInside = close >= expLow and close <= expHigh   // close dentro do range do expansivo
+
+// === ENTRADA ===
+// long: close abaixo da mediana do range expansivo (pressão para baixo dentro do range)
+// short: close acima da mediana
+medianExp = (expHigh + expLow) / 2
+
+longEntry = expCandle and cmpInside and cmpCloseInside and close < medianExp
+shortEntry = expCandle and cmpInside and cmpCloseInside and close > medianExp
+
+// === ENTRADAS ===
+if longEntry
+    strategy.entry("L", strategy.long)
+
+if shortEntry
+    strategy.entry("S", strategy.short)
+
+// === SL / TP ===
+// SL: além do extremo do candle de expansão + buffer ATR
+longSlPrice = expLow - atr * atrSlMult
+shortSlPrice = expHigh + atr * atrSlMult
+
+// TP: R:R fixo da distância risco (entry → SL)
+longTpPrice = close + (close - longSlPrice) * rrRatio
+shortTpPrice = close - (shortSlPrice - close) * rrRatio
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longSlPrice, limit=longTpPrice)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortSlPrice, limit=shortTpPrice)
+
+// === PLOTS (debug) ===
+plot(expLow, "expLow[1]", color=color.new(color.blue, 60), style=plot.style_circles)
+plot(expHigh, "expHigh[1]", color=color.new(color.red, 60), style=plot.style_circles)
+plot(medianExp, "medianExp[1]", color=color.new(color.gray, 50), style=plot.style_circles)
+plot(longSlPrice, "longSl", color=color.new(color.red, 80), style=plot.style_circles)
+plot(shortSlPrice, "shortSl", color=color.new(color.green, 80), style=plot.style_circles)

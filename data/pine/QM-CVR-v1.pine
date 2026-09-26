@@ -1,0 +1,98 @@
+//@version=6
+// QM-CVR-v1 — Compression-Vol Reversion (H4)
+// Hipótese: após displ normalizado grande, vol em CONTRAÇÃO + range-eff restritivo + ADX gate
+// → snap-back para a média mais provável.
+// Sem trailing, sem martingale, sem grid.
+
+strategy(
+  title="QM-CVR-v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// === Inputs ===
+lenSma      = input.int(20,  "SMA length")
+lenAtr      = input.int(14,  "ATR length")
+displThresh = input.float(1.5,"Displacement threshold (x ATR)", minval=0.5, step=0.1)
+reffThresh  = input.float(0.30,"Range-efficiency threshold (body/range)", minval=0.1, maxval=0.5, step=0.05)
+volShrink   = input.float(0.15,"Vol shrink multiplier (atr < smaATR*(1-shrink))", minval=0.05, maxval=0.4, step=0.05)
+slAtrRanges = input.float(1.5, "SL in ATR multiples", minval=0.5, step=0.25)
+tpAtrRanges = input.float(2.0, "TP in ATR multiples", minval=0.5, step=0.25)
+maxBars     = input.int(24,   "Max bars holding", minval=1)
+adxThresh   = input.float(25.0,"ADX regime gate (must be < this to enter)", minval=10, maxval=50, step=1)
+
+// === Core series ===
+smaClose = ta.sma(close, lenSma)
+atr = ta.atr(lenAtr)
+atrSma = ta.sma(atr, 20)
+
+// ADX
+[dPlus, dMinus, adx] = ta.dmi(14, 14)
+
+// Displ normalizado
+displ = (close - smaClose) / atr
+
+// Range efficiency
+rangeEff = math.abs(close - open) / (high - low + 1e-9)
+
+// Vol contraction filter
+volContracting = atr < atrSma * (1 - volShrink)
+
+// === Entry conditions (single-line each) ===
+longCond = (not strategy.position_size > 0) and (displ < -displThresh) and (rangeEff < reffThresh) and volContracting and (adx < adxThresh)
+
+shortCond = (not strategy.position_size < 0) and (displ >  displThresh) and (rangeEff < reffThresh) and volContracting and (adx < adxThresh)
+
+// === Entries ===
+if longCond
+    strategy.entry("L", strategy.long)
+
+if shortCond
+    strategy.entry("S", strategy.short)
+
+// === Exits (SL/TP fixos de entrada em var) ===
+var float longStopPrice = na
+var float longTpPrice = na
+var float shortStopPrice = na
+var float shortTpPrice = na
+var int barsInPos = 0
+
+if longCond
+    longStopPrice := close - atr * slAtrRanges
+    longTpPrice := close + atr * tpAtrRanges
+    barsInPos := 0
+
+if shortCond
+    shortStopPrice := close + atr * slAtrRanges
+    shortTpPrice := close - atr * tpAtrRanges
+    barsInPos := 0
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longStopPrice, limit=longTpPrice)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortStopPrice, limit=shortTpPrice)
+
+// Time exit
+barsInPos := strategy.position_size != 0 ? barsInPos + 1 : 0
+if barsInPos >= maxBars
+    if strategy.position_size > 0
+        strategy.close("L")
+    else if strategy.position_size < 0
+        strategy.close("S")
+
+// Reset
+if strategy.position_size == 0
+    longStopPrice := na
+    longTpPrice := na
+    shortStopPrice := na
+    shortTpPrice := na
+    barsInPos := 0

@@ -1,0 +1,53 @@
+//@version=6
+strategy("VERCF-v1 — Vol-Expansion Reversion with Continuation Failure", overlay=true, pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100, initial_capital=10000)
+
+// === INPUTS ===
+atrLen        = input.int(14, "ATR length")
+expansionMult = input.float(2.0, "Expansion range mult (×ATR)")
+slAtoms       = input.float(2.5, "SL (ATR multiples)")
+tpAtoms       = input.float(1.5, "TP (ATR multiples)")
+volGateLower  = input.float(0.5, "Vol gate lower (ATR/price %)")
+volGateUpper  = input.float(8.0, "Vol gate upper (ATR/price %)")
+cooldownBars  = input.int(3, "Cooldown bars after exit")
+
+// === ATR & VOLATILITY ===
+atr = ta.atr(atrLen)
+atrPct = atr / close * 100
+
+// === EXPANSION DETECTION ===
+range = high - low
+isExpansion = range >= atr * expansionMult
+prevExpansion = isExpansion[1]
+prevExpansionUp = close[1] > open[1]
+
+// === FAILURE / CONTINUATION-FAILURE SIGNAL ===
+// Prev bar expanded up + current bar closes below its midpoint → rejection → short
+// Prev bar expanded down + current bar closes above its midpoint → rejection → long
+failedUp = prevExpansion and prevExpansionUp and close < hl2
+failedDown = prevExpansion and not prevExpansionUp and close > hl2
+
+// === VOLATILITY GATE (Goldilocks zone) ===
+volOk = atrPct >= volGateLower and atrPct <= volGateUpper
+
+// === COOLDOWN ===
+var int barsSinceExit = 0
+if strategy.position_size != 0
+    barsSinceExit := 0
+else
+    barsSinceExit := barsSinceExit + 1
+canTrade = barsSinceExit >= cooldownBars
+
+// === ENTRIES + EXITES (ATR-based absolute levels) ===
+if failedUp and volOk and canTrade
+    strategy.entry("S", strategy.short)
+    strategy.exit("SX", from_entry="S", stop=close + atr * slAtoms, limit=close - atr * tpAtoms)
+
+if failedDown and volOk and canTrade
+    strategy.entry("L", strategy.long)
+    strategy.exit("LX", from_entry="L", stop=close - atr * slAtoms, limit=close + atr * tpAtoms)
+
+// === VISUAL ===
+plotshape(isExpansion, "Expansion bar", shape.triangleup, location.belowbar, color=color.orange, size=size.small)

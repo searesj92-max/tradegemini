@@ -1,0 +1,87 @@
+//@version=6
+// QM-LSN-v1 — Liquidity Sweep + Snapback
+// Hypothesis: sweep of recent extreme + failed close confirmation -> snapback fade.
+// Entry: bar[1] raspu extremo + range expandido + close nao confirmou -> entrada no bar seguinte.
+// Exit: TP no interior do range / SL alem do extremo raspado. No trailing. No repaint, no lookahead.
+// Allowed ta.* only; process_orders_on_close=true, pyramiding=1, commission 0.05%.
+
+strategy(
+  title="QM-LSN-v1 -- Liquidity Sweep + Snapback",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// === Inputs ===
+sweepN           = input.int(20, "Sweep lookback (bars)", minval=5, group="Entry")
+volMult          = input.float(0.6, "Range expansion mult (vs ATR)", minval=0.2, step=0.1, group="Entry")
+smallBufferPct  = input.float(0.002, "Failed confirm buffer (% of price)", minval=0.0001, step=0.0005, group="Entry")
+slBufferMult    = input.float(0.3, "SL buffer beyond swept extreme (x ATR)", minval=0.0, step=0.05, group="Exit")
+tpRatio          = input.float(0.35, "TP as % of sweep bar range (into range interior)", minval=0.05, step=0.05, group="Exit")
+timeExitBars     = input.int(20, "Time exit (max bars)", minval=1, group="Exit")
+cooldownBars     = input.int(3, "Cooldown bars after any exit", minval=0, group="Exit")
+
+// === Indicators ===
+atrVal = ta.atr(14)
+sweepHigh = high[1] >= ta.highest(high[2], sweepN)
+sweepLow   = low[1]  <= ta.lowest(low[2], sweepN)
+rangeBar1  = high[1] - low[1]
+rangeExpanded = rangeBar1 > atrVal * volMult
+failedHigh = sweepHigh and close[1] < high[1] - smallBufferPct * high[1]
+failedLow  = sweepLow  and close[1] > low[1]  + smallBufferPct * low[1]
+
+// === Signals (evaluated on bar [1], entry on bar [0]) ===
+longSig  = failedLow and rangeExpanded
+shortSig = failedHigh and rangeExpanded
+
+// === Cooldown ===
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+// === Entries ===
+if longSig and canTrade and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortSig and canTrade and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// === Exits (set at entry, fixed) ===
+if strategy.position_size > 0
+    // Long: TP inside the range (snapback target), SL below swept low
+    longTp = strategy.position_avg_price - rangeBar1 * tpRatio
+    longSl = low[1] - atrVal * slBufferMult
+    strategy.exit("LX", from_entry="L", limit=longTp, stop=longSl)
+
+if strategy.position_size < 0
+    // Short: TP inside the range, SL above swept high
+    shortTp = strategy.position_avg_price + rangeBar1 * tpRatio
+    shortSl = high[1] + atrVal * slBufferMult
+    strategy.exit("SX", from_entry="S", limit=shortTp, stop=shortSl)
+
+// === Time exit ===
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// === Plots ===
+plot(longSig,  "Long Signal (sweep low failed)",  color=color.green, style=plot.style_circles, linewidth=2)
+plot(shortSig, "Short Signal (sweep high failed)", color=color.red,   style=plot.style_circles, linewidth=2)
+plot(ta.highest(high[2], sweepN), "Sweep High Ref", color=color.new(color.blue, 50), style=plot.style_linebr)
+plot(ta.lowest(low[2], sweepN),  "Sweep Low Ref",  color=color.new(color.orange, 50), style=plot.style_linebr)

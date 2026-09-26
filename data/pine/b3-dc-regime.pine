@@ -1,0 +1,38 @@
+//@version=6
+strategy("DC-Regime 20/ADX<40",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+hi = ta.highest(high, 20)
+lo = ta.lowest(low, 20)
+exitLow = ta.lowest(low, 10)[1]
+exitHigh = ta.highest(high, 10)[1]
+[diP, diM, adx] = ta.dmi(14, 14)
+regime = adx < 40.0
+longB = close > hi[1] and regime
+shortB = close < lo[1] and regime
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if shortB and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+// structural exit opposite Donchian + ATR hard stop/tp
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    a = ta.atr(14)
+    st = math.max(avg - 2.0 * a, exitLow)
+    tp = avg + 2.5 * a
+    strategy.exit("Lx", from_entry="L", stop=st, limit=tp)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    a = ta.atr(14)
+    st = math.min(avg + 2.0 * a, exitHigh)
+    tp = avg - 2.5 * a
+    strategy.exit("SX", from_entry="S", stop=st, limit=tp)

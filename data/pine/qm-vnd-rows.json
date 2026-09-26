@@ -1,0 +1,24 @@
+[
+  {
+    "id": "01M3AJ282SGD5Q9GET6CQ571BT",
+    "name": "QM-VND-v1",
+    "symbol": "SOLUSDT",
+    "timeframe": "1h",
+    "source": "hermes-cron-greenfield",
+    "family": "displacement-followthrough",
+    "agent": "researcher",
+    "net_profit_pct": null,
+    "profit_factor": null,
+    "max_drawdown_pct": null,
+    "win_rate_pct": null,
+    "trades": null,
+    "sharpe": null,
+    "result_id": null,
+    "view_url": null,
+    "curve": null,
+    "verdict": "Pending — awaiting credits",
+    "status": "dev",
+    "last_backtest": null,
+    "pine_key": "qm-vnd-v1"
+  }
+]

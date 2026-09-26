@@ -1,0 +1,77 @@
+//@version=6
+strategy("QM-DISP-v1 | Volatility-Displacement Snapback", overlay=true,
+  pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// === INPUTS ===
+lenEquilibrium = input.int(20, "Equilibrium Length (rolling median)")
+lenVolatility  = input.int(14, "Volatility Lookback (ATR)")
+dispThreshold  = input.float(2.0, "Displacement Threshold (x ATR)", step=0.1)
+rangeEffWin    = input.int(5, "Range Efficiency Window")
+volConfirm     = input.int(3, "Confirm Vol Contraction Bars")
+slTicks        = input.int(30, "SL (ticks)")
+tpTicks        = input.int(40, "TP (ticks)")
+cooldownBars   = input.int(2, "Cooldown After Exit")
+
+// === CORE SIGNALS ===
+// Equilibrium: rolling median of close (robust to outliers vs mean)
+eq = ta.percentile_nearest_rank(close, lenEquilibrium, 50)
+
+// Displacement: how far price moved from equilibrium, normalized by ATR
+atrVal = ta.atr(lenVolatility)
+disp = math.abs(close - eq) / atrVal
+
+// Range efficiency: how often close sits near the middle of its bar range
+// Efficiency = 1 - |close-mid| / (0.5*range) → 1 = perfect middle, 0 = at edge
+mid = (high + low) / 2
+barRange = high - low
+eff = barRange > 0 ? 1.0 - math.abs(close - mid) / (0.5 * barRange) : 1.0
+effAvg = ta.sma(eff, rangeEffWin)
+
+// Volatility confirmation: ATR must be contracting (lower than recent avg)
+atrSma = ta.sma(atrVal, volConfirm)
+volContracting = atrVal < atrSma
+
+// === CONDITIONS ===
+// Long: price pulled back below equilibrium (displaced down),
+//        range efficiency collapsed (panic/uneven bars),
+//        volatility contracting (exhaustion of move)
+longCondition = disp >= dispThreshold and close < eq and effAvg < 0.45 and volContracting
+
+// Short: price stretched above equilibrium,
+//         range efficiency collapsed,
+//         volatility contracting
+shortCondition = disp >= dispThreshold and close > eq and effAvg < 0.45 and volContracting
+
+// Cooldown: no new entry within N bars of last exit
+barsSinceExit = ta.barssince(ta.cross(strategy.position_size, 0))
+inCooldown = barsSinceExit < cooldownBars
+
+// === ENTRIES ===
+if longCondition and not inCooldown and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortCondition and not inCooldown and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// === EXITS ===
+// Absolute SL/TP in price terms using ATR
+slPriceLong  = strategy.position_avg_price - atrVal * (slTicks / 100)
+tpPriceLong  = strategy.position_avg_price + atrVal * (tpTicks / 100)
+slPriceShort = strategy.position_avg_price + atrVal * (slTicks / 100)
+tpPriceShort = strategy.position_avg_price - atrVal * (tpTicks / 100)
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=slPriceLong, limit=tpPriceLong)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=slPriceShort, limit=tpPriceShort)
+
+// === PLOTS ===
+plot(eq, "Equilibrium", color=color.gray, linewidth=1)
+plot(disp >= dispThreshold ? eq : na, "Displaced Zone", color=color.new(color.orange, 50), style=plot.style_circles)
+bgcolor(longCondition and not inCooldown ? color.new(color.green, 90) : na, title="Long Signal")
+bgcolor(shortCondition and not inCooldown ? color.new(color.red, 90) : na, title="Short Signal")

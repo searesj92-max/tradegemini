@@ -1,0 +1,81 @@
+//@version=6
+// QM-VDB-v1 — Volatility-Displaced Breakout (greenfield)
+// Math: z = (close - EMA50) / ATR14  ;  bbw = (BB_upper - BB_lower) / close
+// Entry: |z| > 1.2 AND bbw < 0.08 (compressed) AND bar confirms direction (close vs open)
+// SL: 3*ATR  TP: 6*ATR  (1:2) — NO trailing (latency rule)
+// Exits also on z crossing 0 (return-to-mean safety) and 20-bar time cap.
+//
+// MCP RULE compliance: process_orders_on_close=true, pyramiding=1,
+// commission 0.05%, 100% equity, margin 100/100. No arrays, cancel, security, repaint.
+
+strategy("QM-VDB-v1", overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100, margin_short=100,
+  initial_capital=10000)
+
+// ---- inputs ----
+zThresh    = input.float(1.2,    "z threshold (|z| >)")
+bbwThresh  = input.float(0.08,   "bbw threshold (<)", minval=0.001, step=0.01)
+slMult     = input.float(3.0,    "SL ATR mult", minval=0.5)
+tpMult     = input.float(6.0,    "TP ATR mult", minval=0.5)
+timeCap    = input.int(20,       "time exit bars", minval=1)
+
+// ---- core series ----
+ema50  = ta.ema(close, 50)
+atr14  = ta.atr(14)
+z      = (close - ema50) / atr14
+[ub, mb, lb] = ta.bb(close, 20, 2)
+bbw    = (ub - lb) / close
+
+// ---- entry conditions (computed on bar close, no lookahead) ----
+longCond  = z >  zThresh and bbw < bbwThresh and close > open
+shortCond = z < -zThresh and bbw < bbwThresh and close < open
+
+if longCond
+    strategy.entry("L", strategy.long)
+if shortCond
+    strategy.entry("S", strategy.short)
+
+// ---- exits: SL/TP via strategy.exit (audited, no custom-var-trail) ----
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L",
+      stop   = close - slMult * atr14,
+      limit  = close + tpMult * atr14)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S",
+      stop   = close + slMult * atr14,
+      limit  = close - tpMult * atr14)
+
+// ---- return-to-mean safety (z crosses 0 → flatten, doesn't wait for TP) ----
+if strategy.position_size > 0 and z <= 0
+    strategy.close("L")
+if strategy.position_size < 0 and z >= 0
+    strategy.close("S")
+
+// ---- time exit (cap exposure) ----
+var int longBars  = 0
+var int shortBars = 0
+if longCond
+    longBars := 0
+if shortCond
+    shortBars := 0
+if strategy.position_size > 0
+    longBars += 1
+    if longBars >= timeCap
+        strategy.close("L")
+        longBars := 0
+if strategy.position_size < 0
+    shortBars += 1
+    if shortBars >= timeCap
+        strategy.close("S")
+        shortBars := 0
+
+// ---- signal plot (parity-safe: explicit title=) ----
+plot(longCond  ? 1 : 0, "longSignal",  color.green,  0, plot.style.columns, colordown=color.green)
+plot(shortCond ? 1 : 0, "shortSignal", color.red,    0, plot.style.columns, colordown=color.red)

@@ -1,0 +1,23 @@
+{
+  "id": "rsi-t200b-eth-4h",
+  "name": "rsi-t200b [builder-refined, MCP parity] — ETHUSDT 4h",
+  "symbol": "ETHUSDT",
+  "timeframe": "4h",
+  "source": "gertrude dispatch 2026-09-23 — SL/TP optimization rsi-t200b",
+  "family": "rsi-t200",
+  "agent": "builder",
+  "net_profit_pct": null,
+  "profit_factor": null,
+  "max_drawdown_pct": null,
+  "win_rate_pct": null,
+  "trades": null,
+  "sharpe": null,
+  "result_id": null,
+  "view_url": null,
+  "curve": [],
+  "verdict": "Pending — créditos MCP esgotados; pine refinado (commission 0.05% parity) pronto para backtest quando créditos retornarem",
+  "status": "watchlist",
+  "last_backtest": null,
+  "pine_key": "rsi-t200b-builder-refined",
+  "notes": "Dispatch gertrude: otimizar SL/TP do rsi-t200b (RSI 14 / buyLvl 40 / sellLvl 60 / EMA200 / baseline SL 2.2 ATR / TP 1.4 ATR). 8 pares alvo: ETH, AVAX, ARB, OP, ATOM, INJ, XRP, SOL (4h). pine refinado: commission 0→0.05% MCP parity; sinal e exits intactos. SL/TP sweep planejado: 3+ combinações (ex. 1.5/1.4, 2.2/2.0, 3.0/1.4). MCP saldo=0 no momento do ciclo — aguardar weekly grant."
+}

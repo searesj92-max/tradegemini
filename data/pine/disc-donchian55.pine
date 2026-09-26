@@ -1,0 +1,31 @@
+//@version=6
+strategy("Donchian Breakout 55",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+len = input.int(55, "Channel length")
+atrLen = input.int(14, "ATR")
+slM = input.float(2.0, "SL x ATR")
+tpM = input.float(4.0, "TP x ATR")
+
+upper = ta.highest(high, len)
+lower = ta.lowest(low, len)
+a = ta.atr(atrLen)
+longCond = close >= upper[1]
+shortCond = close <= lower[1]
+if longCond
+    strategy.entry("L", strategy.long)
+if shortCond
+    strategy.entry("S", strategy.short)
+if strategy.position_size > 0
+    strategy.exit("Lx", from_entry="L", stop=close - slM * a, limit=close + tpM * a)
+if strategy.position_size < 0
+    strategy.exit("Sx", from_entry="S", stop=close + slM * a, limit=close - tpM * a)

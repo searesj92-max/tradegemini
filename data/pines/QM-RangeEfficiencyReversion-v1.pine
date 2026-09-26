@@ -1,0 +1,91 @@
+//@version=6
+#
+# QM-RangeEfficiencyReversion-v1
+# Hypothesis H1: Range Efficiency Collapse + Volatility-Normalized Displacement Reversion
+#
+# Long when price is displaced below equilibrium by >= tau ATR, the candle has
+# range expansion (range/ATR >= nu), but low range efficiency (|body|/range < epsilon)
+# — i.e. a large-range candle with failed follow-through, suggesting a liquidity sweep
+# without continuation.
+#
+# Short is the mirror image.
+#
+# Exits: TP = min(SMA_eq, close + tp_atr*ATR) for longs (mean reversion to equilibrium,
+# capped at fixed ATR distance); SL = close - sl_atr*ATR. Cooldown prevents stacking.
+
+strategy("QM-RangeEfficiencyReversion-v1", overlay=true, pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// ─── Inputs ────────────────────────────────────────────────────────────────
+d_thresh       = input.float(1.5, "Displacement ATR threshold (tau)", minval=0.5, step=0.1)
+re_thresh      = input.float(0.35, "Range efficiency threshold (epsilon)", minval=0.1, maxval=0.9, step=0.05)
+vol_mult       = input.float(1.0,  "Candle range / ATR minimum (nu)", minval=0.5, step=0.1)
+sl_atr_mult    = input.float(2.0,  "SL ATR multiplier", minval=0.5, step=0.1)
+tp_atr_mult    = input.float(1.5,  "TP ATR multiplier (cap)", minval=0.5, step=0.1)
+sma_len        = input.int(50,     "SMA equilibrium length", minval=10)
+cooldown_bars  = input.int(3,      "Cooldown bars after exit", minval=0)
+max_dopposite  = input.float(2.5,  "Max displacement opposite to entry (trend protection)", minval=0, step=0.1)
+
+// ─── Indicators ────────────────────────────────────────────────────────────
+sma_eq   = ta.sma(close, sma_len)
+atr_val  = ta.atr(14)
+
+// ─── Derived quantities ────────────────────────────────────────────────────
+body         = close - open
+range_total  = high - low
+range_efficiency = range_total != 0 ? math.abs(body) / range_total : 0
+candle_range_atr = range_total / atr_val
+
+// Displacement from equilibrium (signed, normalized)
+d = (close - sma_eq) / atr_val
+
+// ─── Entry conditions ──────────────────────────────────────────────────────
+range_expansion  = candle_range_atr >= vol_mult
+no_followthrough = range_efficiency < re_thresh
+
+long_cond_raw  = d < -d_thresh and range_expansion and no_followthrough
+short_cond_raw = d >  d_thresh and range_expansion and no_followthrough
+
+// Trend protection: don't enter if displacement in opposite direction is too large
+// (i.e. if we're trying to long but price is already far above equilibrium, skip)
+trend_protect_long  = d > -max_dopposite   // d must be negative enough; if d > -max_dopposite, it's not too far above, OK
+trend_protect_short = d <  max_dopposite   // symmetric
+
+long_cond  = long_cond_raw  and trend_protect_long
+short_cond = short_cond_raw and trend_protect_short
+
+// ─── Cooldown ──────────────────────────────────────────────────────────────
+var int last_exit_bar = na
+if strategy.position_size == 0 and strategy.position_size[1] != 0
+    last_exit_bar := bar_index
+cooldown = bar_index - last_exit_bar >= cooldown_bars or na(last_exit_bar)
+
+long_cond  := long_cond  and cooldown
+short_cond := short_cond and cooldown
+
+// ─── Exit levels ───────────────────────────────────────────────────────────
+// Long TP: return to equilibrium (SMA) but cap at close + tp_atr*ATR
+long_tp_price = math.min(sma_eq, close + atr_val * tp_atr_mult)
+long_sl_price = close - atr_val * sl_atr_mult
+
+// Short TP: return to equilibrium but cap at close - tp_atr*ATR
+short_tp_price = math.max(sma_eq, close - atr_val * tp_atr_mult)
+short_sl_price = close + atr_val * sl_atr_mult
+
+// ─── Execution ─────────────────────────────────────────────────────────────
+if long_cond and strategy.position_size <= 0
+    strategy.entry("L", strategy.long)
+    strategy.exit("LX", from_entry="L", limit=long_tp_price, stop=long_sl_price)
+
+if short_cond and strategy.position_size >= 0
+    strategy.entry("S", strategy.short)
+    strategy.exit("SX", from_entry="S", limit=short_tp_price, stop=short_sl_price)
+
+// ─── Plots ─────────────────────────────────────────────────────────────────
+plot(sma_eq, "SMA Equilibrium", color=color.new(color.gray, 40))
+plotshape(long_cond and cooldown, "Long entry", shape.triangleup, location.belowbar, color=color.new(color.green, 0), size=size.tiny)
+plotshape(short_cond and cooldown, "Short entry", shape.triangledown, location.abovebar, color=color.new(color.red, 0), size=size.tiny)

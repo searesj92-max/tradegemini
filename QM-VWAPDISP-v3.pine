@@ -1,0 +1,62 @@
+//@version=6
+strategy("QM-VWAPDISP-v3", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100, initial_capital=10000)
+
+lb         = input.int(60, "Equil. lookback (bars)", minval=10, maxval=200)
+disp_mult  = input.float(1.5, "Displacement threshold (x ATR)", step=0.1, minval=0.5, maxval=4.0)
+regime_atr = input.float(1.0, "Regime guard (|med-VWAP| < x ATR)", step=0.1, minval=0.0, maxval=4.0)
+cooldown   = input.int(2, "Cooldown after exit (bars)", minval=0, maxval=20)
+max_bars   = input.int(40, "Max bars in trade (time exit)", minval=0, maxval=200)
+sl_ticks   = input.int(25, "SL ticks", minval=1, maxval=200)
+tp_ticks   = input.int(40, "TP ticks", minval=1, maxval=200)
+
+atr = ta.atr(lb)
+vwap  = ta.vwap(hlc3)
+med   = ta.percentile_nearest_rank(close, lb, 50)
+
+disp_vwap = math.abs(close - vwap)
+band      = disp_mult * atr
+outside   = disp_vwap > band
+
+tilt      = math.abs(med - vwap)
+flat_eq   = tilt < (regime_atr * atr)
+
+N_recent  = 3
+was_out   = ta.valuewhen(outside, 1, N_recent) > 0
+
+prev_close = close[1]
+body_up    = close > prev_close
+body_dn    = close < prev_close
+
+since_exit  = ta.barssince(strategy.position_size != 0)
+cooldown_ok = since_exit >= cooldown or strategy.position_size != 0
+
+long_go = flat_eq and outside and close < vwap and body_up and close >= vwap - band and was_out and strategy.position_size == 0 and cooldown_ok
+
+short_go = flat_eq and outside and close > vwap and body_dn and close <= vwap + band and was_out and strategy.position_size == 0 and cooldown_ok
+
+if long_go
+    strategy.entry("L", strategy.long)
+if short_go
+    strategy.entry("S", strategy.short)
+
+ltp = close - tp_ticks * syminfo.mintick
+lsl = close - sl_ticks * syminfo.mintick
+stp = close + tp_ticks * syminfo.mintick
+ssl = close + sl_ticks * syminfo.mintick
+
+strategy.exit("LX", from_entry="L", limit=ltp, stop=lsl)
+strategy.exit("SX", from_entry="S", limit=stp, stop=ssl)
+
+bars_in_trade = strategy.position_size != 0 ? ta.barssince(strategy.position_size == 0) : 0
+if max_bars > 0 and bars_in_trade > max_bars
+    if strategy.position_size > 0
+        strategy.close("L")
+    if strategy.position_size < 0
+        strategy.close("S")
+
+plot(vwap, "VWAP", color=color.blue, linewidth=2)
+plot(med,  "Median", color=color.orange, linewidth=1)
+plot(vwap + band, "Banda +", color=color.gray, linewidth=1)
+plot(vwap - band, "Banda -", color=color.gray, linewidth=1)
+plotshape(long_go, "Long entry", shape.triangleup, location.belowbar, color=color.lime, size=size.tiny)
+plotshape(short_go, "Short entry", shape.triangledown, location.abovebar, color=color.red, size=size.tiny)

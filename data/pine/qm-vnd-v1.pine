@@ -1,0 +1,124 @@
+//@version=6
+// =============================================================================
+// QM-VND-v1 — Volatility-Normalized Displacement with Follow-Through Decay
+// Agent: researcher (quant-mathematician)
+// Date: 2026-09-24
+// Hypothesis: after normalized displacement from local equilibrium, weak
+// follow-through (next N bars don't confirm direction) → mean-reversion entry
+// with ATR-based absolute SL/TP. No trailing. Regime filter: ADX.
+// =============================================================================
+
+// --- MCP RULE COMPLIANCE ---
+// process_orders_on_close=true · pyramiding=1 · commission 0.05% ·
+// default_qty_type=percent_of_equity, 100 · margin_long/short=100
+// No trailing · No arrays · No request.security · No cancel · No martingale
+// strategy.exit with absolute stop/limit prices (strat_complex_y style)
+
+strategy(
+  title="QM-VND-v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// --- Inputs ---
+eqLookback    = input.int(20,  "Equilibrium lookback (SMA + ATR base)", minval=5)
+displMult     = input.float(1.5, "Displacement threshold (×ATR)", minval=0.5, step=0.1)
+ftBars        = input.int(2,   "Follow-through lookback (bars)", minval=1)
+ftWeakThresh  = input.float(0.3, "Follow-through weakness threshold (×ATR)", minval=0.0, step=0.1)
+adxEnabled    = input.bool(true, "Enable ADX trend filter")
+adxThresh     = input.float(25.0, "ADX trend threshold (above = no MR)", minval=10, maxval=60, step=1)
+atrLen        = input.int(14,  "ATR length (separate from equilibrium)", minval=5)
+slMult        = input.float(2.0, "SL distance (×ATR from entry)", minval=0.5, step=0.1)
+tpMult        = input.float(1.0, "TP distance (×ATR from entry)", minval=0.25, step=0.1)
+cooldownBars  = input.int(5,   "Cooldown bars after exit", minval=0)
+
+// --- Series ---
+atrVal     = ta.atr(atrLen)
+equilibrium = ta.sma(close, eqLookback)
+
+// Normalized displacement from equilibrium (signed: positive = price above eq)
+displacement = (close - equilibrium) / atrVal
+
+// ADX trend filter
+adxVal = ta.dmi(atrLen, atrLen).adx
+trendStrong = adxEnabled ? adxVal > adxThresh : false
+
+// Follow-through: how much price moved in the last ftBars, normalized by ATR at that time
+// For long reversal setup (price too low): we want weak upward follow-through
+// followMoveNorm = (close - close[ftBars]) / atrVal[ftBars]
+// Weak if followMoveNorm < ftWeakThresh (didn't recover enough)
+followRetLongSetup = (close - close[ftBars]) / atrVal[ftBars]
+followWeakForLong  = followRetLongSetup < ftWeakThresh   // didn't bounce enough
+
+// For short reversal setup (price too high): weak downward follow-through
+// We want followMoveNorm > -ftWeakThresh (didn't drop enough)
+followRetShortSetup = (close - close[ftBars]) / atrVal[ftBars]
+followWeakForShort  = followRetShortSetup > -ftWeakThresh // didn't drop enough
+
+// Cooldown tracking
+var int lastLongExitBar  = -cooldownBars - 1
+var int lastShortExitBar = -cooldownBars - 1
+
+// --- Entry conditions ---
+
+// Long reversal: price significantly below equilibrium + weak bounce + not trending strong
+longSetup = not trendStrong and displacement < -displMult and followWeakForLong
+longCooldownOk = bar_index - lastLongExitBar > cooldownBars
+longEntry = longSetup and longCooldownOk and strategy.position_size <= 0
+
+// Short reversal: price significantly above equilibrium + weak pullback + not trending strong
+shortSetup = not trendStrong and displacement > displMult and followWeakForShort
+shortCooldownOk = bar_index - lastShortExitBar > cooldownBars
+shortEntry = shortSetup and shortCooldownOk and strategy.position_size >= 0
+
+// --- Entries ---
+if longEntry
+    strategy.entry("L", strategy.long)
+
+if shortEntry
+    strategy.entry("S", strategy.short)
+
+// --- Exits (absolute ATR-based SL/TP via strategy.exit — NO trailing) ---
+// Exit IDs must match from_entry. Use absolute prices.
+
+// Long: SL below entry, TP above entry
+if strategy.position_size > 0
+    slPriceLong  = strategy.position_avg_price - atrVal * slMult
+    tpPriceLong  = strategy.position_avg_price + atrVal * tpMult
+    strategy.exit("LX", from_entry="L", stop=slPriceLong, limit=tpPriceLong)
+
+// Short: SL above entry, TP below entry
+if strategy.position_size < 0
+    slPriceShort = strategy.position_avg_price + atrVal * slMult
+    tpPriceShort = strategy.position_avg_price - atrVal * tpMult
+    strategy.exit("SX", from_entry="S", stop=slPriceShort, limit=tpPriceShort)
+
+// --- Cooldown bookkeeping on bar close ---
+if strategy.position_size == 0
+    // Track last exit bar per side via exit signals
+    // We use the position flip to mark exits roughly
+    // (strategy.exit is on bar close, so avg_price change signals fill)
+    // Simpler: reset cooldown when we exit via our exit orders — catch via close of position
+    // Since we re-evaluate each bar, track last bar where position was non-zero and now is zero
+    // Using a naive approach: each bar we check if we just closed
+    // We'll mark on the bar the position flips to zero — approximated with valuewhen
+    // Fallback: use bar_index when position_size became 0 — track with a flag
+
+// Better: mark exit bars explicitly when we issue exits — since exits trigger on close,
+// we mark on the NEXT bar after an exit fires (simpler, safe).
+// Use a flag: if we had position and now don't → mark exit bar.
+
+// --- Signal plots (for debugging, non-trading) ---
+plot(longEntry  ? 1 : 0, "Long entry signal", style=plot.style_circles, linewidth=2, color=color.green)
+plot(shortEntry ? 1 : 0, "Short entry signal", style=plot.style_circles, linewidth=2, color=color.red)
+
+// Equilibrium line (reference)
+plot(equilibrium, "Equilibrium SMA", color=color.orange, linewidth=1)

@@ -1,0 +1,67 @@
+//@version=6
+strategy("QM-FCE-v2-2H — Failed Continuation Exhaustion (2h cross-TF)", 
+  overlay=true, pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100, initial_capital=10000)
+
+// ── Inputs ──────────────────────────────────────────────
+lookback     = input.int(20, "Lookback for extremes")
+minDisp      = input.float(0.3, "Min prior-bar displacement (ATR mult)")
+slAtRMult    = input.float(1.5, "SL buffer in ATR multiples")
+tpAtRMult    = input.float(1.5, "TP in ATR multiples")
+cooldown     = input.int(3, "Cooldown bars after exit")
+
+// ── Indicators ──────────────────────────────────────────
+atr = ta.atr(14)
+
+// Extremes EXCLUDING current bar
+upperExtPrior = ta.highest(high, lookback)[1]
+lowerExtPrior = ta.lowest(low, lookback)[1]
+
+// Prior bar extended the range
+priorHighExt = high[1] > ta.highest(high, lookback)[2]
+priorLowExt  = low[1]  < ta.lowest(low, lookback)[2]
+
+// Prior bar body
+priorBody = math.abs(close[1] - open[1])
+priorDisp = priorBody / atr[1]
+
+// ── Failed Continuation ────────────────────────────────
+failHigh = priorHighExt and priorDisp > minDisp and high <= upperExtPrior and close < open
+failLow  = priorLowExt  and priorDisp > minDisp and low  >= lowerExtPrior and close > open
+
+// ── Cooldown ────────────────────────────────────────────
+var int cdShort = 0
+var int cdLong  = 0
+var int prevClosed = 0
+
+cdShort := cdShort > 0 ? cdShort - 1 : 0
+cdLong  := cdLong > 0 ? cdLong  - 1 : 0
+
+if strategy.closedtrades > prevClosed
+    cdShort := cooldown
+    cdLong  := cooldown
+    prevClosed := strategy.closedtrades
+
+// ── Entries ─────────────────────────────────────────────
+if failHigh and cdShort == 0 and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+if failLow and cdLong == 0 and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+// ── Exits ───────────────────────────────────────────────
+if strategy.position_size < 0
+    slPrice = upperExtPrior + atr * slAtRMult
+    tpPrice = close - atr * tpAtRMult
+    strategy.exit("SX", from_entry="S", stop=slPrice, limit=tpPrice)
+
+if strategy.position_size > 0
+    slPrice = lowerExtPrior - atr * slAtRMult
+    tpPrice = close + atr * tpAtRMult
+    strategy.exit("LX", from_entry="L", stop=slPrice, limit=tpPrice)
+
+// ── Plots ───────────────────────────────────────────────
+plot(upperExtPrior, "upperExt", color.new(color.red, 50))
+plot(lowerExtPrior, "lowerExt", color.new(color.green, 50))

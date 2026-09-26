@@ -1,0 +1,73 @@
+//@version=6
+// QM-LS1-v1 — Liquidity Sweep + Snapback (greenfield)
+// Hipótese: break fake de swing extremo com volume anomalioso → snapback mean-reversion.
+// Regra matemática: low < lowest(low, N)[1] AND close > lowest(low, N)[1] AND volume > SMA(vol, N) * M → long.
+// Short simétrico. SL: ATR-based abaixo/acima do extremo quebrado. TP: R:R fixo.
+// Sem repaint (todos os sinais usam [1] ou fechamento de barra). Sem lookahead. Sem martingale.
+
+strategy("QM-LS1-v1: Liquidity Sweep + Snapback", overlay=true,
+  pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// === INPUTS ===
+sweepBars     = input.int(5,  "Sweep lookback (bars)")
+volMult       = input.float(1.5, "Volume multiplier (sweep confirmação)")
+atrLen        = input.int(14,  "ATR length")
+atrSlMult     = input.float(1.5, "ATR mult para SL")
+rrRatio       = input.float(2.0, "Risk-reward ratio (TP)")
+minAtrPct     = input.float(0.08, "Min ATR % do preço (filtro de vol)")
+maxZonePct   = input.float(0.45, "Max distância do sweep extremo (% do preço)")
+
+// === VOL & FILTERS ===
+atr = ta.atr(atrLen)
+atrPct = atr / close * 100
+volSma = ta.sma(volume, sweepBars)
+volOk = atrPct > minAtrPct
+
+// === SWING EXTREMOS (barra anterior = sem repainting) ===
+swingLowPrev = ta.lowest(low, sweepBars)[1]
+swingHighPrev = ta.highest(high, sweepBars)[1]
+
+// === LIQUIDITY SWEEP DETECTION ===
+// Long: preço quebra abaixo do mínimo dos últimos N barras, mas fecha acima → fake break
+longSweep = low < swingLowPrev and close > swingLowPrev and volume > volSma * volMult and volOk
+// Short: simétrico
+shortSweep = high > swingHighPrev and close < swingHighPrev and volume > volSma * volMult and volOk
+
+// === Filtro de zona: o extremo quebrado não pode estar muito longe do preço (evita sweeps de bollucto) ===
+longZoneOk = math.abs(close - swingLowPrev) / close * 100 < maxZonePct
+shortZoneOk = math.abs(swingHighPrev - close) / close * 100 < maxZonePct
+
+longEntry = longSweep and longZoneOk
+shortEntry = shortSweep and shortZoneOk
+
+// === ENTRADAS ===
+if longEntry
+    strategy.entry("L", strategy.long)
+
+if shortEntry
+    strategy.entry("S", strategy.short)
+
+// === SL / TP ===
+// SL abaixo do extremo quebrado + buffer ATR; TP a R:R fixo da distância entry→SL
+longSlPrice = swingLowPrev - atr * atrSlMult
+shortSlPrice = swingHighPrev + atr * atrSlMult
+
+// TP calculado da distância risco (close → SL) × rrRatio
+longTpPrice = close + (close - longSlPrice) * rrRatio
+shortTpPrice = close - (shortSlPrice - close) * rrRatio
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longSlPrice, limit=longTpPrice)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortSlPrice, limit=shortTpPrice)
+
+// === PLOTS (debug) ===
+plot(swingLowPrev, "swingLowPrev", color=color.new(color.blue, 50), style=plot.style_circles)
+plot(swingHighPrev, "swingHighPrev", color=color.new(color.red, 50), style=plot.style_circles)
+plot(longSlPrice, "longSl", color=color.new(color.red, 80), style=plot.style_circles)
+plot(shortSlPrice, "shortSl", color=color.new(color.green, 80), style=plot.style_circles)

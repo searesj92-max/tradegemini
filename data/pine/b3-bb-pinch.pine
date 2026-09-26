@@ -1,0 +1,35 @@
+//@version=6
+strategy("BBPinch 20/2",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+len = 20
+m = 2.0
+[middle, upper, lower] = ta.bb(close, len, m)
+width = (upper - lower) / middle
+wSma = ta.sma(width, 100)
+pinched = width < wSma * 0.4
+longB = pinched and ta.crossover(close, upper)
+shortB = pinched and ta.crossunder(close, lower)
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if shortB and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+a = ta.atr(14)
+slM = input.float(1.8, "SL x ATR")
+tpM = input.float(2.2, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

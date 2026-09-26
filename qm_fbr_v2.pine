@@ -1,0 +1,141 @@
+//@version=6
+// QM-FBR-v2 — Failed Breakout Reversion (greenfield)
+// Hypothesis: after a high-range candle that tries to break an N-bar extreme but closes back
+// inside the range (failed breakout), the next candle tends to revert toward the interior.
+// Math:
+//   - sweepBar = (high >= highest(high, N)[1]) OR (low <= lowest(low, N)[1])
+//   - rangeBig = tr > atr(14) * volMult
+//   - failedHigh = high >= highest[1] AND close < open (bearish interior close after high sweep)
+//   - failedLow  = low  <= lowest[1]  AND close > open (bullish interior close after low sweep)
+//   - entry short on next bar after failedHigh
+//   - entry long  on next bar after failedLow
+//   - SL: beyond the swept extreme + buffer (atr * slBuffer)
+//   - TP: interior target = ta.percentrank(close, 50) style — actually use:
+//         mid = (high + low) / 2 of the sweep candle; TP = mid ± X% of range
+//         simpler: TP = swing midway to opposite interior extreme
+//   - Cooldown: 2 bars after any exit
+//   - 20-bar time exit
+//   - NO trailing, no repaint, no lookahead (uses [1]).
+//
+// MCP RULE compliant: process_orders_on_close=true, pyramiding=1, commission 0.05%,
+// 100% equity, margin 100/100. No arrays, cancel, security, repaint.
+
+strategy("QM-FBR-v2 | Failed Breakout Reversion", overlay=true,
+  pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100, initial_capital=10000)
+
+// ── inputs ──────────────────────────────────────────────────────────────
+sweepN       = input.int(20,    "Sweep lookback (bars)")
+volMult      = input.float(1.25, "Range big mult × ATR")
+slBuffer     = input.float(0.4,  "SL buffer × ATR beyond swept extreme")
+cooldown     = input.int(2,     "Cooldown bars after exit")
+timeCap      = input.int(20,    "Max bars in trade")
+// TP target as fraction of sweep candle range to retreat into interior
+tpFrac       = input.float(0.45, "TP fraction of sweep range (0-1)")
+
+// ── core series ─────────────────────────────────────────────────────────
+atr14  = ta.atr(14)
+tr     = ta.tr
+highestHigh = ta.highest(high, sweepN)
+lowestLow   = ta.lowest(low, sweepN)
+
+// ── detection (evaluated on each bar close; uses [1] for prior bar) ───
+// Bar N-1 was the sweep candidate
+prevHigh = high[1]
+prevLow  = low[1]
+prevClose = close[1]
+prevOpen  = open[1]
+prevRange = prevHigh - prevLow
+prevBig   = prevRange > atr14[1] * volMult
+
+// failedHigh: prev bar swept high but closed back inside (close < open = bearish interior)
+failedHighCond = prevHigh >= highestHigh[1] and prevClose < prevOpen and prevBig
+
+// failedLow: prev bar swept low but closed back inside (close > open = bullish interior)
+failedLowCond  = prevLow <= lowestLow[1]  and prevClose > prevOpen and prevBig
+
+// ── entry signals (fired on current bar AFTER failed bar closes) ────────
+longSig  = failedLowCond  and not shortActive
+shortSig = failedHighCond and not longActive
+
+// ── entry execution ─────────────────────────────────────────────────────
+if longSig
+    strategy.entry("L", strategy.long)
+if shortSig
+    strategy.entry("S", strategy.short)
+
+// ── SL/TP targets computed from the sweep candle ────────────────────────
+// For long trades (failed low): SL below the swept low
+// For short trades (failed high): SL above the swept high
+// We track the relevant extreme of the sweep candle at entry time.
+var float longEntryLow  = na
+var float shortEntryHigh = na
+var float atrAtEntry    = na
+
+if longSig
+    longEntryLow  := prevLow
+    atrAtEntry    := atr14[1]
+
+if shortSig
+    shortEntryHigh := prevHigh
+    atrAtEntry    := atr14[1]
+
+// Exit levels — absolute, re-issued each bar (engine-safe)
+// LONG: SL = longEntryLow - atrAtEntry * slBuffer
+//       TP = longEntryLow + (prevRange * tpFrac)  — retreat into interior
+// SHORT: SL = shortEntryHigh + atrAtEntry * slBuffer
+//        TP = shortEntryHigh - (prevRange * tpFrac)
+
+longSL  = longEntryLow  - atrAtEntry * slBuffer
+longTP  = longEntryLow  + (prevRange * tpFrac)
+shortSL = shortEntryHigh + atrAtEntry * slBuffer
+shortTP = shortEntryHigh - (prevRange * tpFrac)
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longSL, limit=longTP)
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortSL, limit=shortTP)
+
+// ── cooldown + time exit ────────────────────────────────────────────────
+var int barCount   = 0
+var int coolCount  = 0
+
+if strategy.position_size != 0
+    barCount += 1
+    coolCount := 0
+else
+    if coolCount < cooldown
+        coolCount += 1
+
+// Reset on new entry
+if longSig or shortSig
+    barCount   := 0
+    coolCount  := 0
+
+// Time exit
+if strategy.position_size > 0 and barCount >= timeCap
+    strategy.close("L")
+    barCount := 0
+if strategy.position_size < 0 and barCount >= timeCap
+    strategy.close("S")
+    barCount := 0
+
+// ── state flags (for avoiding re-entry during cooldown) ─────────────────
+var bool longActive  = false
+var bool shortActive = false
+
+if longSig
+    longActive  := true
+    shortActive := false
+if shortSig
+    shortActive := true
+    longActive  := false
+if strategy.position_size == 0 and coolCount > cooldown
+    longActive  := false
+    shortActive := false
+
+// ── signal plots (parity-safe) ──────────────────────────────────────────
+plot(longSig  ? 1 : 0, "Long Signal",  color.green,  0, plot.style_circles, linewidth=2)
+plot(shortSig ? 1 : 0, "Short Signal", color.red,    0, plot.style_circles, linewidth=2)

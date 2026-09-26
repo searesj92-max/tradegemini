@@ -1,0 +1,87 @@
+// Quant Mathematician — DE-VMR v1 (refatorado)
+// Hipótese H1: Distância da Equilíbrio Normalizada por Vol (Mean Reversion)
+// Inefficiency: displacement do VWMA normalizado por ATR excede limiar → reversão, filtrada ADX.
+// Greenfield. No repaint / no lookahead. Sem martingale / trailing-bar-close.
+//@version=6
+strategy("QM-DE-VMR-v1", overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100,
+  initial_capital=10000
+)
+
+// --- INPUTS ---
+glAtrLen        = input.int(20, "ATR Length")
+glVwmaLen       = input.int(50, "VWMA Length")
+glOverbought    = input.float(1.5, "Short entry: disp > +this (overbought vs VWMA)", step=0.1)
+glOversold      = input.float(1.5, "Long entry: disp < -this (oversold vs VWMA)", step=0.1)
+glAdxLen        = input.int(14, "ADX Length")
+glAdxFilter     = input.float(25.0, "Max ADX to allow MR regime", step=1)
+glSlAtk         = input.float(1.4, "SL distance × ATR (do preço de entrada)", step=0.1)
+glTpAtk         = input.float(2.0, "TP distance × ATR (do preço de entrada)", step=0.1)
+glMaxBars       = input.int(48, "Max duration (bars) sair por tempo", minval=4)
+
+// --- INDICATORS ---
+atr  = ta.atr(glAtrLen)
+vwma = ta.vwma(close, glVwmaLen)
+[dmiAdx, dmiPlus, dmiMinus] = ta.dmi(glAdxLen, glAdxLen)
+disp = (close - vwma) / atr   // z-score normalize do preço vs equilíbrio VWMA
+
+// --- FILTROS ---
+inChop = dmiAdx < glAdxFilter               // MR biocompatível: sem tendência forte
+overboughtNow  = disp  > glOverbought       // preço acima demais vs VWMA → short
+oversoldNow    = disp  < -glOversold        // preço abaixo demais vs VWMA → long
+revertOK       = math.abs(disp) < 0.25      // meio voltou perto de equilíbrio → sair
+
+// --- SALVAR preço de entrada para SL/TP implicita ---
+var float longEntryPrice  = na
+var float shortEntryPrice = na
+var int  longBarEntry     = na
+var int  shortBarEntry    = na
+
+// --- ENTRADA ---
+longSignal  = inChop and oversoldNow
+shortSignal = inChop and overboughtNow
+
+if longSignal and strategy.position_size == 0
+    longEntryPrice  := close
+    longBarEntry    := bar_index
+    strategy.entry("L", strategy.long, comment="DE-VMR Long (oversold vs VWMA)")
+
+if shortSignal and strategy.position_size == 0
+    shortEntryPrice := close
+    shortEntryAtr   := atr
+    shortBarEntry   := bar_index
+    strategy.entry("S", strategy.short, comment="DE-VMR Short (overbought vs VWMA)")
+
+// --- SAÍDA: SL/TP fixos por ATR + tempo + signal revert ---
+// Quando em long: recalcular stop/limit com preço de entrada guardado
+if strategy.position_size > 0
+    // SL e TP absolutos em relação ao preço de entrada original
+    slPx  = longEntryPrice - atr * glSlAtk
+    tpPx  = longEntryPrice + atr * glTpAtk
+    strategy.exit("LX", from_entry="L", stop=slPx, limit=tpPx, comment="DE-VMR Long SL/TP")
+    barsHeld := bar_index - longBarEntry
+    if barsHeld >= glMaxBars
+        strategy.close("L", comment="DE-VMR Long Time Exit")
+    if revertOK
+        strategy.close("L", comment="DE-VMR Long Revert Signal")
+
+if strategy.position_size < 0
+    slPx  = shortEntryPrice + atr * glSlAtk
+    tpPx  = shortEntryPrice - atr * glTpAtk
+    strategy.exit("SX", from_entry="S", stop=slPx, limit=tpPx, comment="DE-VMR Short SL/TP")
+    barsHeld := bar_index - shortBarEntry
+    if barsHeld >= glMaxBars
+        strategy.close("S", comment="DE-VMR Short Time Exit")
+    if revertOK
+        strategy.close("S", comment="DE-VMR Short Revert Signal")
+
+// --- PLOTS ---
+plot(vwma, "VWMA", color=color.gray, linewidth=1)
+plot(strategy.position_size > 0 and not na(longEntryPrice) ? longEntryPrice - atr*glSlAtk : na, "Long SL", color=color.red, linewidth=1)
+plot(strategy.position_size > 0 and not na(longEntryPrice) ? longEntryPrice + atr*glTpAtk : na, "Long TP", color=color.green, linewidth=1)
+plot(strategy.position_size < 0 and not na(shortEntryPrice) ? shortEntryPrice + atr*glSlAtk : na, "Short SL", color=color.red, linewidth=1)
+plot(strategy.position_size < 0 and not na(shortEntryPrice) ? shortEntryPrice - atr*glTpAtk : na, "Short TP", color=color.green, linewidth=1)

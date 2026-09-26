@@ -1,0 +1,88 @@
+//@version=6
+// QM-FCS-v1 — Failed Continuation / Liquidity Sweep Snapback (builder-refined)
+// ---------------------------------------------------------------
+// Cycle: 2026-09-24 builder · corrigido a partir do draft researcher
+// Mudanças vs researcher draft:
+//   1. SL bug corrigido: offset absoluto (rangeL - atr*slBuffer) ao invés
+//      de multiplicativo (rangeL * (1 - slBuffer*atr/close)).
+//   2. SL/TP reemissão a cada bar (engine-safe: strategy.exit dentro do
+//      if position_size, recalculado com valores atuais).
+//   3. commission = 0.05% (MCP parity; no local engine usa 0).
+//   4. process_orders_on_close=true, pyramiding=1, sem trailing.
+//   5. Comentários de ciclo para rastreabilidade.
+// ---------------------------------------------------------------
+// Matemática: candles que tocam extremo recente (high/low N barras) mas
+// fecham de volta para dentro do range = breakout falhado → viés de
+// snapback reverso. SL natural = extremo do sweep ± buffer ATR.
+// Entradas no close do candle de confirmação; sem repaint, sem lookahead.
+// ---------------------------------------------------------------
+
+strategy("QM-FCS-v1 [builder-refined] — Failed Continuation / Liquidity Sweep Snapback",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+// ── Inputs ────────────────────────────────────────────────────────
+lookback  = input.int(20,  "Sweep lookback (bars)", minval=5,  maxval=100)
+atrMult   = input.float(1.0, "TP: ATR multiple",     minval=0.5, maxval=4.0, step=0.1)
+slBuffer  = input.float(0.1, "SL buffer (ATR fraction)", minval=0.0, maxval=1.0, step=0.05)
+volFilter = input.bool(true, "Enable ATR volatility filter")
+atrMinPct = input.float(0.3, "Min ATR % of price for vol filter", minval=0.05, maxval=2.0, step=0.05)
+
+// ── Indicators ────────────────────────────────────────────────────
+atrVal = ta.atr(14)
+rangeH = ta.highest(high, lookback)
+rangeL = ta.lowest(low, lookback)
+
+// ── Sweep detection ───────────────────────────────────────────────
+// Long sweep: low toca ou quebra o menor low recente mas fechea acima
+// de 30% do range total → fakeout to the downside, snapback lên.
+// Short sweep: high toca o maior high recente mas fechea abaixo de 30%
+// do range → fakeout to the upside, snapback short.
+sweepLong  = (low <= rangeL) and (close > rangeL + (rangeH - rangeL) * 0.30)
+sweepShort = (high >= rangeH) and (close < rangeH - (rangeH - rangeL) * 0.30)
+
+// ── Volatility filter ─────────────────────────────────────────────
+atrPct = atrVal / close * 100
+volOK  = not volFilter or (atrPct >= atrMinPct)
+
+// ── Entry conditions ──────────────────────────────────────────────
+longSignal  = sweepLong  and volOK
+shortSignal = sweepShort and volOK
+
+// ── Visuals (debug) ───────────────────────────────────────────────
+plot(rangeH, "Sweep high", color=color.red,   style=plot.style_circles, linewidth=1)
+plot(rangeL, "Sweep low",  color=color.green, style=plot.style_circles, linewidth=1)
+plotshape(longSignal,  "Long sweep",  shape.triangleup,   location.belowbar, color.green, size=size.small)
+plotshape(shortSignal, "Short sweep", shape.triangledown, location.abovebar, color.red,   size=size.small)
+
+// ── Entries ───────────────────────────────────────────────────────
+if longSignal and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortSignal and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// ── Exits: SL + TP em ATR units. SL = extremo do sweep ± buffer ATR.
+//   Reemitido a cada bar dentro do if position_size — engine-safe.
+//   CORREÇÃO BUILDER: SL usa offset absoluto (rangeL - atr*slBuffer),
+//   não multiplicativo (rangeL * (1 - slBuffer*atr/close)) que subestimava
+//   o buffer em pares de preço alto (ex. BTC ~$20k, ATR ~$60,
+//   buffer efetivo ≈ 0.03% do preço → praticamente nulo).
+// ───────────────────────────────────────────────────────────────────
+if strategy.position_size > 0
+    slPriceLong  = rangeL - atrVal * slBuffer          // CORRIGIDO
+    tpPriceLong = close + atrVal * atrMult
+    strategy.exit("LX", from_entry="L", stop=slPriceLong, limit=tpPriceLong)
+
+if strategy.position_size < 0
+    slPriceShort  = rangeH + atrVal * slBuffer         // CORRIGIDO
+    tpPriceShort = close - atrVal * atrMult
+    strategy.exit("SX", from_entry="S", stop=slPriceShort, limit=tpPriceShort)

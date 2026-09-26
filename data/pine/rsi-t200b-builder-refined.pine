@@ -1,0 +1,54 @@
+//@version=6
+// rsi-t200b — RSI Trend Filter (builder-refined for MCP parity)
+// Original: hw-rsi-t200 (RSI 14 / buyLvl 40 / sellLvl 60 / EMA200 filter / SL 2.2 ATR / TP 1.4 ATR)
+// Changes: commission 0.05% (MCP parity, was 0), SL/TP retained as baseline for sweep
+// No trailing. No repaint. No lookahead. mcprule compliant.
+//
+// Dispatch: gertrude 2026-09-23 — otimizar SL/TP nos 8 pares que passaram no batch 3
+// Pairs: ETH, AVAX, ARB, OP, ATOM, INJ, XRP, SOL (4h)
+
+strategy(\"rsi-t200b [builder-refined, MCP parity]\",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+rsiLen  = input.int(14,  \"RSI Length\",    minval=2,  maxval=50)
+buyLvl  = input.float(40, \"RSI Buy Level\", minval=20, maxval=50, step=1)
+sellLvl = input.float(60, \"RSI Sell Level\",minval=50, maxval=80, step=1)
+trendLen = input.int(200, \"Trend EMA\",     minval=50, maxval=400, step=10)
+atrLen   = input.int(14,  \"ATR Length\",    minval=5,  maxval=50)
+slMult   = input.float(2.2, \"SL multiple of ATR\", step=0.1, minval=0.5)
+tpMult   = input.float(1.4, \"TP multiple of ATR\", step=0.1, minval=0.5)
+
+r = ta.rsi(close, rsiLen)
+t = ta.ema(close, trendLen)
+a = ta.atr(atrLen)
+tk = syminfo.mintick
+
+// enter when RSI crosses back above buyLvl in uptrend / below sellLvl in downtrend
+longCond  = close > t and ta.crossover(r, buyLvl)
+shortCond = close < t and ta.crossunder(r, sellLvl)
+
+if longCond and strategy.position_size == 0
+    strategy.entry(\"L\", strategy.long)
+
+if shortCond and strategy.position_size == 0
+    strategy.entry(\"S\", strategy.short)
+
+// exits: ATR-based fixed SL + TP (NO trailing)
+if strategy.position_size > 0
+    slTicks = math.max(1, math.round(slMult * a / tk))
+    tpTicks = math.max(1, math.round(tpMult * a / tk))
+    strategy.exit(\"Lx\", from_entry=\"L\", loss=slTicks, profit=tpTicks)
+
+if strategy.position_size < 0
+    slTicks = math.max(1, math.round(slMult * a / tk))
+    tpTicks = math.max(1, math.round(tpMult * a / tk))
+    strategy.exit(\"Sx\", from_entry=\"S\", loss=slTicks, profit=tpTicks)

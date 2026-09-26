@@ -1,0 +1,78 @@
+//@version=6
+strategy("QM-REA-v1 — Range-Efficiency Asymmetry After Expansion",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+// === INPUTS ===
+effLen       = input.int(20, "Efficiency window (bars)", minval=5)
+highEffThresh = input.float(0.5, "High efficiency threshold", minval=0.1, step=0.05)
+lowEffThresh  = input.float(0.3, "Low efficiency trigger (drop below)", minval=0.1, step=0.05)
+atrLen       = input.int(14, "ATR length", minval=5)
+cooldownBars = input.int(1, "Cooldown after exit", minval=0)
+timeExitBars = input.int(20, "Max bars in trade", minval=1)
+
+// === CORE METRICS ===
+atr = ta.atr(atrLen)
+// Range efficiency = sum(|close[n]-close[n-1]|) / (highest(high, N) - lowest(low, N))
+closeDiffSum = ta.sum(math.abs(close - close[1]), effLen)
+totalRange = math.max(ta.highest(high, effLen) - ta.lowest(low, effLen), 1e-9)
+eff = closeDiffSum / totalRange
+effSmooth = ta.sma(eff, 3)  // suaviza para evitar sinais espúrios
+
+// === ATR não em mínimo ===
+atrMinOk = atr > ta.sma(atr, 20) * 0.7
+
+// === ENTRY: RE caiu de alta para baixa eficiência ===
+// Sinal: eff caiu abaixo de lowEffThresh após ter sido acima de highEffThresh
+prevEffHigh = eff[1] > highEffThresh  // o candle anterior tinha eficiência alta
+effDrop = eff < lowEffThresh           // eficiência caiu abaixo do trigger
+reversalLong  = prevEffHigh and effDrop and atrMinOk and close > ta.sma(close, 20)
+reversalShort = prevEffHigh and effDrop and atrMinOk and close < ta.sma(close, 20)
+
+// === COOLDOWN ===
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+// === ENTRY ===
+if reversalLong and canTrade
+    strategy.entry("L", strategy.long)
+if reversalShort and canTrade
+    strategy.entry("S", strategy.short)
+
+// === SL/TP por ATR ===
+if strategy.position_size > 0
+    longStop  = close - atr * 1.5
+    longLimit = close + atr * 2.0
+    strategy.exit("LX", from_entry="L", stop=longStop, limit=longLimit)
+if strategy.position_size < 0
+    shortStop  = close + atr * 1.5
+    shortLimit = close - atr * 2.0
+    strategy.exit("SX", from_entry="S", stop=shortStop, limit=shortLimit)
+
+// === TIME EXIT ===
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// === PLOTS ===
+plotshape(reversalLong and canTrade, "Long", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(reversalShort and canTrade, "Short", shape.triangledown, location.abovebar, color.red, size=size.small)
+plot(eff, "Efficiency", color.blue, 1)

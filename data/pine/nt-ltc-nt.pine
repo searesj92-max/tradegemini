@@ -1,0 +1,40 @@
+//@version=6
+strategy("EMA9-VWAP no-trail",
+  slippage=2,
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+atrLength = input.int(7)
+smaLen = input.int(150)
+rsiLen = input.int(19)
+rsiLongMax = input.int(60)
+rsiShortMin = input.int(40)
+slM = input.float(2.0)
+tpM = input.float(1.5)
+ema9 = ta.ema(close, 9)
+vwap = ta.vwap(close)
+sma = ta.sma(close, smaLen)
+a = ta.atr(atrLength)
+rsi = ta.rsi(close, rsiLen)
+longCross = ta.crossover(ema9, vwap)
+shortCross = ta.crossunder(ema9, vwap)
+longCondition = longCross and close > sma and rsi < rsiLongMax
+shortCondition = shortCross and close < sma and rsi > rsiShortMin
+if longCondition
+    strategy.entry("L", strategy.long)
+if shortCondition
+    strategy.entry("S", strategy.short)
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

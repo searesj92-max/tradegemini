@@ -1,0 +1,69 @@
+//@version=6
+strategy("Lease Guard Donchian Trail", overlay=true, pyramiding=1, process_orders_on_close=true,
+     commission_type=strategy.commission.percent, commission_value=0.05,
+     initial_capital=500, default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     margin_long=100, margin_short=100)
+
+fastLen = input.int(55, "Fast EMA")
+slowLen = input.int(233, "Slow EMA")
+entryLen = input.int(144, "Entry Donchian")
+exitLen = input.int(48, "Exit Donchian")
+minAdx = input.float(16.0, "Min ADX")
+minAtrRank = input.float(15.0, "Min ATR Range Rank")
+maxAtrRank = input.float(95.0, "Max ATR Range Rank")
+volMult = input.float(0.80, "Volume Multiplier")
+initSl = input.float(2.8, "Initial Stop ATR")
+trailAtr = input.float(4.5, "Trail ATR")
+
+fast = ta.ema(close, fastLen)
+slow = ta.ema(close, slowLen)
+atr = ta.atr(14)
+atrPct = atr / close * 100.0
+atrLo = ta.lowest(atrPct, 200)
+atrHi = ta.highest(atrPct, 200)
+atrRank = (atrPct - atrLo) / (atrHi - atrLo) * 100.0
+[diPlus, diMinus, adx] = ta.dmi(14, 14)
+volBase = ta.sma(volume, 50)
+
+rangeHigh = ta.highest(high, entryLen)[1]
+rangeLow = ta.lowest(low, entryLen)[1]
+exitLow = ta.lowest(low, exitLen)[1]
+exitHigh = ta.highest(high, exitLen)[1]
+regime = adx > minAdx and atrRank > minAtrRank and atrRank < maxAtrRank and volume > volBase * volMult
+
+longEntry = close > rangeHigh and close[1] <= rangeHigh and fast > slow and diPlus > diMinus and regime
+shortEntry = close < rangeLow and close[1] >= rangeLow and fast < slow and diMinus > diPlus and regime
+
+var float longStop = na
+var float shortStop = na
+
+if longEntry and strategy.position_size <= 0
+    strategy.close("S")
+    strategy.entry("L", strategy.long)
+    longStop := close - atr * initSl
+
+if shortEntry and strategy.position_size >= 0
+    strategy.close("L")
+    strategy.entry("S", strategy.short)
+    shortStop := close + atr * initSl
+
+if strategy.position_size > 0
+    longTrail = math.max(exitLow, close - atr * trailAtr)
+    longStop := na(longStop) ? longTrail : math.max(longStop, longTrail)
+    strategy.exit("LX", from_entry="L", stop=longStop)
+
+if strategy.position_size < 0
+    shortTrail = math.min(exitHigh, close + atr * trailAtr)
+    shortStop := na(shortStop) ? shortTrail : math.min(shortStop, shortTrail)
+    strategy.exit("SX", from_entry="S", stop=shortStop)
+
+if strategy.position_size > 0 and (fast < slow or close < exitLow)
+    strategy.close("L")
+
+if strategy.position_size < 0 and (fast > slow or close > exitHigh)
+    strategy.close("S")
+
+plot(longEntry ? 1 : 0, "longEntry")
+plot(shortEntry ? 1 : 0, "shortEntry")
+plot(longStop, "longStop")
+plot(shortStop, "shortStop")

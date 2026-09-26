@@ -1,0 +1,140 @@
+//@version=6
+// =============================================================================
+// QM-VWAPDISP-v1  —  Volatility-Normalized Displacement from Equilibrium
+// Idea: after a displacement beyond a VWAP/vol band WITHOUT a strong
+//       equilibrium bias (median-vs-VWAP tilt), price tends to snap back.
+// Entry: close inside the band AFTER having been outside, body pointing back.
+// Exit:  absolute ATR-based TP + SL + hard time exit (no trailing).
+// Rules: process_orders_on_close=true, pyramiding=1, no repain, no lookahead.
+// =============================================================================
+strategy("QM-VWAPDISP-v1",
+    overlay=true,
+    pyramiding=1,
+    process_orders_on_close=true,
+    commission_type=strategy.commission.percent,
+    commission_value=0.05,
+    default_qty_type=strategy.percent_of_equity,
+    default_qty_value=100,
+    margin_long=100,
+    margin_short=100,
+    initial_capital=10000)
+
+// ---------- inputs ----------
+lb         = input.int(60,  "Equil. lookback (bars)", minval=10, maxval=200)
+disp_mult  = input.float(1.5, "Displacement threshold (x ATR)", step=0.1, minval=0.5, maxval=4.0)
+regime_atr = input.float(1.0, "Regime guard (|med-VWAP| < x ATR)", step=0.1, minval=0.0, maxval=4.0)
+cooldown   = input.int(2,   "Cooldown after exit (bars)", minval=0, maxval=20)
+max_bars   = input.int(40,  "Max bars in trade (time exit)", minval=0, maxval=200)
+sl_ticks   = input.int(25,  "SL ticks", minval=1, maxval=200)
+tp_ticks   = input.int(40,  "TP ticks", minval=1, maxval=200)
+
+// ---------- volatility (non-repainting, bar close) ----------
+// ta.atr(lb): avg true range over lb bars. Non-repainting on bar close.
+// lb = 60 ≈ 15h on 15m → reasonable for vol normalization.
+atr = ta.atr(lb)
+
+// ---------- equilibrium ----------
+// ta.vwap(hlc3): volume-weighted average price within session.
+// vwap resets per session (default); we use it as equilibrium reference.
+// ta.percentile_nearest_rank(close, lb, 50): returns the 50th percentile
+// (median) of close over the last lb bars. Non-repainting.
+vwap  = ta.vwap(hlc3)
+med   = ta.percentile_nearest_rank(close, lb, 50)
+
+// ---------- displacement ----------
+// |close - vwap| in price units, normalized by ATR.
+disp_vwap = math.abs(close - vwap)
+band      = disp_mult * atr
+outside   = disp_vwap > band   // price has displaced beyond vol band
+
+// ---------- regime guard ----------
+// |median - vwap| compares two alternative equilibrium estimates.
+// If they diverge significantly, the market likely has a directional drift
+// (trend regime). We only operate when they agree within regime_atr * atr.
+tilt      = math.abs(med - vwap)
+flat_eq   = tilt < (regime_atr * atr)
+
+// ---------- "has been outside in last N bars" (non-repainting) ----------
+// ta.valuewhen(outside, 1, N_recent): returns the value of "outside"
+// (which is bool→int 0/1 when used as series) at the time N_recent bars ago
+// when the condition was true (valuewhen looks at the last true).
+// We check if it's > 0 meaning at least one true occurred within N_recent.
+N_recent  = 3
+was_out   = ta.valuewhen(outside, 1, N_recent) > 0
+
+// ---------- body direction (close vs prior close, non-repainting) ----------
+prev_close = close[1]
+body_up = close > prev_close
+body_dn = close < prev_close
+
+// ---------- cooldown guard ----------
+// Process orders on close means position_size updates at bar close.
+// barssince since last non-zero position: if < cooldown, we skip re-entry.
+since_exit = ta.barssince(strategy.position_size != 0)
+cooldown_ok = since_exit >= cooldown or strategy.position_size != 0
+
+// ---------- entry conditions ----------
+// Long: short excursion (below VWAP) + body moving up toward equilibrium.
+// - outside: price displaced beyond band (displacement occurred)
+// - close < vwap: we are below equilibrium
+// - body_up: close is above prior close (snap-back direction)
+// - close >= vwap - band: now inside the band half below VWAP (re-entry)
+// - was_out: confirmed outside within last 3 bars
+// - flat_eq: no regime drift
+// - position_size == 0: flat (no open position)
+// - cooldown_ok: enough bars since last position
+long_go = flat_eq
+        and outside
+        and close < vwap
+        and body_up
+        and close >= vwap - band
+        and was_out
+        and (strategy.position_size == 0)
+        and cooldown_ok
+
+// Short: long excursion (above VWAP) + body moving down.
+short_go = flat_eq
+         and outside
+         and close > vwap
+         and body_dn
+         and close <= vwap + band
+         and was_out
+         and (strategy.position_size == 0)
+         and cooldown_ok
+
+// ---------- entries ----------
+if long_go
+    strategy.entry("L", strategy.long)
+if short_go
+    strategy.entry("S", strategy.short)
+
+// ---------- SL / TP ----------
+// Compute exit prices from the current close at entry time.
+// Re-emitting each bar is idempotent — values recalculated only on
+// process_orders_on_close so no intra-bar repaint.
+ltp = close - tp_ticks * syminfo.mintick   // long take-profit price
+lsl = close - sl_ticks * syminfo.mintick   // long stop-loss price
+stp = close + tp_ticks * syminfo.mintick   // short take-profit price
+ssl = close + sl_ticks * syminfo.mintick   // short stop-loss price
+
+strategy.exit("LX", from_entry="L", limit=ltp, stop=lsl)
+strategy.exit("SX", from_entry="S", limit=stp, stop=ssl)
+
+// ---------- time exit ----------
+// Bars since position became non-zero (i.e., since entry).
+// Use barssince to track how long we have been in a trade.
+// Reset to 0 while flat.
+bars_in_trade = strategy.position_size != 0 ? ta.barssince(strategy.position_size == 0) : 0
+if max_bars > 0 and bars_in_trade > max_bars
+    if strategy.position_size > 0
+        strategy.close("L")
+    if strategy.position_size < 0
+        strategy.close("S")
+
+// ---------- plots ----------
+plot(vwap, "VWAP equilíbrio", color=color.blue, linewidth=2)
+plot(med,  "Median " + str.tostring(lb), color=color.orange, linewidth=1)
+plot(vwap + band, "Banda +", color=color.gray, linewidth=1)
+plot(vwap - band, "Banda -", color=color.gray, linewidth=1)
+plotshape(long_go, "Long entry", shape.triangleup, location.belowbar, color=color.lime, size=size.tiny)
+plotshape(short_go, "Short entry", shape.triangledown, location.abovebar, color=color.red, size=size.tiny)

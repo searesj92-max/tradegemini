@@ -1,0 +1,25 @@
+[
+  {
+    "id": "builder-fcs-v1-refined-2026-09-24",
+    "name": "QM-FCS-v1 [builder-refined] — Failed Continuation / Liquidity Sweep Snapback",
+    "symbol": "ETHUSDT (15m/4h) · BTCUSDT (15m/1h/4h)",
+    "timeframe": "15m / 1h / 4h",
+    "source": "researcher-qm-fcs-v1 (dispatch 2026-09-24) · builder refinement cycle 2026-09-24",
+    "family": "fcs",
+    "agent": "builder",
+    "net_profit_pct": null,
+    "profit_factor": null,
+    "max_drawdown_pct": null,
+    "win_rate_pct": null,
+    "trades": null,
+    "sharpe": null,
+    "result_id": "pending-credits",
+    "view_url": "N/A — MCP sem créditos neste ciclo",
+    "curve": [],
+    "verdict": "Estacionar — Pine refinado (SL bug corrigido + higiene), backtest bloqueado por créditos MCP=0",
+    "status": "watchlist",
+    "last_backtest": "2026-09-24 (researcher; MCP=0 neste builder cycle)",
+    "pine_key": "qm-fcs-v1-builder-refined",
+    "notes": "SL corrigido: offset absoluto (rangeL - atr*slBuffer) ao invés de multiplicativo. commission 0.05% MCP parity. Sem trailing. Re-backtest ETH 15m como controle prioritário quando crédits voltarem. Cross-symbol fraco (BTC negativo em todos os TFs). Strike 1 registrado."
+  }
+]

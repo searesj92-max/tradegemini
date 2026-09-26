@@ -1,0 +1,21 @@
+//@version=6
+strategy("G91f10", slippage=2, overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, initial_capital=1515, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100)
+active = time >= 1772755200000 and time < 1788652800000
+atr = ta.atr(14)
+atrp = atr/close*100
+atrm = ta.sma(atrp, 100)
+var int abierto = na
+if active and (close > close[3] or close > close[12] or close > close[30]) and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+    abierto := bar_index
+if active and (close < close[3] or close < close[12] or close < close[30]) and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+    abierto := bar_index
+strategy.exit("LX", from_entry="L", loss=close*1.0/100/syminfo.mintick, trail_points=close*0.35/100/syminfo.mintick, trail_offset=close*0.35/100/syminfo.mintick)
+strategy.exit("SX", from_entry="S", loss=close*1.0/100/syminfo.mintick, trail_points=close*0.35/100/syminfo.mintick, trail_offset=close*0.35/100/syminfo.mintick)
+if active and strategy.position_size != 0 and not na(abierto) and bar_index - abierto >= 5
+    strategy.close_all()
+    abierto := na
+
+if time >= 1788652800000
+    strategy.close_all()

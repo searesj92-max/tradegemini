@@ -1,0 +1,23 @@
+//@version=6
+strategy("Codex rebalanced", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100)
+atrLength = input.int(7, "ATR Length")
+atrMult = input.float(0.1, "ATR Multiplier")
+smaLen = input.int(150, "Trend SMA Length")
+rsiLen = input.int(19, "RSI Length")
+rsiLongMax = input.int(60, "RSI Long Max")
+rsiShortMin = input.int(40, "RSI Short Min")
+ema9 = ta.ema(close, 9)
+vwap = ta.vwap(close)
+sma = ta.sma(close, smaLen)
+atr = ta.atr(atrLength)
+rsi = ta.rsi(close, rsiLen)
+longCross = ta.crossover(ema9, vwap)
+shortCross = ta.crossunder(ema9, vwap)
+longCondition = longCross and close > sma and rsi < rsiLongMax
+shortCondition = shortCross and close < sma and rsi > rsiShortMin
+if longCondition
+    strategy.entry("L", strategy.long)
+if shortCondition
+    strategy.entry("S", strategy.short)
+strategy.exit("LX", from_entry="L", trail_points=(atr * atrMult) / syminfo.mintick, trail_offset=(atr * atrMult) / syminfo.mintick)
+strategy.exit("SX", from_entry="S", trail_points=(atr * atrMult) / syminfo.mintick, trail_offset=(atr * atrMult) / syminfo.mintick)

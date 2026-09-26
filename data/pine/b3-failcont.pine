@@ -1,0 +1,31 @@
+//@version=6
+strategy("FailedCont EMA50",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+e = ta.ema(close, 50)
+// strong trend candle then immediate opposite close-through of its open side
+upFail = close[1] > open[1] and (close[1] - open[1]) > ta.atr(14) and close < open[1] and close > e
+dnFail = close[1] < open[1] and (open[1] - close[1]) > ta.atr(14) and close > open[1] and close < e
+if upFail and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if dnFail and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+a = ta.atr(14)
+slM = input.float(1.8, "SL x ATR")
+tpM = input.float(1.5, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("SX", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

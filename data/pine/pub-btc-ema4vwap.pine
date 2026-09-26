@@ -1,0 +1,20 @@
+//@version=6
+strategy("High-KPI BTC 2H EMA4-VWAP ATR Trail", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100)
+atrLength = 14
+atr = ta.atr(atrLength)
+ema = ta.ema(close, 4)
+vwap = ta.vwap(close)
+trailMult = input.float(0.015, "ATR trail multiplier", minval=0.001, maxval=0.1, step=0.001)
+trailUnits = math.max(1, math.round(atr * trailMult / syminfo.mintick))
+longFilter = true
+shortFilter = true
+longCondition = ta.crossover(ema, vwap) and longFilter
+shortCondition = ta.crossunder(ema, vwap) and shortFilter
+if longCondition
+    strategy.close("S")
+    strategy.entry("L", strategy.long)
+if shortCondition
+    strategy.close("L")
+    strategy.entry("S", strategy.short)
+strategy.exit("L Exit", from_entry="L", trail_points=trailUnits, trail_offset=trailUnits)
+strategy.exit("S Exit", from_entry="S", trail_points=trailUnits, trail_offset=trailUnits)

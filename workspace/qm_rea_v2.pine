@@ -1,0 +1,81 @@
+//@version=6
+strategy("QM-REA-v2 — Range-Efficiency Asymmetry After Expansion [no ta.sum]",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+// === INPUTS ===
+effLen       = input.int(20, "Efficiency window (bars)", minval=5)
+highEffThresh = input.float(0.5, "High efficiency threshold", minval=0.1, step=0.05)
+lowEffThresh  = input.float(0.3, "Low efficiency trigger", minval=0.1, step=0.05)
+atrLen       = input.int(14, "ATR length", minval=5)
+cooldownBars = input.int(1, "Cooldown bars", minval=0)
+timeExitBars = input.int(20, "Max bars in trade", minval=1)
+
+// === CORE: efficiency calc without ta.sum ===
+// Manual rolling sum of |close[i] - close[i-1]| for effLen bars
+var float closeDiffSum = 0
+if bar_index == 0
+    closeDiffSum := 0
+else
+    // add new diff, remove oldest diff from sum
+    diffNow = math.abs(close - close[1])
+    diffOld = math.abs(close[effLen] - close[effLen-1])
+    closeDiffSum := closeDiffSum + diffNow - diffOld
+
+// total range = highest(high, N) - lowest(low, N)
+highestHigh = ta.highest(high, effLen)
+lowestLow   = ta.lowest(low, effLen)
+totalRange  = math.max(highestHigh - lowestLow, 1e-9)
+eff         = closeDiffSum / totalRange
+
+prevEffHigh = eff[1] > highEffThresh
+effDrop     = eff < lowEffThresh
+
+// ATR não em mínimo absoluto
+atrMinOk = ta.atr(atrLen) > ta.sma(ta.atr(atrLen), 20) * 0.7
+
+// === ENTRIES ===
+reversalLong  = prevEffHigh and effDrop and atrMinOk and close > ta.sma(close, 20)
+reversalShort = prevEffHigh and effDrop and atrMinOk and close < ta.sma(close, 20)
+
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+if reversalLong and canTrade
+    strategy.entry("L", strategy.long)
+if reversalShort and canTrade
+    strategy.entry("S", strategy.short)
+
+// === ATR-based SL/TP ===
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=close - ta.atr(atrLen) * 1.5, limit=close + ta.atr(atrLen) * 2.0)
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=close + ta.atr(atrLen) * 1.5, limit=close - ta.atr(atrLen) * 2.0)
+
+// === TIME EXIT ===
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade > timeExitBars
+    strategy.close_all()
+
+// === PLOTS ===
+plotshape(reversalLong and canTrade, "Long", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(reversalShort and canTrade, "Short", shape.triangledown, location.abovebar, color.red, size=size.small)
+plot(eff, "Efficiency", color.blue, 1)

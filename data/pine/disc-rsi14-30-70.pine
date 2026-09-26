@@ -1,0 +1,30 @@
+//@version=6
+strategy("RSI Reversion 14/30/70",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+rsiLen = input.int(14, "RSI")
+buyLvl = input.float(30, "Buy below")
+sellLvl = input.float(70, "Sell above")
+slPct = input.float(2.0, "SL %")
+tpPct = input.float(3.0, "TP %")
+
+rsi = ta.rsi(close, rsiLen)
+if rsi < buyLvl
+    strategy.entry("L", strategy.long)
+if rsi > sellLvl
+    strategy.entry("S", strategy.short)
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg * (1 - slPct / 100), limit=avg * (1 + tpPct / 100))
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("Sx", from_entry="S", stop=avg * (1 + slPct / 100), limit=avg * (1 - tpPct / 100))

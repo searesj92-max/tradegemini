@@ -1,0 +1,25 @@
+//@version=6
+strategy("HH-Break n20/E50",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+hi = ta.highest(high, 20)
+t = ta.ema(close, 50)
+longB = close > hi[1] and close > t and ta.crossover(close, hi[1])
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+a = ta.atr(14)
+slM = input.float(2.0, "SL x ATR")
+tpM = input.float(2.5, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)

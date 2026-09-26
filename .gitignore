@@ -1,0 +1,25 @@
+# Security & Secrets
+.env
+.env.local
+*.key
+*.pem
+*.secret
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Logs & temp
+*.log
+scratch/
+.system_generated/
+data/ohlcv/
+data/journal/
+dashboard/live_positions.json
+

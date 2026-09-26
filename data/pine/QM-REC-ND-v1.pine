@@ -1,0 +1,93 @@
+//@version=6
+// QM-REC-ND-v1 — iteração 1: SL/TP FIXOS de entrada (não dinâmicos)
+// Hipótese H1: displ normalizado + eficiência de range colapsada → reversão.
+// Sem trailing, sem martingale, sem grid.
+
+strategy(
+  title="QM-REC-ND-v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// === Inputs ===
+lenSma       = input.int(20,  "SMA length")
+lenAtr       = input.int(14,  "ATR length")
+displThresh  = input.float(1.2, "Displacement threshold (x ATR)", minval=0.5, step=0.1)
+reffThresh   = input.float(0.4, "Range-efficiency threshold (body/range)", minval=0.2, maxval=0.6, step=0.05)
+volMult      = input.float(1.1, "Vol expansion multiplier vs SMA(ATR)", minval=1.0, step=0.05)
+slAtrRanges  = input.float(2.0, "SL in ATR multiples", minval=1.0, step=0.25)
+tpAtrRanges  = input.float(1.5, "TP in ATR multiples", minval=0.5, step=0.25)
+maxBars      = input.int(24,  "Max bars holding", minval=1)
+rsiLen       = input.int(14,  "RSI length")
+rsiLongCap   = input.float(65.0,"RSI cap for long entry (must be < this)", minval=50, maxval=80, step=1)
+rsiShortCap  = input.float(35.0,"RSI cap for short entry (must be > this)", minval=20, maxval=50, step=1)
+
+// === Core series ===
+smaClose  = ta.sma(close, lenSma)
+atr       = ta.atr(lenAtr)
+atrSma    = ta.sma(atr, 20)
+rsi       = ta.rsi(close, rsiLen)
+
+// Normalized displacement (signed, units of ATR)
+displ = (close - smaClose) / atr
+
+// Range efficiency: body / total range (0..1; low = exhausted candle)
+rangeEff = math.abs(close - open) / (high - low + 1e-9)
+
+// Vol expansion filter
+volExpanding = atr > atrSma * volMult
+
+// === Entry conditions ===
+longCond  = (not strategy.position_size > 0) and (displ < -displThresh) and (rangeEff < reffThresh) and volExpanding and (rsi < rsiLongCap)
+shortCond = (not strategy.position_size < 0) and (displ >  displThresh) and (rangeEff < reffThresh) and volExpanding and (rsi > rsiShortCap)
+
+// === Var storage: SL/TP fixos de entrada ===
+var float longStopPrice = na
+var float longTpPrice = na
+var float shortStopPrice = na
+var float shortTpPrice = na
+var int barsInPos = 0
+
+// === Entries ===
+if longCond
+    longStopPrice := close - atr * slAtrRanges
+    longTpPrice := close + atr * tpAtrRanges
+    barsInPos := 0
+    strategy.entry("L", strategy.long)
+
+if shortCond
+    shortStopPrice := close + atr * slAtrRanges
+    shortTpPrice := close - atr * tpAtrRanges
+    barsInPos := 0
+    strategy.entry("S", strategy.short)
+
+// === Exits (SL/TP FIXOS, re-issued toda barra mas com preço constante de entrada) ===
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longStopPrice, limit=longTpPrice)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortStopPrice, limit=shortTpPrice)
+
+// === Time exit (contador manual — barssince não disponível no engine) ===
+barsInPos := strategy.position_size != 0 ? barsInPos + 1 : 0
+if barsInPos >= maxBars
+    if strategy.position_size > 0
+        strategy.close("L")
+    else if strategy.position_size < 0
+        strategy.close("S")
+
+// === Reset quando posição fecha (SL/TP ou time exit) ===
+if strategy.position_size == 0
+    longStopPrice := na
+    longTpPrice := na
+    shortStopPrice := na
+    shortTpPrice := na
+    barsInPos := 0

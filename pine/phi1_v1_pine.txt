@@ -1,0 +1,68 @@
+//@version=6
+// PHI1 — Failed-Expansion Compression (greenfield)
+// Ineficiência: expansão + fechamento dentro do corpo anterior = desgaste de momentum → mean-reversion fraca dentro do range.
+// Regra: close dentro do corpo de close[1] APÓS um candle com range > ATR(14)*1.5 e body[1] significativo.
+// Entram longs abaixo do corpo + shorts acima. SL: fora do extremo do candle de expansão; TP: dentro do corpo do candle de compressão (R:R ~1).
+// Sem repaint (todo sinal usa close[1] ou [2]); sem lookahead; sem martingale.
+
+strategy("PHI1: Failed-Expansion Compression v1", overlay=true,
+  pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// === INPUTS ===
+atrLen        = input.int(14, "ATR length")
+expMult       = input.float(1.5, "Expansion candle min range (ATR mult)")
+bodyMinPct   = input.float(0.25, "Candle-body min % of price (significance filter)")
+atrSlMult    = input.float(1.0, "SL ATR mult beyond expansion extreme")
+rrRatio      = input.float(1.1, "TP R:R ratio")
+minAtrPct    = input.float(0.06, "Min ATR % filter (vol protection)")
+
+// === VOL & FILTERS ===
+atr = ta.atr(atrLen)
+atrPct = atr / close * 100
+volOk = atrPct > minAtrPct
+
+// === EXPANSION CANDLE (candle N do passado = sem repainting) ===
+rangeN = high[1] - low[1]
+bodyN = math.abs(close[1] - open[1])
+bodyPctN = bodyN / close[1] * 100
+expCandle = rangeN > atr * expMult and bodyPctN > bodyMinPct and volOk
+
+// === COMPRESSION/Failed-expansion: candle atual fecha DENTRO do corpo do candle anterior ===
+// long: preço atual abaixo do corpo baixo do candle anterior
+longOk = close > open[1] and close < close[1] and open < open[1]   // body[1] é bullish, candle atual dentro dele
+shortOk = close < open[1] and close > close[1] and open > open[1]  // body[1] é bearish, candle atual dentro dele
+
+longEntry = expCandle and longOk
+shortEntry = expCandle and shortOk
+
+// === ENTRADAS ===
+if longEntry
+    strategy.entry("L", strategy.long)
+
+if shortEntry
+    strategy.entry("S", strategy.short)
+
+// === SL / TP ===
+// SL: além do extremo do candle de expansão + buffer ATR
+longSlPrice = math.min(low[1], close[1]) - atr * atrSlMult
+shortSlPrice = math.max(high[1], open[1]) + atr * atrSlMult
+
+// TP: R:R fixo da distância risco (entry → SL)
+longTpPrice = close + (close - longSlPrice) * rrRatio
+shortTpPrice = close - (shortSlPrice - close) * rrRatio
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", stop=longSlPrice, limit=longTpPrice)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", stop=shortSlPrice, limit=shortTpPrice)
+
+// === PLOTS (debug) ===
+plot((low[1] + close[1]) / 2, "bodyLow[1]", color=color.new(color.blue, 60), style=plot.style_circles)
+plot((high[1] + open[1]) / 2, "bodyHigh[1]", color=color.new(color.red, 60), style=plot.style_circles)
+plot(longSlPrice, "longSl", color=color.new(color.red, 80), style=plot.style_circles)
+plot(shortSlPrice, "shortSl", color=color.new(color.green, 80), style=plot.style_circles)

@@ -1,0 +1,90 @@
+//@version=6
+// QM-RANGE-FOLLOW-v1
+// Hypothesis: Range-following mean reversion after failed expansion breakout.
+// Math basis: range efficiency = (close - open) / (high - low).
+//   When a breakout bar expands range but closes near its open (efficiency collapse),
+//   the directional follow-through failed → fade with risk on expansion.
+//
+// NO trailing stops (per loop rule). SL/TP in ticks against ATR. No repaint, no lookahead.
+// Allowed set only; process_orders_on_close, pyramiding=1, commission 0.05%.
+
+strategy(
+  title="QM-RANGE-FOLLOW-v1",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+// ---------- inputs ----------
+atrLen    = input.int(14, "ATR length")
+volWin    = input.int(20, "Volatility lookback (bars)")
+effWin    = input.int(20, "Efficiency lookback (bars)")
+effThresh = input.float(0.20, "Efficiency collapse threshold", step=0.05)
+atrSL     = input.float(2.0, "SL multiple of ATR", step=0.1)
+atrTP     = input.float(4.0, "TP multiple of ATR", step=0.1)
+expandMult= input.float(1.25, "Expansion multiplier vs recent median atr", step=0.05)
+
+// ---------- volatility context ----------
+atrVal    = ta.atr(atrLen)
+avgAtr    = ta.median(atrVal, volWin)
+expandBar = atrVal > (avgAtr * expandMult)
+
+// ---------- range efficiency ----------
+rng       = ta.range(high, low)                     // high - low
+eff       = rng > 0 ? math.abs(close - open) / rng : 0.0
+effLow    = ta.percentile_nearest_rank(eff, effWin, 0)  // min efficiency in window
+isCollapse= eff < effThresh and rng > 0 and effWin > 1
+
+// ---------- combined condition ----------
+fadeBar = expandBar and isCollapse and not na(avgAtr) and rng > 0
+
+// ---------- position filters (no pure chop spam) ----------
+// Require the bar to actually expand range (already in expandBar).
+// Also require efficiency in bottom decile of recent window.
+effDecile = ta.percentile_nearest_rank(eff, effWin, 5)  // 10th percentile approx
+validFade= fadeBar and eff <= effDecile and rng > 0
+
+// ---------- direction from open-vs-close sign ----------
+// Long if expansion bar closes below open (bearish fakeout -> fade short).
+// Short if expansion bar closes above open (bullish fakeout -> fade long).
+// We fade the breakout direction: long fade on bullish fakeout, short fade on bearish fakeout.
+
+longSig  = validFade and close < open   // bearish expansion -> expect bounce up? NO:
+// Wait — math check: range efficiency low means price did not travel to edge.
+// If high>>low AND close near open, the move went out and came back → failed breakout.
+// If close > open in such bar, buyers pushed up then sellers pulled back → fade short.
+// If close < open, sellers pushed down then buyers pulled back → fade long.
+// So: close > open → short (fade the failed bullish expansion).
+//     close < open → long (fade the failed bearish expansion).
+
+longEntry = validFade and close < open     // failed bearish expansion → long fade
+shortEntry= validFade and close > open     // failed bullish expansion → short fade
+
+// ---------- risk per trade (ticks from ATR) ----------
+slTicks  = atrVal > 0 ? math.max(1, atrSL * (atrVal / syminfo.mintickprice)) : 10
+tpTicks  = atrVal > 0 ? math.max(1, atrTP * (atrVal / syminfo.mintickprice)) : 20
+
+// ---------- entries ----------
+if longEntry and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+if shortEntry and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+// ---------- exits ----------
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", loss=slTicks, profit=tpTicks)
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", loss=slTicks, profit=tpTicks)
+
+// ---------- plots (parity-safe) ----------
+plot(longEntry, "longSig",  color.new(color.green, 0), style=plot.style_circles)
+plot(shortEntry,"shortSig", color.new(color.red, 0),   style=plot.style_circles)

@@ -1,0 +1,23 @@
+//@version=6
+strategy("Vanta v7 RSI(2) Mean-Rev + Tight Trail", overlay=true, pyramiding=1, process_orders_on_close=true, commission_type=strategy.commission.percent, commission_value=0.05, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, margin_long=100, margin_short=100)
+rsiLen   = input.int(2, "RSI Length", minval=2, maxval=14, group="Entry")
+rsiOB    = input.float(90, "RSI Overbought", minval=70, maxval=95, step=1, group="Entry")
+rsiOS    = input.float(10, "RSI Oversold", minval=5, maxval=30, step=1, group="Entry")
+atrLen   = input.int(14, "ATR Length", minval=7, maxval=50, group="Exit")
+atrMult  = input.float(0.10, "ATR Trail Multiplier", minval=0.01, maxval=0.10, step=0.01, group="Exit")
+stopMult = input.float(1.5, "Hard SL ATR Multiplier", minval=0.5, maxval=5.0, step=0.25, group="Exit")
+emaLen   = input.int(200, "Trend Filter EMA", minval=50, maxval=400, step=10, group="Filter")
+rsi = ta.rsi(close, rsiLen)
+ema = ta.ema(close, emaLen)
+atr = ta.atr(atrLen)
+trailPts = (atr * atrMult) / syminfo.mintick
+trailOff = (atr * atrMult) / syminfo.mintick
+slTicks  = (atr * stopMult) / syminfo.mintick
+longCondition  = rsi < rsiOS and close > ema
+shortCondition = rsi > rsiOB and close < ema
+if longCondition
+    strategy.entry("L", strategy.long)
+if shortCondition
+    strategy.entry("S", strategy.short)
+strategy.exit("LX", from_entry="L", trail_points=trailPts, trail_offset=trailOff, loss=slTicks)
+strategy.exit("SX", from_entry="S", trail_points=trailPts, trail_offset=trailOff, loss=slTicks)

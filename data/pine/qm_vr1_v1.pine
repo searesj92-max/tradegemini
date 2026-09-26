@@ -1,0 +1,90 @@
+//@version=6
+strategy("QM-VR1-V1 — Variance-Ratio MR with Regime Filter",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+// === Inputs ===
+eqLen       = input.int(50,  "Equilibrium SMA Length", minval=10)
+atrLen      = input.int(14,  "ATR Length", minval=1)
+dispThresh  = input.float(1.2, "Displacement Threshold (×ATR)", minval=0.5, step=0.1)
+vrLookback  = input.int(30,  "VR Lookback", minval=10)
+vrThreshold = input.float(0.95, "VR MR Threshold (below = MR regime)", minval=0.5, maxval=1.0, step=0.01)
+slBuffer    = input.float(0.5, "SL Buffer (extra ATR beyond threshold)", minval=0.1, step=0.1)
+tpDisp      = input.float(0.3, "TP: displacement return target (×ATR)", minval=0.1, step=0.1)
+timeExit    = input.int(20,  "Time Exit (bars)", minval=1)
+cooldownBars = input.int(2,  "Cooldown after exit (bars)", minval=0)
+
+// === Equilibrium & signed displacement ===
+eq  = ta.sma(close, eqLen)
+atr = ta.atr(atrLen)
+disp = (close - eq) / atr   // signed: positive = above equilibrium
+
+// === Variance Ratio VR(2) — Lo & MacKinlay ===
+// r1 = 1-bar price diff, r2 = 2-bar price diff
+r1 = close - close[1]
+r2 = close - close[2]
+
+meanR1 = ta.sma(r1, vrLookback)
+varR1  = ta.sma(math.pow(r1 - meanR1, 2), vrLookback)
+meanR2 = ta.sma(r2, vrLookback)
+varR2  = ta.sma(math.pow(r2 - meanR2, 2), vrLookback)
+
+// VR(2) = Var(r2) / (2 * Var(r1));  <1 = mean-reverting, >1 = trending
+vr = varR1 > 1e-9 ? varR2 / (2 * varR1) : 1.0
+mrRegime = vr < vrThreshold
+
+// === Position age & cooldown ===
+var int barsInPos = 0
+barsInPos := strategy.position_size != 0 ? math.min(barsInPos + 1, 9999) : 0
+
+var int cd = 0
+cd := (strategy.position_size != 0 or cd > 0) ? math.max(cd - 1, 0) : 0
+
+// === Entry signals ===
+longSig  = disp < -dispThresh and mrRegime and strategy.position_size == 0 and cd == 0
+shortSig = disp >  dispThresh and mrRegime and strategy.position_size == 0 and cd == 0
+
+// === Fixed SL prices set at entry ===
+var float longSL  = na
+var float shortSL = na
+
+if longSig
+    strategy.entry("L", strategy.long)
+    longSL  := eq - atr * (dispThresh + slBuffer)
+
+if shortSig
+    strategy.entry("S", strategy.short)
+    shortSL := eq + atr * (dispThresh + slBuffer)
+
+// === SL ratchet (re-issue each bar, fixed price from entry) ===
+if strategy.position_size > 0
+    strategy.exit("LSL", from_entry="L", stop=longSL)
+if strategy.position_size < 0
+    strategy.exit("SSL", from_entry="S", stop=shortSL)
+
+// === Signal-based TP + time exit ===
+longExit  = strategy.position_size > 0 and (disp > -tpDisp or barsInPos >= timeExit)
+shortExit = strategy.position_size < 0 and (disp <  tpDisp or barsInPos >= timeExit)
+
+if longExit
+    strategy.close("L")
+    cd := cooldownBars
+    barsInPos := 0
+
+if shortExit
+    strategy.close("S")
+    cd := cooldownBars
+    barsInPos := 0
+
+// === Plots ===
+plot(eq, "Equilibrium SMA", color=color.blue, linewidth=1)
+plot(longSig  ? low  : na, "Long Entry",  shape.triangleup,   location.belowbar, color=color.green, size=size.small)
+plot(shortSig ? high : na, "Short Entry", shape.triangledown, location.abovebar, color=color.red,   size=size.small)

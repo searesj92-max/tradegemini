@@ -1,0 +1,1231 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>botrade · Mission Control</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b0f;
+      --panel: #0d1218;
+      --panel2: #111820;
+      --line: #1c2733;
+      --text: #e6edf3;
+      --muted: #7d8b99;
+      --green: #2ee59d;
+      --green-dim: #1a9e6c;
+      --red: #ff5c7a;
+      --amber: #f0b429;
+      --blue: #4cc2ff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(46,229,157,.08), transparent 60%),
+        radial-gradient(900px 400px at 90% 0%, rgba(76,194,255,.06), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(7,11,15,.92);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 18px 10px;
+    }
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { opacity: .45; } }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .chip b { color: var(--text); font-weight: 600; }
+    .chip.ok { border-color: rgba(46,229,157,.35); }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    select, input, button {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+    button { cursor: pointer; }
+    button:hover { border-color: #2a3a4b; }
+    button.active {
+      border-color: rgba(46,229,157,.5);
+      color: var(--green);
+      box-shadow: inset 0 0 0 1px rgba(46,229,157,.2);
+    }
+    .seg { display: flex; gap: 5px; flex-wrap: wrap; }
+    input[type="number"] { width: 78px; font-family: var(--mono); }
+    input[type="search"] { min-width: 130px; }
+    input[type="range"] { width: 90px; padding: 0; accent-color: var(--green); }
+    main { padding: 16px 18px 48px; max-width: 1500px; margin: 0 auto; }
+    .banner {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: linear-gradient(90deg, rgba(46,229,157,.12), rgba(46,229,157,.02));
+      border: 1px solid rgba(46,229,157,.25);
+      color: #baf5dc;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 13px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.02), transparent 40%), var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px;
+      transition: transform .15s ease, border-color .15s ease;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .card:hover { transform: translateY(-2px); border-color: #2a3a4b; }
+    .card.rejected { opacity: .75; }
+    .card.candidate { border-color: rgba(46,229,157,.5); box-shadow: 0 0 0 1px rgba(46,229,157,.08); }
+    .card.incubate { border-color: rgba(240,180,41,.4); }
+    .card.watchlist { border-color: rgba(76,194,255,.28); }
+    .card.rollup {
+      background: linear-gradient(145deg, rgba(76,194,255,.06), transparent 50%), var(--panel2);
+      border-color: rgba(76,194,255,.35);
+      min-height: 180px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .title { font-size: 14px; font-weight: 650; line-height: 1.25; }
+    .sub {
+      color: var(--muted);
+      font-size: 10.5px;
+      font-family: var(--mono);
+      margin-top: 4px;
+    }
+    .badge {
+      flex: none;
+      font-size: 9.5px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255,255,255,.03);
+    }
+    .badge.Candidate { color: var(--green); border-color: rgba(46,229,157,.5); background: rgba(46,229,157,.08); }
+    .badge.Incubate { color: var(--amber); border-color: rgba(240,180,41,.5); background: rgba(240,180,41,.08); }
+    .badge.Watchlist { color: var(--blue); border-color: rgba(76,194,255,.45); background: rgba(76,194,255,.08); }
+    .badge.Reject { color: var(--red); border-color: rgba(255,92,122,.45); background: rgba(255,92,122,.08); }
+    .pnl {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--green);
+    }
+    .pnl.neg { color: var(--red); }
+    .wl-bar {
+      display: flex;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #1a1014;
+      border: 1px solid var(--line);
+    }
+    .wl-bar .w { background: linear-gradient(90deg, var(--green-dim), var(--green)); height: 100%; }
+    .wl-bar .l { background: linear-gradient(90deg, #a33, var(--red)); height: 100%; }
+    .wl-labels {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 11px;
+      margin-top: -4px;
+    }
+    .wl-labels .w { color: var(--green); }
+    .wl-labels .l { color: var(--red); }
+    .chart {
+      height: 78px;
+      background: #0a1016;
+      border: 1px solid #15202b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .chart svg { width: 100%; height: 100%; display: block; }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      margin-top: auto;
+    }
+    .metrics.wide { grid-template-columns: repeat(5, 1fr); }
+    .metric {
+      background: rgba(255,255,255,.02);
+      border: 1px solid #15202b;
+      border-radius: 8px;
+      padding: 5px 3px;
+      text-align: center;
+    }
+    .metric .k {
+      color: var(--muted);
+      font-size: 8.5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .metric .v {
+      font-family: var(--mono);
+      font-size: 11.5px;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+    .metric .v.good { color: var(--green); }
+    .metric .v.bad { color: var(--red); }
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 10.5px;
+      color: var(--muted);
+      font-family: var(--mono);
+      flex-wrap: wrap;
+    }
+    .empty {
+      grid-column: 1/-1;
+      text-align: center;
+      color: var(--muted);
+      padding: 48px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .meta-line { font-size: 11px; color: var(--muted); margin-top: 8px; font-family: var(--mono); }
+    .table-wrap {
+      overflow-x: auto;
+      margin-bottom: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    table.fam {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: 12px;
+      min-width: 720px;
+    }
+    table.fam th, table.fam td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    table.fam th {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: var(--panel2);
+      position: sticky;
+      top: 0;
+    }
+    table.fam tr:last-child td { border-bottom: none; }
+    table.fam tr:hover td { background: rgba(76,194,255,.04); }
+    table.fam .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pos { color: var(--green); }
+    .negc { color: var(--red); }
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 8px 0 10px;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .section-title span { font-family: var(--mono); font-weight: 500; text-transform: none; letter-spacing: 0; }
+    .txflow-note {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-top: 6px;
+    }
+    .copy-btn {
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(76,194,255,.08);
+      border-color: rgba(76,194,255,.3);
+      color: var(--blue);
+    }
+    .an-btn {
+      background: rgba(46,229,157,.08);
+      border-color: rgba(46,229,157,.35);
+      color: var(--green);
+    }
+    .an-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(3,6,9,.86);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 22px 14px 48px;
+    }
+    .an-overlay[hidden] { display: none; }
+    .an-panel {
+      width: min(1120px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .an-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .an-title { font-size: 17px; font-weight: 700; }
+    .an-sub { color: var(--muted); font-size: 12px; font-family: var(--mono); margin-top: 3px; }
+    .an-head-r { display: flex; gap: 8px; align-items: center; }
+    #an-close {
+      font-size: 14px;
+      padding: 6px 12px;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #an-close:hover { border-color: var(--red); color: var(--red); }
+    .an-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 7px;
+    }
+    .an-stat {
+      background: rgba(255,255,255,.02);
+      border: 1px solid #15202b;
+      border-radius: 10px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    .an-stat .k { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+    .an-stat .v { font-family: var(--mono); font-size: 15px; font-weight: 700; margin-top: 3px; }
+    .an-stat .v.good { color: var(--green); }
+    .an-stat .v.bad { color: var(--red); }
+    .an-block { display: flex; flex-direction: column; gap: 7px; }
+    .an-lbl {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 650;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .an-lbl button {
+      font-size: 10.5px;
+      padding: 4px 10px;
+      border-radius: 7px;
+      background: rgba(46,229,157,.1);
+      border-color: rgba(46,229,157,.4);
+      color: var(--green);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+    .an-lbl button:disabled { opacity: .45; cursor: default; }
+    .an-chart {
+      background: #0a1016;
+      border: 1px solid #15202b;
+      border-radius: 12px;
+      overflow: hidden;
+      padding: 6px;
+    }
+    .an-chart svg { width: 100%; height: auto; display: block; }
+    .an-empty { color: var(--muted); text-align: center; padding: 26px 8px; font-size: 12.5px; }
+    .an-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 860px) { .an-row2 { grid-template-columns: 1fr; } }
+    table.an-mo { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+    table.an-mo th, table.an-mo td {
+      padding: 6px 4px;
+      text-align: center;
+      border: 1px solid #15202b;
+      border-radius: 4px;
+    }
+    table.an-mo th { color: var(--muted); font-size: 9.5px; text-transform: uppercase; background: var(--panel2); }
+    table.an-mo td.year { background: var(--panel2); color: var(--muted); font-weight: 700; }
+    table.an-mo td.empty { color: #2a3542; }
+    .an-trades {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #15202b;
+      border-radius: 10px;
+    }
+    table.an-tr { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+    table.an-tr th {
+      position: sticky; top: 0;
+      background: var(--panel2);
+      color: var(--muted);
+      font-size: 9.5px;
+      text-transform: uppercase;
+      padding: 7px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    table.an-tr td { padding: 5px 8px; border-bottom: 1px solid #101820; white-space: nowrap; }
+    table.an-tr tr:hover td { background: rgba(76,194,255,.04); }
+    .an-mc-out { font-family: var(--mono); font-size: 12px; color: var(--text); line-height: 1.65; }
+    .an-mc-out b.good { color: var(--green); }
+    .an-mc-out b.bad { color: var(--red); }
+    .an-mc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px,1fr)); gap: 6px; margin-top: 8px; }
+    .an-note { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    @media (max-width: 720px) {
+      .metrics, .metrics.wide { grid-template-columns: repeat(3, 1fr); }
+      .pnl { font-size: 22px; }
+      header { padding: 10px 12px; }
+      main { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <div class="brand">
+        <span class="dot" aria-hidden="true"></span>
+        <span>botrade · Mission Control</span>
+      </div>
+      <div class="chips" id="stats">
+        <span class="chip ok">AI CORE <b>ONLINE</b></span>
+        <span class="chip">ROWS <b id="s-total">0</b></span>
+        <span class="chip">DETAIL <b id="s-detail">0</b></span>
+        <span class="chip">CANDIDATES <b id="s-cand">0</b></span>
+        <span class="chip">INCUBATE <b id="s-inc">0</b></span>
+        <span class="chip">WATCH <b id="s-watch">0</b></span>
+        <span class="chip">REJECT <b id="s-rej">0</b></span>
+        <span class="chip">CURVES <b id="s-curves">0</b></span>
+        <span class="chip">UPDATED <b id="s-upd">—</b></span>
+      </div>
+    </div>
+    <div class="filters">
+      <div class="seg" id="verdict-seg">
+        <button data-v="" class="active">ALL</button>
+        <button data-v="Candidate">CANDIDATE</button>
+        <button data-v="Incubate">INCUBATE</button>
+        <button data-v="Watchlist">WATCHLIST</button>
+        <button data-v="Reject">REJECT</button>
+      </div>
+      <select id="f-family" title="Família"><option value="">Família</option></select>
+      <select id="f-agent" title="Agente"><option value="">Agente</option></select>
+      <select id="f-symbol" title="Símbolo"><option value="">Par</option></select>
+      <select id="f-tf" title="Timeframe"><option value="">TF</option></select>
+      <select id="f-source" title="Origem"><option value="">Origem</option></select>
+      <label class="chip" title="Win rate mínimo">WR≥ <input id="f-wr" type="number" min="0" max="100" step="1" placeholder="0" /></label>
+      <label class="chip" title="Max drawdown">DD≤ <input id="f-dd" type="number" min="0" max="100" step="1" placeholder="" /></label>
+      <label class="chip" title="Profit factor mínimo">PF≥ <input id="f-pf" type="number" min="0" step="0.1" placeholder="" /></label>
+      <label class="chip" title="Trades mínimos">N≥ <input id="f-n" type="number" min="0" step="10" placeholder="" /></label>
+      <select id="f-sort" title="Ordenar">
+        <option value="pf">Sort: PF</option>
+        <option value="wr">Sort: WR</option>
+        <option value="net">Sort: Net%</option>
+        <option value="dd">Sort: DD (menor)</option>
+        <option value="trades">Sort: Trades</option>
+        <option value="pass">Sort: Pares pass</option>
+        <option value="recent">Sort: Recente</option>
+      </select>
+      <input id="f-q" type="search" placeholder="buscar…" />
+      <button id="f-copy" title="Cópia dos melhores">COPY TOP PINE</button>
+      <button id="f-reset" title="Limpar filtros">RESET</button>
+    </div>
+    <div class="meta-line" id="banner-meta">
+      Motor Trader Dev · tv_jul26 · janela 2025-01-01→2026-09-01 · sem ordens reais · TxFlow: research only
+    </div>
+  </header>
+
+  <main>
+    <div class="banner">
+      <div>
+        <strong>Mission Control</strong> — win/loss, PF/DD/WR multi-par · researcher/builder/optimizer
+        + leaderboard público · rollups de família · curvas do batch4 bull.
+      </div>
+      <div id="curves-count" style="font-family:var(--mono)">CURVES · 0</div>
+    </div>
+
+    <div class="section-title">
+      Family rollups
+      <span id="fam-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table class="fam" id="fam-table">
+        <thead>
+          <tr>
+            <th>Family</th>
+            <th class="num">Pass</th>
+            <th class="num">Mean PF</th>
+            <th class="num">Mean WR</th>
+            <th class="num">Best Net</th>
+            <th class="num">Max DD</th>
+            <th class="num">Trades</th>
+            <th class="num">W / L</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody id="fam-body"></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">
+      Strategy cards
+      <span id="shown-count">—</span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <div class="an-overlay" id="an-overlay" hidden>
+    <div class="an-panel">
+      <div class="an-head">
+        <div>
+          <div class="an-title" id="an-title">—</div>
+          <div class="an-sub" id="an-sub">—</div>
+        </div>
+        <div class="an-head-r">
+          <span class="badge" id="an-badge">—</span>
+          <button id="an-close" type="button">✕</button>
+        </div>
+      </div>
+      <div class="an-stats" id="an-stats"></div>
+      <div class="an-block">
+        <div class="an-lbl">Equity · zonas de drawdown</div>
+        <div class="an-chart" id="an-equity"></div>
+      </div>
+      <div class="an-block">
+        <div class="an-lbl">Underwater · drawdown % do pico</div>
+        <div class="an-chart" id="an-uw"></div>
+      </div>
+      <div class="an-row2">
+        <div class="an-block">
+          <div class="an-lbl">Retorno mensal</div>
+          <div id="an-monthly"></div>
+        </div>
+        <div class="an-block">
+          <div class="an-lbl">
+            Monte Carlo · bootstrap 500
+            <button id="an-mc-run" type="button" disabled>rodar</button>
+          </div>
+          <div class="an-chart" id="an-mc"><div class="an-empty">gere o teste de robustez a partir das trades</div></div>
+        </div>
+      </div>
+      <div class="an-block">
+        <div class="an-lbl">Trades <span class="an-note" id="an-trcount"></span></div>
+        <div class="an-trades" id="an-trades"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="analysis.js"></script>
+  <script>
+    const DATA = (window.MISSION_DATA && window.MISSION_DATA.strategies)
+      ? window.MISSION_DATA
+      : { strategies: [], stats: {}, updated: "—" };
+
+    const state = { verdict: "" };
+
+    function $(id) { return document.getElementById(id); }
+
+    function fmtNum(v, digits = 2) {
+      if (v === null || v === undefined || v === "" || Number.isNaN(Number(v))) return "—";
+      const n = Number(v);
+      if (!Number.isFinite(n)) return "—";
+      return digits === 0 ? String(Math.round(n)) : n.toFixed(digits);
+    }
+
+    function fmtPct(v) {
+      if (v === null || v === undefined) return "—";
+      const n = Number(v);
+      if (!Number.isFinite(n)) return "—";
+      const s = n.toFixed(2);
+      return (n > 0 ? "+" : "") + s + "%";
+    }
+
+    function num(v, d = null) {
+      if (v === null || v === undefined || v === "") return d;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : d;
+    }
+
+    function winsLosses(s) {
+      if (s.wins != null && s.losses != null) return { w: s.wins, l: s.losses };
+      const t = num(s.trades, 0);
+      const wr = num(s.win_rate_pct, null);
+      if (t > 0 && wr != null) {
+        const w = Math.round(t * wr / 100);
+        return { w, l: t - w };
+      }
+      return { w: null, l: null };
+    }
+
+    function sparkline(points) {
+      if (!Array.isArray(points) || points.length < 2 || !points[0] || typeof points[0] !== "object") {
+        return '<svg viewBox="0 0 100 40" preserveAspectRatio="none"><text x="50" y="22" text-anchor="middle" fill="#3a4a5a" font-size="8">sem curva</text></svg>';
+      }
+      const vals = points.map(p => Number(p.e)).filter(n => Number.isFinite(n));
+      if (vals.length < 2) return sparkline(null);
+      let min = Math.min(...vals);
+      let max = Math.max(...vals);
+      if (max === min) { max = min + 1; }
+      const w = 100, h = 40, pad = 2;
+      const coords = vals.map((v, i) => {
+        const x = pad + (i * (w - 2 * pad)) / (vals.length - 1);
+        const y = h - pad - ((v - min) / (max - min)) * (h - 2 * pad);
+        return [x, y];
+      });
+      const path = coords.map(([x, y], i) => (i === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2)).join(" ");
+      const area = path + ` L${coords[coords.length - 1][0].toFixed(2)} ${h} L${coords[0][0].toFixed(2)} ${h} Z`;
+      const rising = vals[vals.length - 1] >= vals[0];
+      const stroke = rising ? "#2ee59d" : "#ff5c7a";
+      const fill = rising ? "rgba(46,229,157,.15)" : "rgba(255,92,122,.12)";
+      return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <path d="${area}" fill="${fill}"/>
+        <path d="${path}" fill="none" stroke="${stroke}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+      </svg>`;
+    }
+
+    function statusClass(v) {
+      return (v || "Watchlist").replace(/\s+/g, "-");
+    }
+
+    function metric(k, v, cls = "") {
+      return `<div class="metric"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+    }
+
+    function card(s) {
+      const net = num(s.net_profit_pct, null);
+      const pnlCls = net != null && net < 0 ? "pnl neg" : "pnl";
+      const { w, l } = winsLosses(s);
+      const wr = num(s.win_rate_pct, null);
+      const wrPct = wr != null ? Math.max(0, Math.min(100, wr)) : 0;
+      const wl = (w != null && l != null && (w + l) > 0)
+        ? `<div class="wl-bar" title="wins ${w} / losses ${l}">
+             <div class="w" style="width:${(w / (w + l)) * 100}%"></div>
+             <div class="l" style="width:${(l / (w + l)) * 100}%"></div>
+           </div>
+           <div class="wl-labels"><span class="w">WIN ${fmtNum(wr, 1)}% · ${w}W</span><span class="l">LOSS ${fmtNum(100 - (wr || 0), 1)}% · ${l}L</span></div>`
+        : `<div class="wl-bar"><div class="w" style="width:${wrPct}%"></div><div class="l" style="width:${100 - wrPct}%"></div></div>
+           <div class="wl-labels"><span class="w">WIN ${wr == null ? "—" : fmtNum(wr, 1) + "%"}</span><span class="l">LOSS ${wr == null ? "—" : fmtNum(100 - wr, 1) + "%"}</span></div>`;
+
+      const pf = num(s.profit_factor, null);
+      const dd = num(s.max_drawdown_pct, null);
+      const m1 = [
+        metric("PF", fmtNum(pf), pf != null && pf >= 1.3 ? "good" : (pf != null && pf < 1 ? "bad" : "")),
+        metric("MDD", dd == null ? "—" : fmtNum(dd, 1) + "%", dd != null && dd <= 30 ? "good" : (dd != null && dd > 40 ? "bad" : "")),
+        metric("WIN", wr == null ? "—" : fmtNum(wr, 1) + "%", wr != null && wr >= 50 ? "good" : ""),
+        metric("TRADES", fmtNum(s.trades, 0)),
+      ].join("");
+      const m2 = [
+        metric("W/L", w == null ? "—" : `${w}/${l}`),
+        metric("SHARPE", fmtNum(s.sharpe)),
+        metric("AVG", s.avg_trade == null ? "—" : fmtNum(s.avg_trade, 3) + "%"),
+        metric("EXP%", s.expectancy_pct == null ? "—" : fmtNum(s.expectancy_pct, 2)),
+        metric("L/S", (s.long_trades != null || s.short_trades != null)
+          ? `${fmtNum(s.long_trades, 0)}/${fmtNum(s.short_trades, 0)}`
+          : "—"),
+      ].join("");
+
+      const pass = s.is_rollup && s.pairs_pass != null
+        ? metric("PASS", `${s.pairs_pass}/${s.pairs_total ?? "?"}`, (s.pairs_pass || 0) >= 5 ? "good" : "")
+        : "";
+
+      const view = s.view_url ? `<a href="${s.view_url}" target="_blank" rel="noopener">ver backtest</a>` : "";
+      const pinePath = s.pine_key
+        ? `data/pine/${/^(b4|b3|hw|nt|disc)-/.test(s.pine_key) ? "" : ""}${s.pine_key}.pine`
+        : "";
+      const pine = s.pine_key ? `<span title="${pinePath}">pine: ${escapeHtml(s.pine_key)}</span>` : "";
+      const note = s.notes ? `<div class="sub" style="margin-top:0">${escapeHtml(s.notes)}</div>` : "";
+      const extra = s.extra && Object.keys(s.extra).length
+        ? `<div class="sub">extra: ${escapeHtml(Object.entries(s.extra).map(([k, v]) => k + "=" + v).join(" · "))}</div>`
+        : "";
+
+      const isRollup = !!s.is_rollup;
+      const hasAn = !!(window.ANALYSIS_DATA && window.ANALYSIS_DATA.rows && (window.ANALYSIS_DATA.rows[s.id] || (s.curve && s.curve.length > 1 && s.curve[0].t > 1e12)));
+      return `<article class="card ${s.status || ""} ${isRollup ? "rollup" : ""}" data-name="${escapeAttr(s.name)}">
+        <div class="row">
+          <div>
+            <div class="title">${escapeHtml(s.name)}</div>
+            <div class="sub">${escapeHtml(s.symbol || "?")} · ${escapeHtml(String(s.timeframe || ""))} · ${escapeHtml(s.family || "")} · ${escapeHtml(s.agent || "")}${s.source ? " · " + escapeHtml(s.source) : ""}</div>
+          </div>
+          <span class="badge ${statusClass(s.verdict)}">${escapeHtml(s.verdict || "—")}</span>
+        </div>
+        <div class="${pnlCls}">${fmtPct(s.net_profit_pct)}</div>
+        ${wl}
+        ${isRollup || (s.curve && s.curve.length > 1)
+          ? `<div class="chart">${sparkline(s.curve)}</div>`
+          : ""}
+        <div class="metrics ${isRollup ? "" : "wide"}">${pass}${m1}${isRollup ? "" : m2}</div>
+        ${note}${extra}
+        <div class="foot">
+          <span>${escapeHtml(s.last_backtest || "—")}</span>
+          <span style="display:flex;gap:8px;align-items:center">
+            ${hasAn ? `<button class="copy-btn an-btn" data-an="${escapeAttr(s.id || "")}" type="button">analisar</button>` : ""}
+            ${view || pine || ""}
+            ${s.pine_key ? `<button class="copy-btn" data-pine="${escapeAttr(s.pine_key)}" type="button">copy pine</button>` : ""}
+          </span>
+        </div>
+      </article>`;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    function fillSelect(id, values) {
+      const el = $(id);
+      if (!el) return;
+      const keep = el.value;
+      const first = el.options[0] ? el.options[0].outerHTML : "";
+      el.innerHTML = first + values.map(v => `<option value="${escapeAttr(v)}">${escapeHtml(v)}</option>`).join("");
+      if ([...el.options].some(o => o.value === keep)) el.value = keep;
+    }
+
+    function filtered() {
+      let rows = (DATA.strategies || []).slice();
+      if (state.verdict) rows = rows.filter(r => r.verdict === state.verdict);
+      const fam = $("f-family").value;
+      const agent = $("f-agent").value;
+      const sym = $("f-symbol").value;
+      const tf = $("f-tf").value;
+      const src = $("f-source") ? $("f-source").value : "";
+      const q = ($("f-q").value || "").toLowerCase();
+      const minWR = num($("f-wr").value, null);
+      const maxDD = num($("f-dd").value, null);
+      const minPF = num($("f-pf").value, null);
+      const minN = num($("f-n").value, null);
+
+      if (fam) rows = rows.filter(r => (r.family || "") === fam);
+      if (agent) rows = rows.filter(r => (r.agent || "") === agent);
+      if (sym) rows = rows.filter(r => (r.symbol || "") === sym);
+      if (tf) rows = rows.filter(r => String(r.timeframe || "") === tf);
+      if (src) rows = rows.filter(r => (r.source || "") === src);
+      if (q) rows = rows.filter(r =>
+        (r.name || "").toLowerCase().includes(q) ||
+        (r.family || "").toLowerCase().includes(q) ||
+        (r.symbol || "").toLowerCase().includes(q)
+      );
+      if (minWR != null) rows = rows.filter(r => num(r.win_rate_pct, -1) >= minWR);
+      if (maxDD != null) rows = rows.filter(r => num(r.max_drawdown_pct, 1e9) <= maxDD);
+      if (minPF != null) rows = rows.filter(r => num(r.profit_factor, -1) >= minPF);
+      if (minN != null) rows = rows.filter(r => num(r.trades, -1) >= minN);
+
+      const sort = $("f-sort").value;
+      rows.sort((a, b) => {
+        if (sort === "pf") return num(b.profit_factor, -1) - num(a.profit_factor, -1);
+        if (sort === "wr") return num(b.win_rate_pct, -1) - num(a.win_rate_pct, -1);
+        if (sort === "net") return num(b.net_profit_pct, -1e9) - num(a.net_profit_pct, -1e9);
+        if (sort === "dd") return num(a.max_drawdown_pct, 1e9) - num(b.max_drawdown_pct, 1e9);
+        if (sort === "trades") return num(b.trades, -1) - num(a.trades, -1);
+        if (sort === "pass") return num(b.pairs_pass, -1) - num(a.pairs_pass, -1);
+        return String(b.last_backtest || "").localeCompare(String(a.last_backtest || ""));
+      });
+      return rows;
+    }
+
+    function renderFamTable() {
+      const fams = (DATA.strategies || []).filter(r => r.is_rollup);
+      fams.sort((a, b) => {
+        const pa = num(a.pairs_pass, -1), pb = num(b.pairs_pass, -1);
+        if (pb !== pa) return pb - pa;
+        return num(b.profit_factor, -1) - num(a.profit_factor, -1);
+      });
+      $("fam-count").textContent = fams.length + " families";
+      const body = $("fam-body");
+      if (!fams.length) {
+        body.innerHTML = `<tr><td colspan="9" style="color:var(--muted);text-align:center">Sem rollups</td></tr>`;
+        return;
+      }
+      body.innerHTML = fams.map(f => {
+        const net = num(f.net_profit_pct, 0);
+        const pf = num(f.profit_factor, null);
+        const wr = num(f.win_rate_pct, null);
+        const { w, l } = winsLosses(f);
+        return `<tr>
+          <td>${escapeHtml(f.family)}</td>
+          <td class="num">${fmtNum(f.pairs_pass, 0)}/${fmtNum(f.pairs_total, 0)}</td>
+          <td class="num ${pf != null && pf >= 1.3 ? "pos" : pf != null && pf < 1 ? "negc" : ""}">${fmtNum(pf)}</td>
+          <td class="num">${wr == null ? "—" : fmtNum(wr, 1) + "%"}</td>
+          <td class="num ${net > 0 ? "pos" : net < 0 ? "negc" : ""}">${fmtPct(net)}</td>
+          <td class="num">${f.max_drawdown_pct == null ? "—" : fmtNum(f.max_drawdown_pct, 1) + "%"}</td>
+          <td class="num">${fmtNum(f.trades, 0)}</td>
+          <td class="num">${w == null ? "—" : w + "W / " + l + "L"}</td>
+          <td><span class="badge ${statusClass(f.verdict)}">${escapeHtml(f.verdict)}</span></td>
+        </tr>`;
+      }).join("");
+    }
+
+    function render() {
+      const rows = filtered();
+      const grid = $("grid");
+      if (!rows.length) {
+        grid.innerHTML = '<div class="empty">Nenhuma estratégia com este filtro.<br>Rode <code>python scripts/run_batch4_bull.py</code> / <code>rebuild_dashboard.py</code>.</div>';
+      } else {
+        grid.innerHTML = rows.map(card).join("");
+      }
+      $("shown-count").textContent = rows.length + " / " + (DATA.strategies || []).length;
+      const stats = DATA.stats || {};
+      $("s-total").textContent = DATA.strategies.length;
+      $("s-detail").textContent = stats.detail_rows ?? rowsCount(null, true);
+      $("s-cand").textContent = stats.candidates ?? rowsCount("Candidate");
+      $("s-inc").textContent = stats.incubate ?? rowsCount("Incubate");
+      $("s-watch").textContent = stats.watchlist ?? rowsCount("Watchlist");
+      $("s-rej").textContent = stats.rejected ?? rowsCount("Reject");
+      $("s-upd").textContent = DATA.updated || "—";
+      const curves = (DATA.strategies || []).filter(s => s.curve && s.curve.length > 1).length;
+      $("curves-count").textContent = "CURVES · " + curves;
+      $("s-curves").textContent = curves;
+      renderFamTable();
+    }
+
+    function rowsCount(v, detailOnly) {
+      return (DATA.strategies || []).filter(s => {
+        if (detailOnly && s.is_rollup) return false;
+        if (v && s.verdict !== v) return false;
+        return true;
+      }).length;
+    }
+
+    async function copyPine(key) {
+      const candidates = [
+        "data/pine/" + key + ".pine",
+        "../data/pine/" + key + ".pine",
+        key.endsWith(".pine") ? "data/pine/" + key : null,
+      ].filter(Boolean);
+      for (const path of candidates) {
+        try {
+          const res = await fetch(path);
+          if (res.ok) {
+            const text = await res.text();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(text);
+              alert("Copiado: " + path);
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+      alert("Copie manualmente:\ndata/pine/" + key + ".pine");
+    }
+
+    // ===== ANALYSIS OVERLAY =====
+    function AN() { return window.ANALYSIS_DATA || { rows: {} }; }
+
+    function anData(s) {
+      const det = (AN().rows || {})[s.id];
+      if (det) return { points: det.eq.map(p => ({ t: p[0], e: p[1] })), zones: det.zones || [], monthly: det.monthly || {}, sharpe: det.sharpe, trades: det.trades || [], engine: det.engine };
+      const c = s.curve || [];
+      if (c.length > 1 && c[0].t > 1e12) {
+        const points = c.map(p => ({ t: p.t, e: p.e }));
+        return { points, zones: anZones(points), monthly: anMonthly(points), sharpe: null, trades: [], engine: s.source || "" };
+      }
+      return null;
+    }
+
+    function anZones(points, topN = 5) {
+      const zones = [];
+      let peak = points[0].e, peakT = points[0].t, ddStart = peakT, inDD = false, trough = peak, troughT = peakT;
+      for (const p of points) {
+        if (p.e >= peak) {
+          if (inDD) {
+            const d = (peak - trough) / peak * 100;
+            if (d > 0.01) zones.push({ s: ddStart, e: p.t, t: troughT, d: +d.toFixed(2) });
+            inDD = false;
+          }
+          peak = p.e; peakT = p.t; trough = peak; troughT = peakT;
+        } else {
+          if (!inDD) { inDD = true; ddStart = peakT; }
+          if (p.e < trough) { trough = p.e; troughT = p.t; }
+        }
+      }
+      if (inDD) {
+        const d = (peak - trough) / peak * 100;
+        if (d > 0.01) zones.push({ s: ddStart, e: points[points.length - 1].t, t: troughT, d: +d.toFixed(2) });
+      }
+      zones.sort((a, b) => b.d - a.d);
+      const top = zones.slice(0, topN).sort((a, b) => a.s - b.s);
+      top.forEach((z, i) => z.i = i + 1);
+      return top;
+    }
+
+    function anMonthly(points) {
+      const last = {};
+      for (const p of points) last[new Date(p.t).toISOString().slice(0, 7)] = p.e;
+      const keys = Object.keys(last).sort();
+      const out = {};
+      let prev = 10000;
+      for (const k of keys) { out[k] = prev > 0 ? +(((last[k] / prev) - 1) * 100).toFixed(3) : 0; prev = last[k]; }
+      return out;
+    }
+
+    function anDate(t) {
+      return new Date(t).toISOString().slice(0, 10);
+    }
+
+    function anSVG({ points, zones }) {
+      const W = 1000, H = 330, ML = 64, MR = 16, MT = 16, MB = 34;
+      const iw = W - ML - MR, ih = H - MT - MB;
+      const t0 = points[0].t, t1 = points[points.length - 1].t;
+      let lo = Infinity, hi = -Infinity;
+      for (const p of points) { if (p.e < lo) lo = p.e; if (p.e > hi) hi = p.e; }
+      const pad = (hi - lo) * 0.06 || 100; lo -= pad; hi += pad;
+      const X = t => ML + (t - t0) / (t1 - t0 || 1) * iw;
+      const Y = e => MT + (1 - (e - lo) / (hi - lo || 1)) * ih;
+      let g = "";
+      for (let i = 0; i <= 4; i++) {
+        const v = lo + (hi - lo) * i / 4, y = Y(v);
+        g += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W - MR}" y2="${y.toFixed(1)}" stroke="#15202b" stroke-width="1"/>`;
+        g += `<text x="${ML - 8}" y="${(y + 4).toFixed(1)}" fill="#6b7c93" font-size="11" text-anchor="end" font-family="monospace">${Math.round(v).toLocaleString("en-US")}</text>`;
+      }
+      for (let i = 0; i <= 5; i++) {
+        const t = t0 + (t1 - t0) * i / 5, x = X(t);
+        g += `<text x="${x.toFixed(1)}" y="${H - 12}" fill="#6b7c93" font-size="11" text-anchor="${i === 0 ? "start" : i === 5 ? "end" : "middle"}" font-family="monospace">${anDate(t)}</text>`;
+      }
+      let zz = "";
+      (zones || []).forEach(z => {
+        const x1 = X(z.s), x2 = X(z.e), xt = X(z.t);
+        zz += `<rect x="${x1.toFixed(1)}" y="${MT}" width="${Math.max(2, x2 - x1).toFixed(1)}" height="${ih}" fill="rgba(255,92,122,0.10)" stroke="rgba(255,92,122,0.28)" stroke-width="1"/>`;
+        zz += `<text x="${Math.min(W - MR - 4, Math.max(ML + 4, xt)).toFixed(1)}" y="${(MT + ih - 8).toFixed(1)}" fill="#ff5c7a" font-size="12" font-weight="700" text-anchor="middle" font-family="monospace">#${z.i} −${z.d}%</text>`;
+      });
+      const path = points.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.e).toFixed(1)).join("");
+      const area = path + `L${X(t1).toFixed(1)} ${Y(lo).toFixed(1)}L${X(t0).toFixed(1)} ${Y(lo).toFixed(1)}Z`;
+      return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="anEq" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#2ee59d" stop-opacity=".28"/><stop offset="1" stop-color="#2ee59d" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${g}${zz}
+        <path d="${area}" fill="url(#anEq)"/>
+        <path d="${path}" fill="none" stroke="#2ee59d" stroke-width="2"/>
+      </svg>`;
+    }
+
+    function anUW(points) {
+      const W = 1000, H = 150, ML = 64, MR = 16, MT = 12, MB = 30;
+      const iw = W - ML - MR, ih = H - MT - MB;
+      const t0 = points[0].t, t1 = points[points.length - 1].t;
+      let peak = -Infinity;
+      const dd = points.map(p => { peak = Math.max(peak, p.e); return { t: p.t, v: p.e > 0 ? (p.e - peak) / peak * 100 : 0 }; });
+      let lo = 0; for (const d of dd) if (d.v < lo) lo = d.v;
+      lo = Math.min(lo, -1);
+      const X = t => ML + (t - t0) / (t1 - t0 || 1) * iw;
+      const Y = v => MT + (v / lo) * ih;
+      let g = "";
+      for (let i = 0; i <= 2; i++) {
+        const v = lo * i / 2, y = Y(v);
+        g += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W - MR}" y2="${y.toFixed(1)}" stroke="${i === 0 ? "#233140" : "#15202b"}" stroke-width="1"/>`;
+        g += `<text x="${ML - 8}" y="${(y + 4).toFixed(1)}" fill="#6b7c93" font-size="11" text-anchor="end" font-family="monospace">${v.toFixed(1)}%</text>`;
+      }
+      const path = dd.map((d, i) => (i ? "L" : "M") + X(d.t).toFixed(1) + " " + Y(d.v).toFixed(1)).join("");
+      const area = path + `L${X(t1).toFixed(1)} ${Y(0).toFixed(1)}L${X(t0).toFixed(1)} ${Y(0).toFixed(1)}Z`;
+      for (let i = 0; i <= 5; i++) {
+        const t = t0 + (t1 - t0) * i / 5, x = X(t);
+        g += `<text x="${x.toFixed(1)}" y="${H - 8}" fill="#6b7c93" font-size="11" text-anchor="${i === 0 ? "start" : i === 5 ? "end" : "middle"}" font-family="monospace">${anDate(t)}</text>`;
+      }
+      return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        ${g}<path d="${area}" fill="rgba(255,92,122,.22)"/><path d="${path}" fill="none" stroke="#ff5c7a" stroke-width="1.6"/>
+      </svg>`;
+    }
+
+    function anMonthlyTable(monthly) {
+      const keys = Object.keys(monthly || {}).sort();
+      if (!keys.length) return '<div class="an-empty">sem dados mensais</div>';
+      const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      const years = [...new Set(keys.map(k => k.slice(0, 4)))];
+      let h = '<table class="an-mo"><tr><th>Ano</th>' + months.map(m => `<th>${m}</th>`).join("") + "</tr>";
+      for (const y of years) {
+        h += `<tr><td class="year">${y}</td>`;
+        for (let m = 1; m <= 12; m++) {
+          const k = y + "-" + String(m).padStart(2, "0");
+          if (!(k in monthly)) { h += '<td class="empty">·</td>'; continue; }
+          const v = monthly[k];
+          const a = Math.min(0.75, Math.abs(v) / 18 + 0.06);
+          const bg = v >= 0 ? `rgba(46,229,157,${a.toFixed(2)})` : `rgba(255,92,122,${a.toFixed(2)})`;
+          h += `<td style="background:${bg}">${v > 0 ? "+" : ""}${v.toFixed(1)}</td>`;
+        }
+        h += "</tr>";
+      }
+      return h + "</table>";
+    }
+
+    function anStatsHTML(s, d) {
+      const net = num(s.net_profit_pct, null), pf = num(s.profit_factor, null), dd = num(s.max_drawdown_pct, null);
+      const wr = num(s.win_rate_pct, null), sh = d.sharpe != null ? d.sharpe : num(s.sharpe, null);
+      const stat = (k, v, cls = "") => `<div class="an-stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+      const g = (cond, ok = "good", bad = "bad") => cond === null ? "" : (cond ? ok : bad);
+      return [
+        stat("NET", net == null ? "—" : (net > 0 ? "+" : "") + fmtNum(net, 1) + "%", net == null ? "" : g(net > 0)),
+        stat("PF", pf == null ? "—" : fmtNum(pf), pf == null ? "" : g(pf >= 1.3)),
+        stat("MDD", dd == null ? "—" : fmtNum(dd, 1) + "%", dd == null ? "" : (dd <= 30 ? "good" : dd > 40 ? "bad" : "")),
+        stat("WIN", wr == null ? "—" : fmtNum(wr, 1) + "%"),
+        stat("TRADES", fmtNum(s.trades, 0)),
+        stat("SHARPE", sh == null ? "—" : fmtNum(sh)),
+        stat("AVG", s.avg_trade == null ? "—" : fmtNum(s.avg_trade, 3) + "%"),
+        stat("EXP%", s.expectancy_pct == null ? "—" : fmtNum(s.expectancy_pct, 2)),
+        stat("L/S", (s.long_trades != null || s.short_trades != null) ? `${fmtNum(s.long_trades, 0)}/${fmtNum(s.short_trades, 0)}` : "—"),
+      ].join("");
+    }
+
+    function anTradesTable(trades) {
+      if (!trades.length) return '<div class="an-empty">sem trades detalhadas neste modo (curva de equity disponível)</div>';
+      const rows = trades.map((t, i) => {
+        const [et, xt, side, ep, xp, pnl, reason] = t;
+        const cls = pnl >= 0 ? "good" : "bad";
+        const rc = reason === "tp" ? "TP" : reason === "sl" ? "SL" : reason === "eod" ? "EOD" : String(reason).toUpperCase();
+        return `<tr><td>${i + 1}</td><td>${side ? "LONG" : "SHORT"}</td><td>${anDate(et)}</td><td>${xt ? anDate(xt) : "—"}</td>
+          <td>${ep}</td><td>${xp == null ? "—" : xp}</td><td class="${cls}">${pnl > 0 ? "+" : ""}${pnl.toFixed(3)}%</td><td>${rc}</td></tr>`;
+      }).join("");
+      return `<table class="an-tr"><thead><tr><th>#</th><th>Side</th><th>Entrada</th><th>Saída</th><th>Preço ent</th><th>Preço sai</th><th>PnL</th><th>Motivo</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+
+    function anPercentile(sorted, q) {
+      const i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+      return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+    }
+
+    function runMC(trades) {
+      const N = 500, start = 10000;
+      const pnls = trades.map(t => t[5]);
+      const n = pnls.length;
+      if (n < 5) { $("an-mc").innerHTML = '<div class="an-empty">trades insuficientes (&lt;5)</div>'; return; }
+      const sims = [];
+      const finals = [], dds = [];
+      for (let s = 0; s < N; s++) {
+        let e = start, peak = start, maxDD = 0;
+        const path = [start];
+        for (let i = 0; i < n; i++) {
+          e *= 1 + pnls[(Math.random() * n) | 0] / 100;
+          peak = Math.max(peak, e);
+          maxDD = Math.max(maxDD, (peak - e) / peak * 100);
+          path.push(e);
+        }
+        sims.push(path);
+        finals.push(e);
+        dds.push(maxDD);
+      }
+      const orig = [start];
+      let e = start;
+      for (const p of pnls) { e *= 1 + p / 100; orig.push(e); }
+      const W = 1000, H = 250, ML = 64, MR = 16, MT = 14, MB = 30;
+      const iw = W - ML - MR, ih = H - MT - MB;
+      let lo = Math.min(start, ...finals) * 0.97, hi = Math.max(start, ...finals) * 1.03;
+      const X = i => ML + i / n * iw;
+      const Y = v => MT + (1 - (v - lo) / (hi - lo || 1)) * ih;
+      const cols = sims[0].map((_, i) => sims.map(p => p[i]).sort((a, b) => a - b));
+      const band = (qa, qb) => {
+        let up = "", dn = "";
+        for (let i = 0; i <= n; i++) { up += (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(anPercentile(cols[i], qa)).toFixed(1); }
+        for (let i = n; i >= 0; i--) { dn += "L" + X(i).toFixed(1) + " " + Y(anPercentile(cols[i], qb)).toFixed(1); }
+        return up + dn + "Z";
+      };
+      const med = cols[n].slice().sort((a, b) => a - b);
+      const medPath = Array.from({ length: n + 1 }, (_, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(anPercentile(cols[i], 0.5)).toFixed(1)).join("");
+      const origPath = orig.map((v, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1)).join("");
+      const fSorted = finals.slice().sort((a, b) => a - b);
+      const dSorted = dds.slice().sort((a, b) => a - b);
+      const pctNeg = finals.filter(f => f < start).length / N * 100;
+      const pctDD30 = dds.filter(d => d > 30).length / N * 100;
+      const medFinal = anPercentile(med, 0.5);
+      let g = "";
+      for (let i = 0; i <= 4; i++) {
+        const v = lo + (hi - lo) * i / 4, y = Y(v);
+        g += `<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W - MR}" y2="${y.toFixed(1)}" stroke="#15202b"/>
+          <text x="${ML - 8}" y="${(y + 4).toFixed(1)}" fill="#6b7c93" font-size="11" text-anchor="end" font-family="monospace">${Math.round(v).toLocaleString("en-US")}</text>`;
+      }
+      g += `<text x="${W - MR}" y="${H - 8}" fill="#6b7c93" font-size="11" text-anchor="end" font-family="monospace">${n} trades · ${N} sims</text>`;
+      const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${g}
+        <path d="${band(0.1, 0.9)}" fill="rgba(76,194,255,.14)"/>
+        <path d="${band(0.25, 0.75)}" fill="rgba(76,194,255,.20)"/>
+        <path d="${medPath}" fill="none" stroke="#4cc2ff" stroke-width="2"/>
+        <path d="${origPath}" fill="none" stroke="#eef2f6" stroke-width="1.6" stroke-dasharray="5 4"/>
+      </svg>`;
+      const f = v => ((v / start - 1) * 100);
+      const cell = (k, v, cls = "") => `<div class="an-stat"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`;
+      $("an-mc").innerHTML = svg + `<div class="an-mc-grid">
+        ${cell("Mediana", (f(medFinal) > 0 ? "+" : "") + f(medFinal).toFixed(1) + "%", f(medFinal) > 0 ? "good" : "bad")}
+        ${cell("P5", f(anPercentile(fSorted, 0.05)).toFixed(1) + "%", f(anPercentile(fSorted, 0.05)) > 0 ? "good" : "bad")}
+        ${cell("P95", "+" + f(anPercentile(fSorted, 0.95)).toFixed(1) + "%", "good")}
+        ${cell("Neg%", pctNeg.toFixed(1) + "%", pctNeg > 25 ? "bad" : "")}
+        ${cell("DD>30%", pctDD30.toFixed(1) + "%", pctDD30 > 20 ? "bad" : "")}
+        ${cell("MDD med", anPercentile(dSorted, 0.5).toFixed(1) + "%", anPercentile(dSorted, 0.5) > 30 ? "bad" : "")}
+      </div><div class="an-note" style="margin-top:6px">curva branca tracejada = realizado · faixas azuis = p10-p90 / p25-p75 · mediana azul</div>`;
+    }
+
+    let AN_CURRENT = null;
+
+    function openAn(id) {
+      const s = (DATA.strategies || []).find(x => x.id === id);
+      if (!s) return;
+      const d = anData(s);
+      if (!d) { alert("Sem curva de equity para esta linha."); return; }
+      AN_CURRENT = d;
+      $("an-title").textContent = s.name;
+      $("an-sub").textContent = `${s.symbol || "?"} · ${s.timeframe || ""} · ${s.family || ""} · ${s.verdict || "—"} · ${d.engine || ""}`;
+      $("an-badge").textContent = s.verdict || "—";
+      $("an-badge").className = "badge " + statusClass(s.verdict);
+      $("an-stats").innerHTML = anStatsHTML(s, d);
+      $("an-equity").innerHTML = anSVG(d);
+      $("an-uw").innerHTML = anUW(d.points);
+      $("an-monthly").innerHTML = anMonthlyTable(d.monthly);
+      $("an-trcount").textContent = d.trades.length ? d.trades.length + " trades" : "—";
+      $("an-trades").innerHTML = anTradesTable(d.trades);
+      const mc = $("an-mc-run");
+      mc.disabled = d.trades.length < 5;
+      mc.textContent = d.trades.length >= 5 ? "rodar 500" : "indisponível";
+      $("an-mc").innerHTML = '<div class="an-empty">' + (d.trades.length >= 5 ? "gere o teste de robustez a partir das trades" : "sem trades detalhadas para Monte Carlo") + "</div>";
+      $("an-overlay").hidden = false;
+      document.body.style.overflow = "hidden";
+      $("an-overlay").scrollTop = 0;
+    }
+
+    function closeAn() {
+      $("an-overlay").hidden = true;
+      document.body.style.overflow = "";
+      AN_CURRENT = null;
+    }
+
+    function boot() {
+      const all = DATA.strategies || [];
+      fillSelect("f-family", [...new Set(all.map(r => r.family).filter(Boolean))].sort());
+      fillSelect("f-agent", [...new Set(all.map(r => r.agent).filter(Boolean))].sort());
+      fillSelect("f-symbol", [...new Set(all.map(r => r.symbol).filter(Boolean))].sort());
+      fillSelect("f-tf", [...new Set(all.map(r => String(r.timeframe || "")).filter(Boolean))].sort());
+      fillSelect("f-source", [...new Set(all.map(r => r.source).filter(Boolean))].sort());
+
+      $("verdict-seg").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-v]");
+        if (!btn) return;
+        [...$("verdict-seg").querySelectorAll("button")].forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        state.verdict = btn.getAttribute("data-v") || "";
+        render();
+      });
+      ["f-family", "f-agent", "f-symbol", "f-tf", "f-sort", "f-source"].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener("change", render);
+      });
+      ["f-q", "f-wr", "f-dd", "f-pf", "f-n"].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener("input", render);
+      });
+      $("f-reset").addEventListener("click", () => {
+        state.verdict = "";
+        [...$("verdict-seg").querySelectorAll("button")].forEach((b, i) => b.classList.toggle("active", i === 0));
+        ["f-family", "f-agent", "f-symbol", "f-tf", "f-source", "f-sort"].forEach(id => { const el = $(id); if (el) el.selectedIndex = 0; });
+        ["f-q", "f-wr", "f-dd", "f-pf", "f-n"].forEach(id => { const el = $(id); if (el) el.value = ""; });
+        render();
+      });
+      $("f-copy").addEventListener("click", async () => {
+        const rows = filtered().filter(r => r.pine_key && !r.is_rollup).slice(0, 3);
+        if (!rows.length) {
+          alert("Nenhum Pine local no filtro atual.");
+          return;
+        }
+        const parts = [];
+        for (const r of rows) {
+          for (const path of ["data/pine/" + r.pine_key + ".pine", "../data/pine/" + r.pine_key + ".pine"]) {
+            try {
+              const res = await fetch(path);
+              if (res.ok) { parts.push(await res.text()); break; }
+            } catch (_) {}
+          }
+        }
+        if (!parts.length) {
+          alert("Copie manualmente:\n" + rows.map(r => "data/pine/" + r.pine_key + ".pine").join("\n"));
+          return;
+        }
+        await navigator.clipboard.writeText(parts.join("\n\n// ----\n\n"));
+        alert("Copiado " + parts.length + " Pine(s)");
+      });
+      $("grid").addEventListener("click", (e) => {
+        const anBtn = e.target.closest("button[data-an]");
+        if (anBtn) { openAn(anBtn.getAttribute("data-an")); return; }
+        const btn = e.target.closest("button[data-pine]");
+        if (btn) copyPine(btn.getAttribute("data-pine"));
+      });
+      $("an-close").addEventListener("click", closeAn);
+      $("an-overlay").addEventListener("click", (e) => { if (e.target === $("an-overlay")) closeAn(); });
+      $("an-mc-run").addEventListener("click", () => { if (AN_CURRENT) runMC(AN_CURRENT.trades); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("an-overlay").hidden) closeAn(); });
+      render();
+    }
+
+    fetch("data.json?t=" + Date.now())
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (j && j.strategies) {
+          window.MISSION_DATA = j;
+          Object.assign(DATA, j);
+        }
+        boot();
+      })
+      .catch(() => boot());
+  </script>
+</body>
+</html>

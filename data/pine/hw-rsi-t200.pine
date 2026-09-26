@@ -1,0 +1,40 @@
+//@version=6
+strategy("RSI Trend Filter 14/40/60/EMA200",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+rsiLen = input.int(14)
+buyLvl = input.float(40)
+sellLvl = input.float(60)
+trendLen = input.int(200)
+atrLen = input.int(14)
+slM = input.float(2.2)
+tpM = input.float(1.4)
+
+r = ta.rsi(close, rsiLen)
+t = ta.ema(close, trendLen)
+a = ta.atr(atrLen)
+
+// enter when RSI recovers from extreme in trend direction (not at extreme itself)
+longCond = close > t and ta.crossover(r, buyLvl)
+shortCond = close < t and ta.crossunder(r, sellLvl)
+
+if longCond
+    strategy.entry("L", strategy.long)
+if shortCond
+    strategy.entry("S", strategy.short)
+
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)
+if strategy.position_size < 0
+    avg = strategy.position_avg_price
+    strategy.exit("Sx", from_entry="S", stop=avg + slM * a, limit=avg - tpM * a)

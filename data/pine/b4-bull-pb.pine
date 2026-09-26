@@ -1,0 +1,27 @@
+//@version=6
+strategy("BullPB E200/F20/R45",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100)
+
+t = ta.ema(close, 200)
+f = ta.ema(close, 20)
+r = ta.rsi(close, 14)
+up = t > t[20] and close > t and f > ta.ema(close, 50)
+longB = up and low <= f and close >= f and r <= 45 and close > close[1]
+if longB and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+
+a = ta.atr(14)
+slM = input.float(1.8, "SL x ATR")
+tpM = input.float(1.6, "TP x ATR")
+if strategy.position_size > 0
+    avg = strategy.position_avg_price
+    strategy.exit("Lx", from_entry="L", stop=avg - slM * a, limit=avg + tpM * a)

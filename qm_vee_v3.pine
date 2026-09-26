@@ -1,0 +1,89 @@
+//@version=6
+// QM-VEE-v3 — Volatility Expansion Entry (no vol filter, pure breakout)
+// Hypothesis: breakout with follow-through (close beyond recent extreme) -> continuation.
+// Removed vol compression filter because it was too restrictive (0 trades across 5 symbols).
+// Entry: bar[1] closes beyond recent extreme. Exit: fixed SL/TP in ATR ticks.
+// Allowed ta.* only; process_orders_on_close=true, pyramiding=1, commission 0.05%.
+
+strategy(
+  title="QM-VEE-v3 — Pure Breakout Continuation",
+  overlay=true,
+  pyramiding=1,
+  process_orders_on_close=true,
+  commission_type=strategy.commission.percent,
+  commission_value=0.05,
+  initial_capital=10000,
+  default_qty_type=strategy.percent_of_equity,
+  default_qty_value=100,
+  margin_long=100,
+  margin_short=100
+)
+
+sweepN       = input.int(20, "Extreme lookback (bars)", minval=5, group="Entry")
+expMult      = input.float(1.0, "Expansion bar range min (x ATR)", minval=0.2, step=0.1, group="Entry")
+slMult       = input.float(1.5, "SL distance (x ATR)", minval=0.5, step=0.1, group="Exit")
+tpMult       = input.float(2.0, "TP distance (x ATR)", minval=0.5, step=0.1, group="Exit")
+cooldownBars = input.int(3, "Cooldown bars after exit", minval=0, group="Exit")
+timeExitBars = input.int(20, "Time exit (max bars)", minval=1, group="Exit")
+
+atrVal    = ta.atr(14)
+
+prevHigh  = ta.highest(high[2], sweepN)
+prevLow   = ta.lowest(low[2], sweepN)
+
+breakoutHigh = high[1] > prevHigh and close[1] > prevHigh
+breakoutLow  = low[1]  < prevLow  and close[1] < prevLow
+
+rangeBar1     = high[1] - low[1]
+rangeExpanded = rangeBar1 > atrVal * expMult
+
+longSig  = breakoutHigh and rangeExpanded
+shortSig = breakoutLow  and rangeExpanded
+
+var int cd = 0
+if strategy.position_size != 0
+    cd := 0
+else if cd == 0
+    cd := 1
+else
+    cd += 1
+canTrade = cd > cooldownBars
+
+if longSig and canTrade and strategy.position_size == 0
+    strategy.entry("L", strategy.long)
+if shortSig and canTrade and strategy.position_size == 0
+    strategy.entry("S", strategy.short)
+
+var float longEntryPrice = na
+var float shortEntryPrice = na
+var float longEntryATR = na
+var float shortEntryATR = na
+
+if longSig and canTrade and strategy.position_size == 0
+    longEntryPrice := close
+    longEntryATR := atrVal
+if shortSig and canTrade and strategy.position_size == 0
+    shortEntryPrice := close
+    shortEntryATR := atrVal
+
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L",
+                 stop=longEntryPrice - longEntryATR * slMult,
+                 limit=longEntryPrice + longEntryATR * tpMult)
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S",
+                 stop=shortEntryPrice + shortEntryATR * slMult,
+                 limit=shortEntryPrice - shortEntryATR * tpMult)
+
+var int barsInTrade = 0
+if strategy.position_size != 0
+    barsInTrade += 1
+else
+    barsInTrade := 0
+if barsInTrade >= timeExitBars
+    strategy.close_all()
+
+plot(longSig, "Long Signal", color=color.green, style=plot.style_circles, linewidth=2)
+plot(shortSig, "Short Signal", color=color.red, style=plot.style_circles, linewidth=2)
+plot(prevHigh, "Prev High Ref", color=color.new(color.blue, 50), style=plot.style_linebr)
+plot(prevLow, "Prev Low Ref", color=color.new(color.orange, 50), style=plot.style_linebr)

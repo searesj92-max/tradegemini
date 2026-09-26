@@ -1,0 +1,89 @@
+//@version=6
+strategy("VED-2 Range-Efficiency Collapse Fade v1", overlay=true, pyramiding=1, process_orders_on_close=true,
+  commission_type=strategy.commission.percent, commission_value=0.05,
+  initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+  margin_long=100, margin_short=100)
+
+// === Inputs ===
+rangeLookback = input.int(30, "Range lookback bars")
+expansionPct  = input.float(0.85, "Expansion percentile (top X%)")
+cpBull        = input.float(0.70, "Committed bullish close-pos min")
+cpBear        = input.float(0.30, "Committed bearish close-pos max")
+cpMidLow      = input.float(0.35, "Failed-zone low boundary")
+cpMidHigh     = input.float(0.65, "Failed-zone high boundary")
+atrLen        = input.int(14, "ATR length")
+slMult        = input.float(1.5, "SL ATR multiplier")
+tpMult        = input.float(1.0, "TP ATR multiplier")
+emaLen        = input.int(50, "Trend EMA length")
+maxBars       = input.int(15, "Max hold bars")
+coolBars      = input.int(3, "Cooldown bars")
+
+// === Trend filter ===
+ema       = ta.ema(close, emaLen)
+emaSlope  = ema - ema[1]
+upTrend   = emaSlope > 0 and close > ema
+dnTrend   = emaSlope < 0 and close < ema
+
+// === Volatility / commitment detection ===
+range     = high - low
+var float rangeRank = 0.0
+rangeRank := rangeLookback
+for i = 1 to rangeLookback
+    if range > range[i]
+        rangeRank := rangeRank - 1.0
+rangePct = rangeRank / rangeLookback
+
+committedBull = rangePct >= expansionPct and (close - low) / range > cpBull
+committedBear = rangePct >= expansionPct and (close - low) / range < cpBear
+
+midZone = (close - low) / range > cpMidLow and (close - low) / range < cpMidHigh
+shortTrigger = committedBull[1] and midZone
+longTrigger  = committedBear[1]  and midZone
+
+shortSig = shortTrigger and not dnTrend
+longSig  = longTrigger  and not upTrend
+
+// === Cooldown + time exit via flags ===
+var int    barCount   = 0
+var int    lastEntryBar = 0
+var bool   canEnter   = true
+var bool   hasOpenPos = false
+
+posChange = strategy.position_size != strategy.position_size[1]
+if posChange
+    if strategy.position_size != 0
+        hasOpenPos    := true
+        lastEntryBar  := bar_index
+        canEnter      := false
+        barCount      := 0
+    else
+        hasOpenPos := false
+        canEnter   := bar_index - lastEntryBar > coolBars
+
+// === Entries (only when canEnter) ===
+if shortSig and canEnter
+    strategy.entry("S", strategy.short)
+if longSig and canEnter
+    strategy.entry("L", strategy.long)
+
+// === Exits via strategy.exit (ratchet ATR) ===
+slTicks = math.max(1, math.round(slMult * atr / syminfo.mintick))
+tpTicks = math.max(1, math.round(tpMult * atr / syminfo.mintick))
+
+if strategy.position_size < 0
+    strategy.exit("SX", from_entry="S", profit=tpTicks, loss=slTicks)
+if strategy.position_size > 0
+    strategy.exit("LX", from_entry="L", profit=tpTicks, loss=slTicks)
+
+// === Time exit (edge-triggered: first bar AFTER maxBars) ===
+barCount := barCount + (hasOpenPos ? 1 : 0)
+if barCount > maxBars and strategy.position_size != 0
+    strategy.close_all()
+    hasOpenPos := false
+    canEnter   := true
+    barCount   := 0
+
+// === Plots ===
+plot(ema, "EMA", color=color.blue, linewidth=1)
+plotshape(shortSig and canEnter and barCount <= maxBars, "Short", shape.shapes.triangledown, location.abovebar, color.red, size=size.small)
+plotshape(longSig  and canEnter and barCount <= maxBars, "Long",  shape.shapes.triangleup,   location.belowbar, color.green, size=size.small)

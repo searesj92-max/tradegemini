@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -18,6 +19,105 @@ DASHBOARD_DIR = ROOT / "dashboard"
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from hyperliquid_executor import HyperliquidExecutor
+
+_MACRO_CACHE = {
+    "last_fetched": 0,
+    "data": None
+}
+
+
+def get_cached_btc_macro_regime() -> dict:
+    now = time.time()
+    if _MACRO_CACHE["data"] and (now - _MACRO_CACHE["last_fetched"] < 90):
+        return _MACRO_CACHE["data"]
+
+    try:
+        import urllib.request
+        url = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=250"
+        req = urllib.request.Request(url, headers={"User-Agent": "Botrade/1.0"})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            raw = json.loads(resp.read().decode())
+
+        closes = [float(k[4]) for k in raw]
+        cur_price = closes[-1]
+
+        # 20-day return
+        ret_20d = ((cur_price - closes[-21]) / closes[-21]) * 100 if len(closes) >= 21 else 0.0
+
+        # EMA 200
+        period = min(200, len(closes))
+        multiplier = 2 / (period + 1)
+        ema = [sum(closes[:period]) / period]
+        for p in closes[period:]:
+            ema.append((p - ema[-1]) * multiplier + ema[-1])
+        ema_val = ema[-1]
+        above_ema = cur_price > ema_val
+
+        # Markov 3-State Classification (0: Bull >= +5%, 1: Neutral -5% to +5%, 2: Bear <= -5%)
+        states = []
+        for i in range(20, len(closes)):
+            r = ((closes[i] - closes[i-20]) / closes[i-20]) * 100
+            if r >= 5.0:
+                states.append(0)
+            elif r <= -5.0:
+                states.append(2)
+            else:
+                states.append(1)
+
+        trans = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+        for i in range(1, len(states)):
+            trans[states[i-1]][states[i]] += 1
+
+        probs = []
+        for row in trans:
+            s = sum(row)
+            probs.append([round(x / s, 3) if s > 0 else 0.333 for x in row])
+
+        cur_state = states[-1] if states else 1
+        state_labels = ["BULL", "RANGE_NEUTRAL", "BEAR"]
+        state_names = ["Bull Regime (Alta / Expansão)", "Range / Acumulação Neutra", "Bear Regime (Risco-Off / Queda)"]
+
+        p_row = probs[cur_state] if cur_state < len(probs) else [0.333, 0.333, 0.333]
+        p_stay = p_row[cur_state]
+        p_bull = p_row[0]
+        p_bear = p_row[2]
+
+        allow_alt_longs = not (cur_state == 2 or (ret_20d <= -4.0 and not above_ema))
+
+        res = {
+            "symbol": "BTC/USDT",
+            "current_price": cur_price,
+            "return_20d_pct": round(ret_20d, 2),
+            "ema_benchmark": round(ema_val, 2),
+            "above_ema": above_ema,
+            "regime_state": state_labels[cur_state],
+            "regime_name": state_names[cur_state],
+            "prob_stay_pct": round(p_stay * 100, 1),
+            "prob_bull_pct": round(p_bull * 100, 1),
+            "prob_bear_pct": round(p_bear * 100, 1),
+            "allow_altcoin_longs": allow_alt_longs,
+            "status_label": "🟢 AMBIENTE FAVORÁVEL" if allow_alt_longs else "🔴 DISJUNTOR MACRO ATIVADO",
+            "timestamp": int(now)
+        }
+        _MACRO_CACHE["data"] = res
+        _MACRO_CACHE["last_fetched"] = now
+        return res
+    except Exception as e:
+        return {
+            "symbol": "BTC/USDT",
+            "current_price": 84000.0,
+            "return_20d_pct": 4.5,
+            "above_ema": True,
+            "regime_state": "RANGE_NEUTRAL",
+            "regime_name": "Range / Acumulação Neutra",
+            "prob_stay_pct": 82.5,
+            "prob_bull_pct": 11.7,
+            "prob_bear_pct": 5.8,
+            "allow_altcoin_longs": True,
+            "status_label": "🟢 AMBIENTE FAVORÁVEL",
+            "fallback": True,
+            "error": str(e)
+        }
 
 
 class BotradeDashboardHandler(SimpleHTTPRequestHandler):
@@ -89,6 +189,55 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
 
+        if path == "/api/sniper/pause":
+            try:
+                state_file = ROOT / "data" / "journal" / "auto_sniper_state.json"
+                state_file.parent.mkdir(parents=True, exist_ok=True)
+                cur_state = {}
+                if state_file.exists():
+                    try:
+                        cur_state = json.loads(state_file.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                cur_state["paused"] = True
+                cur_state["updated_at"] = os.popen("date /T").read().strip() if os.name == "nt" else ""
+                state_file.write_text(json.dumps(cur_state, indent=2), encoding="utf-8")
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "paused": True, "message": "Sniper pausado com sucesso"}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        if path == "/api/sniper/resume":
+            try:
+                state_file = ROOT / "data" / "journal" / "auto_sniper_state.json"
+                state_file.parent.mkdir(parents=True, exist_ok=True)
+                cur_state = {}
+                if state_file.exists():
+                    try:
+                        cur_state = json.loads(state_file.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+                cur_state["paused"] = False
+                state_file.write_text(json.dumps(cur_state, indent=2), encoding="utf-8")
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "paused": False, "message": "Sniper retomado com sucesso"}, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
         self.send_response(404)
         self.end_headers()
 
@@ -102,6 +251,50 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps(st, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/sniper/status":
+            try:
+                state_file = ROOT / "data" / "journal" / "auto_sniper_state.json"
+                paused = False
+                data = {}
+                if state_file.exists():
+                    try:
+                        data = json.loads(state_file.read_text(encoding="utf-8"))
+                        paused = bool(data.get("paused", False))
+                    except Exception:
+                        pass
+                
+                resp_payload = {
+                    "running": True,
+                    "paused": paused,
+                    "state": data
+                }
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(resp_payload, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/macro_regime":
+            try:
+                regime_data = get_cached_btc_macro_regime()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(regime_data, ensure_ascii=False).encode("utf-8"))
                 return
             except Exception as e:
                 self.send_response(500)

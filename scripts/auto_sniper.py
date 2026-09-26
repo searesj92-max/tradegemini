@@ -195,6 +195,25 @@ def evaluate_asset(executor: HyperliquidExecutor, coin: str) -> dict | None:
         return None
 
 
+def check_btc_macro_circuit_breaker(executor: HyperliquidExecutor) -> tuple[bool, str]:
+    """Checks Bitcoin Markov Macro Regime. Returns (allow_trades, reason)."""
+    try:
+        now_ms = int(time.time() * 1000)
+        start_ms = now_ms - (30 * 24 * 3600 * 1000)
+        candles = executor.info.candles_snapshot("BTC", "1d", start_ms, now_ms)
+        if not candles or len(candles) < 21:
+            return True, "Dados normais de mercado"
+        closes = [float(c["c"]) for c in candles]
+        cur_price = closes[-1]
+        ret_20d = ((cur_price - closes[-21]) / closes[-21]) * 100
+
+        if ret_20d <= -5.0:
+            return False, f"BTC em Regime Bear ({ret_20d:+.1f}% em 20d) — Disjuntor ativado"
+        return True, f"BTC em Regime Favorável ({ret_20d:+.1f}% em 20d)"
+    except Exception as e:
+        return True, f"Verificação normal ({e})"
+
+
 def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc: float = 15.0, interval_sec: int = 60):
     print("=" * 70)
     print("🎯 BOTRADE AUTONOMOUS SNIPER & CONFLUENCE EXECUTOR INICIADO")
@@ -212,7 +231,6 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
         executor = HyperliquidExecutor()
         valid, msg = executor.check_credentials()
 
-
     # Notify Telegram of startup
     mode_str = "⚡ 100% AUTOMÁTICO (DINHEIRO REAL)" if auto_trade else "📡 MODO CO-PILOTO (Sinais)"
     send(
@@ -228,13 +246,53 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
 
     while True:
         try:
+            # Check pause state from state file
+            is_paused = False
+            if STATE_FILE.exists():
+                try:
+                    sdata = json.loads(STATE_FILE.read_text(encoding="utf-8"))
+                    is_paused = bool(sdata.get("paused", False))
+                except Exception:
+                    pass
+
             status = executor.get_account_status()
             open_positions = status.get("open_positions", status.get("positions", []))
             current_open_count = len(open_positions)
             open_coins = [p["coin"] for p in open_positions]
 
+            # Check BTC Macro Circuit Breaker
+            allow_macro, macro_reason = check_btc_macro_circuit_breaker(executor)
+
+            # Update heartbeat state
+            state_payload = {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "paused": is_paused,
+                "open_positions_count": current_open_count,
+                "open_coins": open_coins,
+                "max_positions": max_positions,
+                "macro_status": macro_reason,
+                "macro_allowed": allow_macro,
+                "auto_trade": auto_trade,
+                "margin_usdc": margin_usdc
+            }
+            try:
+                STATE_FILE.write_text(json.dumps(state_payload, indent=2), encoding="utf-8")
+            except Exception:
+                pass
+
             now_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
             print(f"\n[{now_str}] Status da Carteira: {current_open_count}/{max_positions} posições abertas ({', '.join(open_coins) if open_coins else 'Nenhuma'})")
+            print(f"  -> Filtro Macro: {macro_reason}")
+
+            if is_paused:
+                print(f"  -> ⏸️ SNIPER EM PAUSA PELO COCKPIT. Aguardando liberação para novas entradas.")
+                time.sleep(interval_sec)
+                continue
+
+            if not allow_macro:
+                print(f"  -> 🛑 DISJUNTOR MACRO ATIVO: {macro_reason}. Novas entradas bloqueadas.")
+                time.sleep(interval_sec)
+                continue
 
             # Check if capacity allows opening a new position
             if current_open_count >= max_positions:

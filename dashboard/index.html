@@ -808,6 +808,166 @@
       margin-top: 3px;
     }
 
+    /* SIMULADOR DE RISCO INTERATIVO */
+    .sim-controls-card {
+      background: var(--surface);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 14px;
+      margin-bottom: 14px;
+    }
+
+    .sim-range-input {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface3);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .sim-range-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--blue);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+      transition: transform 0.1s;
+    }
+
+    .sim-range-input::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .quick-sim-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .quick-sim-btn:hover {
+      border-color: var(--blue);
+      color: var(--text);
+    }
+
+    .quick-sim-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+
+    /* RÉGUA VISUAL DE PREÇOS (LEVEL SCALE) */
+    .level-scale-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-top: 14px;
+    }
+
+    .level-scale-track {
+      height: 10px;
+      border-radius: 5px;
+      display: flex;
+      gap: 3px;
+      background: var(--surface3);
+      overflow: hidden;
+      margin: 8px 0;
+    }
+
+    .scale-segment {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .scale-sl { width: 22%; background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); }
+    .scale-tp1 { width: 24%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); }
+    .scale-tp2 { width: 26%; background: linear-gradient(90deg, #38bdf8 0%, #0284c7 100%); }
+    .scale-tp3 { width: 28%; background: linear-gradient(90deg, #a855f7 0%, #7e22ce 100%); }
+
+    .scale-labels {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+      font-family: var(--mono);
+    }
+
+    .scale-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .tag-sl { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .tag-entry { background: rgba(241, 245, 249, 0.1); color: var(--text); border: 1px solid rgba(255, 255, 255, 0.2); }
+    .tag-tp1 { background: rgba(16, 185, 129, 0.12); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tag-tp2 { background: rgba(56, 189, 248, 0.12); color: var(--blue); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .tag-tp3 { background: rgba(168, 85, 247, 0.12); color: var(--purple); border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* WIDGET DO REGIME MACRO BTC (MARKOV) */
+    .macro-regime-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(20, 30, 48, 0.9) 100%);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .macro-regime-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .macro-regime-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .macro-stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .macro-stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .macro-stat-val {
+      font-size: 16px;
+      font-weight: 800;
+      font-family: var(--mono);
+    }
+
     /* TACTICAL BOX (WHAT TO DO VS WHAT NOT TO DO) */
     .tactical-grid {
       display: grid;
@@ -1907,6 +2067,62 @@
       </div>
 
       <!-- ========================================== -->
+      <!-- REGIME MACRO BITCOIN & FILTRO MARKOV (HMM) -->
+      <!-- ========================================== -->
+      <div class="macro-regime-card" id="macro-regime-container">
+        <div class="macro-regime-header">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:24px;">🌐</span>
+            <div>
+              <div style="font-weight:800; font-size:15px; color:var(--text); display:flex; align-items:center; gap:8px;">
+                <span>Regime Macro do Mercado · Filtro de Markov (HMM / Regime Switching)</span>
+                <span class="pill pill-green" id="macro-regime-status-badge">🟢 AMBIENTE FAVORÁVEL</span>
+              </div>
+              <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+                Monitor institucional de risco baseado em Cadeias de Markov (Lewis Jackson / Quant Fund Model) analisando Bitcoin e risco sistêmico.
+              </div>
+            </div>
+          </div>
+          
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div class="pill" id="macro-last-updated-pill" style="font-size:11px;">Atualizado: Ao Vivo</div>
+            <button id="btn-toggle-macro-filter" class="quick-sim-btn active" onclick="toggleMacroFilter()" style="padding:6px 12px; font-size:11px;">
+              🛡️ Trava Macro: Ativa
+            </button>
+            <button id="btn-sniper-kill-switch" class="quick-sim-btn" onclick="toggleSniperPause()" style="padding:6px 12px; font-size:11px; border-color:var(--amber); color:var(--amber);">
+              ⏸️ Pausar Sniper
+            </button>
+          </div>
+        </div>
+
+        <div class="macro-regime-grid">
+          <div class="macro-stat-box">
+            <span class="macro-stat-label">Bitcoin (Preço de Referência)</span>
+            <span class="macro-stat-val" id="macro-btc-price" style="color:var(--text);">$83,950.00</span>
+            <span style="font-size:11px; color:var(--dim);" id="macro-btc-ema">Acima da EMA 200 ($72,824)</span>
+          </div>
+
+          <div class="macro-stat-box">
+            <span class="macro-stat-label">Retorno 20 Dias (Deriva / Drift)</span>
+            <span class="macro-stat-val" id="macro-btc-ret20" style="color:var(--green);">+4.49%</span>
+            <span style="font-size:11px; color:var(--dim);">Limiar Bull: ≥ +5.0%</span>
+          </div>
+
+          <div class="macro-stat-box">
+            <span class="macro-stat-label">Estado Markov Atual</span>
+            <span class="macro-stat-val" id="macro-state-name" style="color:var(--blue);">RANGE / ACUMULAÇÃO</span>
+            <span style="font-size:11px; color:var(--green);" id="macro-p-stay">Prob. Permanência: 82.5%</span>
+          </div>
+
+          <div class="macro-stat-box">
+            <span class="macro-stat-label">Disjuntor de Risco (Altcoins)</span>
+            <span class="macro-stat-val" id="macro-circuit-val" style="color:var(--green);">LIBERADO (0% Risco Bear)</span>
+            <span style="font-size:11px; color:var(--dim);" id="macro-circuit-sub">P(Bear) = 5.8% (Seguro)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
       <!-- NOVO MÓDULO: RAIO-X DO ATIVO & CONFLUÊNCIA -->
       <!-- ========================================== -->
       <div class="xray-panel">
@@ -1984,35 +2200,107 @@
             <div class="pill pill-green" id="xray-rr-badge" style="font-weight:700;">Risco:Retorno = 1 : 2.5 (Excelente)</div>
           </div>
 
+          <!-- SIMULADOR DINÂMICO DE RISCO COM SLIDERS -->
+          <div class="sim-controls-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+              <div style="font-weight:700; font-size:13px; color:var(--text); display:flex; align-items:center; gap:6px;">
+                🎛️ <span>Simulador de Risco Interativo Dinâmico (Margem & Alavancagem):</span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span class="pill" id="sim-notional-pill">Tamanho da Ordem: <strong>$150.00 USD</strong></span>
+                <span class="pill pill-green" id="sim-liq-pill">Liq. Estimada: <strong>$7.31</strong> (Seguro)</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+              <!-- MARGIN SLIDER -->
+              <div class="sim-input-group">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:12px; color:var(--muted); font-weight:600;">Margem por Operação (USDC):</span>
+                  <span style="font-family:var(--mono); font-size:14px; font-weight:800; color:var(--green);" id="sim-margin-val">$15.00</span>
+                </div>
+                <input type="range" id="sim-margin-slider" min="5" max="100" step="1" value="15" class="sim-range-input" oninput="updateRiskSimulator()" />
+                <div style="display:flex; gap:6px; margin-top:8px;">
+                  <button class="quick-sim-btn" onclick="setSimMargin(5)">$5</button>
+                  <button class="quick-sim-btn" onclick="setSimMargin(10)">$10</button>
+                  <button class="quick-sim-btn active" onclick="setSimMargin(15)">$15</button>
+                  <button class="quick-sim-btn" onclick="setSimMargin(25)">$25</button>
+                  <button class="quick-sim-btn" onclick="setSimMargin(50)">$50</button>
+                </div>
+              </div>
+
+              <!-- LEVERAGE SLIDER -->
+              <div class="sim-input-group">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <span style="font-size:12px; color:var(--muted); font-weight:600;">Alavancagem (Isolada / Cross):</span>
+                  <span style="font-family:var(--mono); font-size:14px; font-weight:800; color:var(--blue);" id="sim-lev-val">10x</span>
+                </div>
+                <input type="range" id="sim-lev-slider" min="1" max="20" step="1" value="10" class="sim-range-input" oninput="updateRiskSimulator()" />
+                <div style="display:flex; gap:6px; margin-top:8px;">
+                  <button class="quick-sim-btn" onclick="setSimLev(3)">3x</button>
+                  <button class="quick-sim-btn" onclick="setSimLev(5)">5x</button>
+                  <button class="quick-sim-btn active" onclick="setSimLev(10)">10x</button>
+                  <button class="quick-sim-btn" onclick="setSimLev(15)">15x</button>
+                  <button class="quick-sim-btn" onclick="setSimLev(20)">20x</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RÉGUA VISUAL DOS NÍVEIS DE PREÇO -->
+          <div class="level-scale-container">
+            <div style="font-size:11px; color:var(--muted); margin-bottom:6px; display:flex; justify-content:space-between;">
+              <span>📉 Proporção Visual do Trade:</span>
+              <span id="level-scale-rr" style="font-weight:700; color:var(--text);">R:R = 1 : 2.50</span>
+            </div>
+            <div class="level-scale-track">
+              <div class="scale-segment scale-sl" id="scale-sl-seg" title="Zona de Risco"></div>
+              <div class="scale-segment scale-tp1" id="scale-tp1-seg" title="TP1 Parcial"></div>
+              <div class="scale-segment scale-tp2" id="scale-tp2-seg" title="TP2 Meta Principal"></div>
+              <div class="scale-segment scale-tp3" id="scale-tp3-seg" title="TP3 Onda Forte"></div>
+            </div>
+            <div class="scale-labels">
+              <span class="scale-tag tag-sl" id="lbl-scale-sl">🔴 SL: $7.43</span>
+              <span class="scale-tag tag-entry" id="lbl-scale-entry">🔵 Entrada: $8.12</span>
+              <span class="scale-tag tag-tp1" id="lbl-scale-tp1">🟢 TP1: $9.15</span>
+              <span class="scale-tag tag-tp2" id="lbl-scale-tp2">🟢 TP2: $9.84</span>
+              <span class="scale-tag tag-tp3" id="lbl-scale-tp3">🟣 TP3: $10.88</span>
+            </div>
+          </div>
+
           <div class="risk-grid">
             <div class="risk-item">
               <div class="risk-label">Preço de Entrada</div>
               <div class="risk-val" id="rc-entry" style="color:var(--text);">$8.12</div>
-              <div class="risk-sub" style="color:var(--dim);">A Mercado / Gatilho</div>
+              <div class="risk-sub" id="rc-entry-sub" style="color:var(--dim);">Notional: $150.00 USD (10x)</div>
             </div>
 
             <div class="risk-item" style="border-color:rgba(239, 68, 68, 0.4);">
               <div class="risk-label" style="color:#ef4444;">Stop Loss Técnico (2x ATR)</div>
               <div class="risk-val" id="rc-sl" style="color:#ef4444;">$7.43</div>
               <div class="risk-sub" id="rc-sl-pct" style="color:#ef4444;">-8.5% de Risco</div>
+              <div class="risk-sub" id="rc-sl-usd" style="color:#ef4444; font-weight:700; margin-top:2px;">-$12.75 (-85% ROE)</div>
             </div>
 
             <div class="risk-item" style="border-color:rgba(16, 185, 129, 0.4);">
               <div class="risk-label" style="color:#10b981;">Alvo 1 (TP1 Parcial 1.5R)</div>
               <div class="risk-val" id="rc-tp1" style="color:#10b981;">$9.15</div>
               <div class="risk-sub" id="rc-tp1-pct" style="color:#10b981;">+12.7% (Risco Zero)</div>
+              <div class="risk-sub" id="rc-tp1-usd" style="color:#10b981; font-weight:700; margin-top:2px;">+$19.05 (+127% ROE)</div>
             </div>
 
             <div class="risk-item" style="border-color:rgba(56, 189, 248, 0.4);">
               <div class="risk-label" style="color:var(--blue);">Alvo 2 (TP2 Principal 2.5R)</div>
               <div class="risk-val" id="rc-tp2" style="color:var(--blue);">$9.84</div>
               <div class="risk-sub" id="rc-tp2-pct" style="color:var(--blue);">+21.2% (Meta Cheia)</div>
+              <div class="risk-sub" id="rc-tp2-usd" style="color:var(--blue); font-weight:700; margin-top:2px;">+$31.80 (+212% ROE)</div>
             </div>
 
             <div class="risk-item">
               <div class="risk-label">Alvo 3 (TP3 Trailing 4.0R)</div>
               <div class="risk-val" id="rc-tp3" style="color:var(--purple);">$10.88</div>
               <div class="risk-sub" id="rc-tp3-pct" style="color:var(--purple);">+34.0% (Surfar Onda)</div>
+              <div class="risk-sub" id="rc-tp3-usd" style="color:var(--purple); font-weight:700; margin-top:2px;">+$51.00 (+340% ROE)</div>
             </div>
           </div>
 
@@ -3390,20 +3678,23 @@
         const tp3Price = curPrice + (4.0 * riskDist);
         const tp3Pct = ((tp3Price - curPrice) / curPrice) * 100;
 
-        const fmtVal = v => v > 100 ? "$" + v.toFixed(2) : v > 1 ? "$" + v.toFixed(4) : "$" + v.toFixed(6);
+        // Store globally for reactive simulator
+        window.currentXray = {
+          coin: coin,
+          curPrice: curPrice,
+          slPrice: slPrice,
+          slPct: slPct,
+          tp1Price: tp1Price,
+          tp1Pct: tp1Pct,
+          tp2Price: tp2Price,
+          tp2Pct: tp2Pct,
+          tp3Price: tp3Price,
+          tp3Pct: tp3Pct,
+          atr: atr
+        };
 
-        $("rc-entry").textContent = fmtVal(curPrice);
-        $("rc-sl").textContent = fmtVal(slPrice);
-        $("rc-sl-pct").textContent = `-${slPct.toFixed(1)}% de Risco Técnico`;
-
-        $("rc-tp1").textContent = fmtVal(tp1Price);
-        $("rc-tp1-pct").textContent = `+${tp1Pct.toFixed(1)}% (Breakeven)`;
-
-        $("rc-tp2").textContent = fmtVal(tp2Price);
-        $("rc-tp2-pct").textContent = `+${tp2Pct.toFixed(1)}% (Alvo 2.5R)`;
-
-        $("rc-tp3").textContent = fmtVal(tp3Price);
-        $("rc-tp3-pct").textContent = `+${tp3Pct.toFixed(1)}% (Expansão 4R)`;
+        // Update simulator and all reactive outputs
+        updateRiskSimulator();
 
         // TACTICAL ADVISORY
         let doList = "";
@@ -3453,7 +3744,211 @@
       }
     }
 
-  
+    // ==========================================
+    // SIMULADOR INTERATIVO DE RISCO & MARGEM
+    // ==========================================
+    window.currentXray = {
+      coin: "INJ",
+      curPrice: 8.12,
+      slPrice: 7.43,
+      slPct: 8.5,
+      tp1Price: 9.15,
+      tp1Pct: 12.7,
+      tp2Price: 9.84,
+      tp2Pct: 21.2,
+      tp3Price: 10.88,
+      tp3Pct: 34.0,
+      atr: 0.345
+    };
+
+    window.setSimMargin = function(val) {
+      const el = $("sim-margin-slider");
+      if (el) {
+        el.value = val;
+        document.querySelectorAll(".sim-input-group:first-child .quick-sim-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.textContent.trim() === `$${val}`);
+        });
+        updateRiskSimulator();
+      }
+    };
+
+    window.setSimLev = function(val) {
+      const el = $("sim-lev-slider");
+      if (el) {
+        el.value = val;
+        document.querySelectorAll(".sim-input-group:last-child .quick-sim-btn").forEach(btn => {
+          btn.classList.toggle("active", btn.textContent.trim() === `${val}x`);
+        });
+        updateRiskSimulator();
+      }
+    };
+
+    window.updateRiskSimulator = function() {
+      const marginSlider = $("sim-margin-slider");
+      const levSlider = $("sim-lev-slider");
+      if (!marginSlider || !levSlider) return;
+
+      const margin = parseFloat(marginSlider.value) || 15.0;
+      const leverage = parseInt(levSlider.value) || 10;
+      const notional = margin * leverage;
+
+      if ($("sim-margin-val")) $("sim-margin-val").textContent = `$${margin.toFixed(2)}`;
+      if ($("sim-lev-val")) $("sim-lev-val").textContent = `${leverage}x`;
+      if ($("sim-notional-pill")) $("sim-notional-pill").innerHTML = `Tamanho da Ordem: <strong>$${notional.toFixed(2)} USD</strong>`;
+
+      const d = window.currentXray || {};
+      const curPrice = d.curPrice || 8.12;
+      const slPct = d.slPct || 8.5;
+      const tp1Pct = d.tp1Pct || 12.7;
+      const tp2Pct = d.tp2Pct || 21.2;
+      const tp3Pct = d.tp3Pct || 34.0;
+      const slPrice = d.slPrice || (curPrice * (1 - slPct / 100));
+      const tp1Price = d.tp1Price || (curPrice * (1 + tp1Pct / 100));
+      const tp2Price = d.tp2Price || (curPrice * (1 + tp2Pct / 100));
+      const tp3Price = d.tp3Price || (curPrice * (1 + tp3Pct / 100));
+
+      // Financial outputs
+      const slLossUsd = Math.min(margin, margin * (slPct / 100) * leverage);
+      const slRoe = slPct * leverage;
+
+      const tp1ProfitUsd = margin * (tp1Pct / 100) * leverage;
+      const tp1Roe = tp1Pct * leverage;
+
+      const tp2ProfitUsd = margin * (tp2Pct / 100) * leverage;
+      const tp2Roe = tp2Pct * leverage;
+
+      const tp3ProfitUsd = margin * (tp3Pct / 100) * leverage;
+      const tp3Roe = tp3Pct * leverage;
+
+      // Estimated Liquidation
+      const liqDropPct = (1 / leverage) * 90;
+      const liqPrice = Math.max(0.000001, curPrice * (1 - liqDropPct / 100));
+      const isLiqBeforeSl = liqPrice > slPrice;
+
+      if ($("sim-liq-pill")) {
+        const liqFmt = liqPrice > 100 ? "$" + liqPrice.toFixed(2) : liqPrice > 1 ? "$" + liqPrice.toFixed(4) : "$" + liqPrice.toFixed(6);
+        if (isLiqBeforeSl) {
+          $("sim-liq-pill").className = "pill pill-amber";
+          $("sim-liq-pill").innerHTML = `⚠️ Liq. Estimada: <strong>${liqFmt}</strong> (Antes do SL!)`;
+        } else {
+          $("sim-liq-pill").className = "pill pill-green";
+          $("sim-liq-pill").innerHTML = `Liq. Estimada: <strong>${liqFmt}</strong> (Seguro)`;
+        }
+      }
+
+      const fmtVal = v => v > 100 ? "$" + v.toFixed(2) : v > 1 ? "$" + v.toFixed(4) : "$" + v.toFixed(6);
+      if ($("rc-entry")) $("rc-entry").textContent = fmtVal(curPrice);
+      if ($("rc-entry-sub")) $("rc-entry-sub").textContent = `Notional: $${notional.toFixed(2)} USD (${leverage}x)`;
+
+      if ($("rc-sl")) $("rc-sl").textContent = fmtVal(slPrice);
+      if ($("rc-sl-pct")) $("rc-sl-pct").textContent = `-${slPct.toFixed(1)}% de Risco Técnico`;
+      if ($("rc-sl-usd")) $("rc-sl-usd").textContent = `-$${slLossUsd.toFixed(2)} (-${slRoe.toFixed(0)}% ROE)`;
+
+      if ($("rc-tp1")) $("rc-tp1").textContent = fmtVal(tp1Price);
+      if ($("rc-tp1-pct")) $("rc-tp1-pct").textContent = `+${tp1Pct.toFixed(1)}% (Breakeven)`;
+      if ($("rc-tp1-usd")) $("rc-tp1-usd").textContent = `+$${tp1ProfitUsd.toFixed(2)} (+${tp1Roe.toFixed(0)}% ROE)`;
+
+      if ($("rc-tp2")) $("rc-tp2").textContent = fmtVal(tp2Price);
+      if ($("rc-tp2-pct")) $("rc-tp2-pct").textContent = `+${tp2Pct.toFixed(1)}% (Meta Cheia)`;
+      if ($("rc-tp2-usd")) $("rc-tp2-usd").textContent = `+$${tp2ProfitUsd.toFixed(2)} (+${tp2Roe.toFixed(0)}% ROE)`;
+
+      if ($("rc-tp3")) $("rc-tp3").textContent = fmtVal(tp3Price);
+      if ($("rc-tp3-pct")) $("rc-tp3-pct").textContent = `+${tp3Pct.toFixed(1)}% (Expansão 4R)`;
+      if ($("rc-tp3-usd")) $("rc-tp3-usd").textContent = `+$${tp3ProfitUsd.toFixed(2)} (+${tp3Roe.toFixed(0)}% ROE)`;
+
+      // Update scale labels
+      const fmtP = v => v > 100 ? "$" + v.toFixed(2) : v > 1 ? "$" + v.toFixed(3) : "$" + v.toFixed(5);
+      if ($("lbl-scale-sl")) $("lbl-scale-sl").textContent = `🔴 SL: ${fmtP(slPrice)}`;
+      if ($("lbl-scale-entry")) $("lbl-scale-entry").textContent = `🔵 Entrada: ${fmtP(curPrice)}`;
+      if ($("lbl-scale-tp1")) $("lbl-scale-tp1").textContent = `🟢 TP1: ${fmtP(tp1Price)}`;
+      if ($("lbl-scale-tp2")) $("lbl-scale-tp2").textContent = `🟢 TP2: ${fmtP(tp2Price)}`;
+      if ($("lbl-scale-tp3")) $("lbl-scale-tp3").textContent = `🟣 TP3: ${fmtP(tp3Price)}`;
+
+      const rr = tp2Pct / (slPct || 1);
+      if ($("level-scale-rr")) $("level-scale-rr").textContent = `R:R = 1 : ${rr.toFixed(1)}`;
+      if ($("xray-rr-badge")) $("xray-rr-badge").textContent = `Risco:Retorno = 1 : ${rr.toFixed(1)} (${rr >= 2.0 ? 'Excelente' : 'Aceitável'})`;
+    };
+
+    // ==========================================
+    // REGIME MACRO BITCOIN & MARKOV (HMM)
+    // ==========================================
+    window.fetchBtcMacroRegime = async function() {
+      try {
+        const res = await fetch("/api/macro_regime");
+        if (!res.ok) throw new Error("API Macro Offline");
+        const data = await res.json();
+
+        if ($("macro-btc-price")) $("macro-btc-price").textContent = `$${data.current_price.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if ($("macro-btc-ema")) $("macro-btc-ema").textContent = `${data.above_ema ? "Acima" : "Abaixo"} da EMA 200 ($${data.ema_benchmark.toLocaleString("en-US")})`;
+
+        if ($("macro-btc-ret20")) {
+          $("macro-btc-ret20").textContent = `${data.return_20d_pct >= 0 ? "+" : ""}${data.return_20d_pct.toFixed(2)}%`;
+          $("macro-btc-ret20").style.color = data.return_20d_pct >= 0 ? "var(--green)" : "var(--red)";
+        }
+
+        if ($("macro-state-name")) $("macro-state-name").textContent = data.regime_state;
+        if ($("macro-p-stay")) $("macro-p-stay").textContent = `Prob. Permanência: ${data.prob_stay_pct}%`;
+
+        if ($("macro-circuit-val")) {
+          $("macro-circuit-val").textContent = data.allow_altcoin_longs ? "LIBERADO (Risco Seguro)" : "DISJUNTOR ATIVADO (Risco Bear)";
+          $("macro-circuit-val").style.color = data.allow_altcoin_longs ? "var(--green)" : "var(--red)";
+        }
+        if ($("macro-circuit-sub")) $("macro-circuit-sub").textContent = `P(Bear) = ${data.prob_bear_pct}% | P(Bull) = ${data.prob_bull_pct}%`;
+
+        if ($("macro-regime-status-badge")) {
+          $("macro-regime-status-badge").className = data.allow_altcoin_longs ? "pill pill-green" : "pill pill-amber";
+          $("macro-regime-status-badge").textContent = data.status_label || (data.allow_altcoin_longs ? "🟢 AMBIENTE FAVORÁVEL" : "🔴 DISJUNTOR ATIVADO");
+        }
+      } catch (err) {
+        console.warn("Macro regime fallback local:", err);
+      }
+    };
+
+    let isMacroFilterActive = true;
+    window.toggleMacroFilter = function() {
+      isMacroFilterActive = !isMacroFilterActive;
+      const btn = $("btn-toggle-macro-filter");
+      if (btn) {
+        if (isMacroFilterActive) {
+          btn.className = "quick-sim-btn active";
+          btn.textContent = "🛡️ Trava Macro: Ativa";
+          alert("🛡️ Trava Macro Ativada: O Sniper só entrará em altcoins se o Bitcoin estiver fora de risco.");
+        } else {
+          btn.className = "quick-sim-btn";
+          btn.textContent = "⚠️ Trava Macro: Desativada";
+          alert("⚠️ Atenção: Trava Macro Desativada. Entradas manuais e automáticas serão permitidas sem filtro de Bitcoin.");
+        }
+      }
+    };
+
+    window.toggleSniperPause = async function() {
+      const btn = $("btn-sniper-kill-switch");
+      const isCurrentlyPaused = btn && btn.textContent.includes("Retomar");
+      const targetEndpoint = isCurrentlyPaused ? "/api/sniper/resume" : "/api/sniper/pause";
+
+      try {
+        const res = await fetch(targetEndpoint, { method: "POST" });
+        const json = await res.json();
+        if (json.status === "ok") {
+          if (json.paused) {
+            btn.className = "quick-sim-btn active";
+            btn.style.borderColor = "var(--green)";
+            btn.style.color = "var(--green)";
+            btn.textContent = "▶️ Retomar Sniper";
+            alert("⏸️ Sniper Pausado com sucesso! Nenhuma nova posição será aberta na nuvem até você retomar.");
+          } else {
+            btn.className = "quick-sim-btn";
+            btn.style.borderColor = "var(--amber)";
+            btn.style.color = "var(--amber)";
+            btn.textContent = "⏸️ Pausar Sniper";
+            alert("▶️ Sniper Retomado! O robô continuará monitorando as Top 25 moedas e executará quando encontrar confluência.");
+          }
+        }
+      } catch (err) {
+        alert("Erro ao comunicar com o servidor do cockpit: " + err);
+      }
+    };
+
     // Hyperliquid UI Helpers
     window.copyHyperliquidCmd = function() {
       const coin = currentXrayAsset || "SOL";
@@ -3912,6 +4407,10 @@
     // Start live monitor polling
     setInterval(updateLiveMonitor, 3000);
     updateLiveMonitor();
+
+    // Start Bitcoin Macro Markov Regime polling
+    fetchBtcMacroRegime();
+    setInterval(fetchBtcMacroRegime, 45000);
 
   </script>
 </body>

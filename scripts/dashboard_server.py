@@ -19,11 +19,43 @@ DASHBOARD_DIR = ROOT / "dashboard"
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from hyperliquid_executor import HyperliquidExecutor
+from backtest_engine import run_backtest_pipeline
 
 _MACRO_CACHE = {
     "last_fetched": 0,
     "data": None
 }
+
+_SYMBOLS_CACHE = {
+    "last_fetched": 0,
+    "symbols": []
+}
+
+
+def get_cached_symbols() -> list[dict]:
+    now = time.time()
+    if _SYMBOLS_CACHE["symbols"] and (now - _SYMBOLS_CACHE["last_fetched"] < 300):
+        return _SYMBOLS_CACHE["symbols"]
+
+    try:
+        executor = HyperliquidExecutor()
+        meta = executor.info.meta()
+        all_mids = executor.info.all_mids()
+        symbols = []
+        for item in meta.get("universe", []):
+            name = item["name"]
+            px = float(all_mids.get(name, 0.0))
+            symbols.append({
+                "name": name,
+                "max_leverage": item.get("maxLeverage", 10),
+                "price": px
+            })
+        _SYMBOLS_CACHE["symbols"] = symbols
+        _SYMBOLS_CACHE["last_fetched"] = now
+        return symbols
+    except Exception:
+        fallback_names = ["SOL", "BTC", "ETH", "KAITO", "AVAX", "SUI", "DOGE", "PEPE", "NEAR", "LINK", "ARB", "OP", "RENDER", "INJ", "TIA", "WIF"]
+        return [{"name": s, "max_leverage": 10, "price": 0.0} for s in fallback_names]
 
 
 def get_cached_btc_macro_regime() -> dict:
@@ -236,6 +268,35 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+        if path == "/api/backtest/run":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+                data = json.loads(body)
+                symbol = data.get("symbol", "SOL").upper()
+                days = int(data.get("days", 720))
+                timeframe = data.get("timeframe", "1d")
+                strategy = data.get("strategy", "dual")
+                margin = float(data.get("margin", 15.0))
+                leverage = int(data.get("leverage", 10))
+
+                res = run_backtest_pipeline(
+                    symbol=symbol,
+                    days=days,
+                    timeframe=timeframe,
+                    strategy=strategy,
+                    margin_per_trade=margin,
+                    leverage=leverage
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
             return
 
         self.send_response(404)
@@ -295,6 +356,51 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps(regime_data, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/backtest/symbols":
+            try:
+                symbols = get_cached_symbols()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(symbols, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/backtest/run":
+            try:
+                query = parse_qs(parsed.query)
+                symbol = query.get("symbol", ["SOL"])[0].upper()
+                days = int(query.get("days", [720])[0])
+                timeframe = query.get("timeframe", ["1d"])[0]
+                strategy = query.get("strategy", ["dual"])[0]
+                margin = float(query.get("margin", [15.0])[0])
+                leverage = int(query.get("leverage", [10])[0])
+
+                res = run_backtest_pipeline(
+                    symbol=symbol,
+                    days=days,
+                    timeframe=timeframe,
+                    strategy=strategy,
+                    margin_per_trade=margin,
+                    leverage=leverage
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
                 return
             except Exception as e:
                 self.send_response(500)

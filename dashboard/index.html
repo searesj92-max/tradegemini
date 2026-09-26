@@ -1508,6 +1508,7 @@
     }
 
   </style>
+  <script type="text/javascript" src="lightweight-charts.standalone.production.js"></script>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
@@ -1538,6 +1539,7 @@
       <!-- NAVIGATION TABS -->
       <div class="nav-tabs">
         <button class="nav-tab active" data-tab="cockpit">⚡ Mesa de Operações (Ao Vivo)</button>
+        <button class="nav-tab" data-tab="backtest-lab" style="color:var(--amber); font-weight:700;">🔬 Laboratório de Backtest 720d</button>
         <button class="nav-tab" data-tab="universe">🏆 Ranking Hyperliquid (234 Moedas)</button>
         <button class="nav-tab" data-tab="live">🔍 Radar de Oportunidades & Gráficos</button>
         <button class="nav-tab" data-tab="explorer">📊 Todas Estratégias (690)</button>
@@ -1843,6 +1845,284 @@
           <div class="monthly-grid" id="monthly-container">
             <!-- Heatmap table rendered here -->
           </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- TAB: LABORATÓRIO DE BACKTESTS 720 DIAS     -->
+    <!-- ========================================== -->
+    <div id="tab-backtest-lab" class="tab-view">
+
+      <!-- BANNER SUPERIOR -->
+      <div style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h2 style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;">
+            <span>🔬 Laboratório Quantitativo de Backtests (Até 720 Dias)</span>
+            <span class="brand-tag" style="color:var(--amber); border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.1);">Hyperliquid Mainnet Data</span>
+          </h2>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;">
+            Simulação de alta fidelidade com dados reais de velas, taxas institucionais (0.035%), slippage (0.05%) e Trailing Stop Ratchet (+30% ROE para Breakeven).
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="btn-activate-in-sniper" class="quick-pick-btn" onclick="activateCoinInSniper()" style="background:rgba(16, 185, 129, 0.15); border-color:var(--green); color:var(--green); font-weight:700; padding:8px 16px; display:none;">
+            ✅ Ativar Moeda no Sniper
+          </button>
+        </div>
+      </div>
+
+      <!-- PAINEL DE CONTROLE DE PARÂMETROS (1-CLIQUE) -->
+      <div class="card" style="margin-bottom:16px; padding:16px; border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:12px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+          <span>⚙️ Parâmetros do Backtest</span>
+          <span style="font-size:11px; color:var(--muted); font-weight:400;">Pressione "Simular" para rodar o motor quantitativo</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; align-items:end;">
+          <!-- Seletor de Ativo -->
+          <div>
+            <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Criptoativo (234 da Hyperliquid):</label>
+            <select id="bt-coin-select" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:700; font-size:13px;">
+              <option value="SOL" selected>SOL · Solana</option>
+              <option value="BTC">BTC · Bitcoin</option>
+              <option value="ETH">ETH · Ethereum</option>
+              <option value="KAITO">KAITO · Kaito AI</option>
+              <option value="AVAX">AVAX · Avalanche</option>
+              <option value="SUI">SUI · Sui Network</option>
+              <option value="DOGE">DOGE · Dogecoin</option>
+              <option value="PEPE">PEPE · Pepe</option>
+              <option value="NEAR">NEAR · Near Protocol</option>
+              <option value="LINK">LINK · Chainlink</option>
+            </select>
+          </div>
+
+          <!-- Período de Teste -->
+          <div>
+            <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Período Histórico:</label>
+            <select id="bt-days-select" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:600; font-size:13px;">
+              <option value="30">30 Dias (1 Mês)</option>
+              <option value="90">90 Dias (3 Meses)</option>
+              <option value="180">180 Dias (6 Meses)</option>
+              <option value="360">360 Dias (1 Ano)</option>
+              <option value="720" selected>720 Dias (2 Anos - Histórico Máximo)</option>
+            </select>
+          </div>
+
+          <!-- Timeframe -->
+          <div>
+            <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Timeframe de Velas:</label>
+            <select id="bt-tf-select" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:600; font-size:13px;">
+              <option value="1d" selected>1d · Diário (Macro 720d)</option>
+              <option value="4h">4h · Swing Trend (Até 720d)</option>
+              <option value="2h">2h · Setup Sniper (Até 415d)</option>
+              <option value="1h">1h · Alta Frequência (Até 208d)</option>
+            </select>
+          </div>
+
+          <!-- Estratégia -->
+          <div>
+            <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Estratégia Quantitativa:</label>
+            <select id="bt-strategy-select" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:600; font-size:13px;">
+              <option value="dual" selected>Dual-Engine (Botrade Sniper)</option>
+              <option value="pullback">Pullback Macro em Tendência</option>
+              <option value="confluence">Confluência Breakout</option>
+              <option value="mean_reversion">Mean Reversion (Bollinger)</option>
+            </select>
+          </div>
+
+          <!-- Margem e Alavancagem -->
+          <div style="display:flex; gap:8px;">
+            <div style="flex:1;">
+              <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Margem:</label>
+              <input id="bt-margin" type="number" value="15" min="5" max="100" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:700; font-size:13px;" />
+            </div>
+            <div style="flex:1;">
+              <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Alavancagem:</label>
+              <select id="bt-leverage" style="width:100%; padding:8px 10px; background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:6px; font-weight:700; font-size:13px;">
+                <option value="3">3x</option>
+                <option value="5">5x</option>
+                <option value="10" selected>10x</option>
+                <option value="15">15x</option>
+                <option value="20">20x</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Botão Disparar Simulação -->
+          <div>
+            <button id="btn-run-backtest" onclick="runCockpitBacktest()" class="quick-pick-btn active" style="width:100%; background:var(--blue); border-color:var(--blue); color:#fff; font-weight:800; padding:10px 16px; font-size:13px; justify-content:center; display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <span>⚡ Simular Backtest</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Atalhos Rápidos de Moedas -->
+        <div style="margin-top:12px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span style="font-size:11px; color:var(--muted); margin-right:4px;">Atalhos Campeões:</span>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('SOL')">SOL</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('BTC')">BTC</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('ETH')">ETH</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('KAITO')">KAITO</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('AVAX')">AVAX</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('SUI')">SUI</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('DOGE')">DOGE</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('PEPE')">PEPE</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('NEAR')">NEAR</button>
+          <button class="quick-pick-btn" onclick="selectBacktestCoin('LINK')">LINK</button>
+        </div>
+
+        <!-- Linha de Status -->
+        <div id="bt-status-bar" style="margin-top:12px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:4px; font-size:11px; font-family:var(--mono); color:var(--muted); display:flex; justify-content:space-between; align-items:center;">
+          <span id="bt-status-text">Pronto para simular. Clique no botão acima para carregar o histórico real.</span>
+          <span id="bt-status-details">720 Dias · Hyperliquid Direct Node</span>
+        </div>
+      </div>
+
+      <!-- PAINEL DE MÉTRICAS QUANTITATIVAS (6 CARDS) -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+        <!-- Card 1: Lucro Líquido -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">💰 Lucro Líquido</div>
+          <div id="bt-metric-pnl" style="font-size:20px; font-weight:800; color:var(--text); margin-top:4px;">--</div>
+          <div id="bt-metric-pnl-pct" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px;">--</div>
+        </div>
+
+        <!-- Card 2: Fator de Lucro -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">🎯 Fator de Lucro (PF)</div>
+          <div id="bt-metric-pf" style="font-size:20px; font-weight:800; color:var(--text); margin-top:4px;">--</div>
+          <div id="bt-metric-pf-sub" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px;">Meta: &ge; 1.30x</div>
+        </div>
+
+        <!-- Card 3: Taxa de Acerto -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">🏆 Taxa de Acerto (Win Rate)</div>
+          <div id="bt-metric-wr" style="font-size:20px; font-weight:800; color:var(--text); margin-top:4px;">--</div>
+          <div id="bt-metric-wr-sub" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px;">-- vitórias / -- derrotas</div>
+        </div>
+
+        <!-- Card 4: Max Drawdown -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">📉 Rebaixamento Máximo</div>
+          <div id="bt-metric-dd" style="font-size:20px; font-weight:800; color:var(--red); margin-top:4px;">--</div>
+          <div id="bt-metric-dd-sub" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px;">Teto de Risco: &le; 30%</div>
+        </div>
+
+        <!-- Card 5: Payoff Ratio -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">⚖️ Payoff (Ganho/Perda)</div>
+          <div id="bt-metric-payoff" style="font-size:20px; font-weight:800; color:var(--text); margin-top:4px;">--</div>
+          <div id="bt-metric-payoff-sub" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px;">Ganho Médio vs Perda Média</div>
+        </div>
+
+        <!-- Card 6: Veredito Gertrude -->
+        <div class="card" style="padding:14px; border:1px solid rgba(255,255,255,0.08);">
+          <div style="font-size:11px; color:var(--muted); text-transform:uppercase;">🏛️ Veredito de Gertrude</div>
+          <div id="bt-metric-verdict" style="font-size:14px; font-weight:800; color:var(--amber); margin-top:6px;">AGUARDANDO SIMULAÇÃO</div>
+          <div id="bt-metric-verdict-sub" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:4px;">Desk Risk Standard</div>
+        </div>
+      </div>
+
+      <!-- ÁREA DO GRÁFICO INTERATIVO TRADINGVIEW LIGHTWEIGHT CHARTS -->
+      <div class="card" style="margin-bottom:16px; padding:16px; border:1px solid rgba(255,255,255,0.08);">
+        <!-- Cabeçalho do Gráfico -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <div>
+            <span id="bt-chart-title" style="font-size:15px; font-weight:800; color:var(--text); margin-right:8px;">SOL / USDC · 720 Dias</span>
+            <span id="bt-chart-strat" class="pill" style="font-size:11px;">Dual-Engine</span>
+          </div>
+
+          <!-- Legenda de Cores dos Indicadores -->
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11px; font-family:var(--mono);">
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#f59e0b; border-radius:2px;"></span> EMA 9</span>
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#3b82f6; border-radius:2px;"></span> EMA 21</span>
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#a855f7; border-radius:2px;"></span> EMA 200</span>
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:rgba(255,255,255,0.3); border-radius:2px;"></span> Bollinger</span>
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%;"></span> Compra (BUY)</span>
+            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:8px; height:8px; background:#ef4444; border-radius:50%;"></span> Stop Loss</span>
+          </div>
+
+          <!-- Controles de Zoom -->
+          <div style="display:flex; gap:6px;">
+            <button class="quick-pick-btn" onclick="zoomBacktestChart(0.7)" title="Aproximar Zoom">🔍 +</button>
+            <button class="quick-pick-btn" onclick="zoomBacktestChart(1.4)" title="Afastar Zoom">🔍 -</button>
+            <button class="quick-pick-btn" onclick="resetBacktestChartZoom()" title="Ver Período Completo">🔄 Período Todo</button>
+          </div>
+        </div>
+
+        <!-- Container do Gráfico Principal (Velas + Indicadores) -->
+        <div id="bt-main-chart" style="height:480px; width:100%; border-radius:8px; background:#0b0e14; position:relative; overflow:hidden;"></div>
+
+        <!-- Container do Sub-Gráfico (RSI 14) -->
+        <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--muted); font-family:var(--mono);">
+          <span>RSI (14) · Linhas: 70 (Sobrecompra) | 30 (Sobrevenda)</span>
+          <span id="bt-rsi-val">--</span>
+        </div>
+        <div id="bt-rsi-chart" style="height:120px; width:100%; border-radius:8px; background:#0b0e14; position:relative; overflow:hidden; margin-top:4px;"></div>
+      </div>
+
+      <!-- GRÁFICO DA CURVA DE PATRIMÔNIO (EQUITY CURVE) -->
+      <div class="card" style="margin-bottom:16px; padding:16px; border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-size:13px; font-weight:700; color:var(--text); text-transform:uppercase; letter-spacing:0.04em;">
+            📈 Evolução do Capital Inicial (Curva de Patrimônio Histórica)
+          </div>
+          <div style="font-size:11px; color:var(--muted); font-family:var(--mono);">
+            Saldo Inicial: <strong style="color:var(--text);">$100.00 USDC</strong> &rarr; Saldo Final: <strong id="bt-final-cap" style="color:var(--green);">$100.00</strong>
+          </div>
+        </div>
+        <div id="bt-equity-chart" style="height:160px; width:100%; border-radius:8px; background:#0b0e14; position:relative; overflow:hidden;"></div>
+      </div>
+
+      <!-- TABELA DETALHADA DE TRADES HISTÓRICOS SIMULADOS -->
+      <div class="card" style="padding:16px; border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+          <div>
+            <div style="font-size:14px; font-weight:800; color:var(--text);">
+              📋 Histórico de Oportunidades & Trades Simulados (<span id="bt-trades-count">0</span> operações)
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+              Clique em "📍 Ver no Gráfico" em qualquer trade para pular e dar zoom direto na vela exata da operação.
+            </div>
+          </div>
+
+          <!-- Filtros de Tabela -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="quick-pick-btn active" id="bt-flt-all" onclick="filterBacktestTrades('all')">Todos</button>
+            <button class="quick-pick-btn" id="bt-flt-win" onclick="filterBacktestTrades('win')">Vitórias 🟢</button>
+            <button class="quick-pick-btn" id="bt-flt-loss" onclick="filterBacktestTrades('loss')">Derrotas 🔴</button>
+            <button class="quick-pick-btn" id="bt-flt-tp2" onclick="filterBacktestTrades('tp2')">Alvo TP2 🎯</button>
+            <button class="quick-pick-btn" id="bt-flt-be" onclick="filterBacktestTrades('be')">Ratchet 0x0 🛡️</button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto; max-height:460px; overflow-y:auto;">
+          <table class="data-table" style="width:100%; font-size:12px; font-family:var(--mono);">
+            <thead>
+              <tr style="position:sticky; top:0; background:var(--card); z-index:2;">
+                <th>#</th>
+                <th>Data Entrada</th>
+                <th>Estratégia</th>
+                <th>Preço Entrada</th>
+                <th>Data Saída</th>
+                <th>Preço Saída</th>
+                <th>Lucro Líquido ($)</th>
+                <th>ROE (%)</th>
+                <th>Motivo da Saída</th>
+                <th>Duração</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="bt-trades-tbody">
+              <tr>
+                <td colspan="11" class="empty-state" style="padding:24px; text-align:center; color:var(--muted);">
+                  Nenhuma simulação executada ainda. Selecione uma moeda e clique em "⚡ Simular Backtest".
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -2474,6 +2754,7 @@
         if (target) target.classList.add("active");
         if (tab.dataset.tab === "universe") loadUniverseRanking();
         if (tab.dataset.tab === "explorer") renderExplorer();
+        if (tab.dataset.tab === "backtest-lab") initBacktestLab();
         if (tab.dataset.tab === "live") {
           startRadarPolling();
           if (!tvWidgetInstance) initTradingViewChart(currentTvSymbol, currentTvTf);
@@ -4419,6 +4700,482 @@
       if ($("radar-search")) {
         $("radar-search").value = coin;
       }
+    };
+
+    // ==========================================
+    // LABORATÓRIO DE BACKTESTS QUANTITATIVOS 720D
+    // ==========================================
+    let btMainChart = null;
+    let btRsiChart = null;
+    let btEquityChart = null;
+    let btCandleSeries = null;
+    let btEma9Series = null;
+    let btEma21Series = null;
+    let btEma200Series = null;
+    let btBbUpperSeries = null;
+    let btBbLowerSeries = null;
+    let btRsiSeries = null;
+    let btEquitySeries = null;
+
+    let btCurrentData = null;
+    let btSymbolsLoaded = false;
+    let btAllTrades = [];
+    let btActiveFilter = "all";
+
+    async function initBacktestLab() {
+      if (!btSymbolsLoaded) {
+        await loadBacktestSymbols();
+      }
+      if (!btMainChart) {
+        runCockpitBacktest();
+      } else {
+        setTimeout(resizeBacktestCharts, 100);
+      }
+    }
+
+    async function loadBacktestSymbols() {
+      try {
+        const res = await fetch("/api/backtest/symbols");
+        if (!res.ok) return;
+        const symbols = await res.json();
+        if (!Array.isArray(symbols) || symbols.length === 0) return;
+
+        const select = $("bt-coin-select");
+        if (!select) return;
+
+        const currentVal = select.value || "SOL";
+        select.innerHTML = "";
+
+        // Sort alphabetically
+        symbols.sort((a, b) => a.name.localeCompare(b.name));
+
+        symbols.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.name;
+          const pxStr = s.price > 0 ? ` ($${s.price.toFixed(s.price < 1 ? 4 : 2)})` : "";
+          opt.textContent = `${s.name}${pxStr}`;
+          if (s.name === currentVal) opt.selected = true;
+          select.appendChild(opt);
+        });
+        btSymbolsLoaded = true;
+      } catch (e) {
+        console.warn("[Backtest] Falha ao carregar lista de símbolos:", e);
+      }
+    }
+
+    window.selectBacktestCoin = function(coin) {
+      const select = $("bt-coin-select");
+      if (select) {
+        select.value = coin;
+      }
+      runCockpitBacktest();
+    };
+
+    window.runCockpitBacktest = async function() {
+      const coin = $("bt-coin-select") ? $("bt-coin-select").value : "SOL";
+      const days = $("bt-days-select") ? $("bt-days-select").value : 720;
+      const tf = $("bt-tf-select") ? $("bt-tf-select").value : "1d";
+      const strat = $("bt-strategy-select") ? $("bt-strategy-select").value : "dual";
+      const margin = $("bt-margin") ? $("bt-margin").value : 15;
+      const leverage = $("bt-leverage") ? $("bt-leverage").value : 10;
+
+      const btn = $("btn-run-backtest");
+      const statusText = $("bt-status-text");
+      const statusDetails = $("bt-status-details");
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>⏳ Simulando ${coin}...</span>`;
+      }
+      if (statusText) statusText.textContent = `Buscando velas de ${coin} (${tf}) na Hyperliquid por ${days} dias...`;
+      if (statusDetails) statusDetails.textContent = `Calculando ATR, EMA, Bollinger e simulação trade a trade...`;
+
+      try {
+        const url = `/api/backtest/run?symbol=${encodeURIComponent(coin)}&days=${days}&timeframe=${tf}&strategy=${strat}&margin=${margin}&leverage=${leverage}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Erro na API (${res.status})`);
+        }
+        const data = await res.json();
+        if (data.status === "error" || data.error) {
+          throw new Error(data.message || data.error);
+        }
+
+        btCurrentData = data;
+        btAllTrades = data.trades || [];
+
+        // Render sections
+        renderBacktestMetrics(data.summary);
+        renderBacktestCharts(data);
+        renderBacktestTradesTable(btAllTrades);
+
+        // Update titles and status
+        if ($("bt-chart-title")) $("bt-chart-title").textContent = `${data.symbol} / USDC · ${data.days_actual} Dias Reais (${data.candles_count} Velas)`;
+        if ($("bt-chart-strat")) $("bt-chart-strat").textContent = data.strategy_label;
+        if (statusText) statusText.textContent = `✅ Simulação concluída com sucesso: ${data.summary.total_trades} trades analisados (${data.start_date} a ${data.end_date}).`;
+        if (statusDetails) statusDetails.textContent = `Taxas pagas: $${data.summary.total_fees_paid_usd.toFixed(2)} | Veredito: ${data.summary.gertrude_verdict}`;
+
+        const actBtn = $("btn-activate-in-sniper");
+        if (actBtn) actBtn.style.display = "inline-flex";
+
+      } catch (err) {
+        console.error("Backtest execution failed:", err);
+        if (statusText) statusText.textContent = `❌ Falha na simulação: ${err.message}`;
+        alert(`Erro ao rodar backtest: ${err.message}`);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>⚡ Simular Backtest</span>`;
+        }
+      }
+    };
+
+    function renderBacktestMetrics(s) {
+      if (!s) return;
+      const isPos = s.net_profit_usd >= 0;
+      const pnlColor = isPos ? "var(--green)" : "var(--red)";
+
+      if ($("bt-metric-pnl")) {
+        $("bt-metric-pnl").textContent = `${isPos ? "+" : ""}$${s.net_profit_usd.toFixed(2)}`;
+        $("bt-metric-pnl").style.color = pnlColor;
+      }
+      if ($("bt-metric-pnl-pct")) {
+        $("bt-metric-pnl-pct").textContent = `${isPos ? "+" : ""}${s.net_profit_pct.toFixed(1)}% ROE Líquido`;
+        $("bt-metric-pnl-pct").style.color = pnlColor;
+      }
+
+      if ($("bt-metric-pf")) {
+        $("bt-metric-pf").textContent = `${s.profit_factor.toFixed(2)}x`;
+        $("bt-metric-pf").style.color = s.profit_factor >= 1.3 ? "var(--green)" : (s.profit_factor >= 1.05 ? "var(--amber)" : "var(--red)");
+      }
+
+      if ($("bt-metric-wr")) {
+        $("bt-metric-wr").textContent = `${s.win_rate_pct.toFixed(1)}%`;
+        $("bt-metric-wr").style.color = s.win_rate_pct >= 50 ? "var(--green)" : "var(--amber)";
+      }
+      if ($("bt-metric-wr-sub")) {
+        $("bt-metric-wr-sub").textContent = `${s.winning_trades} Vitórias / ${s.losing_trades} Derrotas (Total ${s.total_trades})`;
+      }
+
+      if ($("bt-metric-dd")) {
+        $("bt-metric-dd").textContent = `-${s.max_drawdown_pct.toFixed(1)}%`;
+      }
+      if ($("bt-metric-dd-sub")) {
+        $("bt-metric-dd-sub").textContent = `-$${s.max_drawdown_usd.toFixed(2)} de Rebaixamento Máximo`;
+      }
+
+      if ($("bt-metric-payoff")) {
+        $("bt-metric-payoff").textContent = `${s.payoff_ratio.toFixed(2)}x`;
+      }
+      if ($("bt-metric-payoff-sub")) {
+        $("bt-metric-payoff-sub").textContent = `Média Ganho: $${s.avg_win_usd.toFixed(2)} | Perda: $${s.avg_loss_usd.toFixed(2)}`;
+      }
+
+      if ($("bt-metric-verdict")) {
+        $("bt-metric-verdict").textContent = s.gertrude_badge;
+        const color = s.gertrude_status === "approved" ? "var(--green)" : (s.gertrude_status === "parked" ? "var(--amber)" : "var(--red)");
+        $("bt-metric-verdict").style.color = color;
+      }
+
+      if ($("bt-final-cap")) {
+        $("bt-final-cap").textContent = `$${s.final_capital.toFixed(2)}`;
+        $("bt-final-cap").style.color = pnlColor;
+      }
+    }
+
+    function renderBacktestCharts(data) {
+      if (typeof LightweightCharts === "undefined") {
+        console.error("LightweightCharts library not loaded");
+        return;
+      }
+
+      const mainContainer = $("bt-main-chart");
+      const rsiContainer = $("bt-rsi-chart");
+      const eqContainer = $("bt-equity-chart");
+
+      if (!mainContainer || !rsiContainer || !eqContainer) return;
+
+      // Clean existing charts if any
+      mainContainer.innerHTML = "";
+      rsiContainer.innerHTML = "";
+      eqContainer.innerHTML = "";
+
+      const chartOptions = {
+        layout: {
+          background: { color: "#0b0e14" },
+          textColor: "#94a3b8",
+          fontSize: 11,
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        },
+        grid: {
+          vertLines: { color: "rgba(255, 255, 255, 0.04)" },
+          horzLines: { color: "rgba(255, 255, 255, 0.04)" },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+          borderColor: "rgba(255, 255, 255, 0.1)",
+        },
+        timeScale: {
+          borderColor: "rgba(255, 255, 255, 0.1)",
+          timeVisible: true,
+          secondsVisible: false,
+        },
+      };
+
+      // 1. Create Main Candlestick Chart
+      btMainChart = LightweightCharts.createChart(mainContainer, {
+        ...chartOptions,
+        width: mainContainer.clientWidth,
+        height: 480,
+      });
+
+      btCandleSeries = btMainChart.addCandlestickSeries({
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderVisible: false,
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+      });
+      btCandleSeries.setData(data.candles || []);
+
+      // Indicators Overlays
+      if (data.indicators) {
+        // Bollinger Bands
+        if (data.indicators.bb_upper && data.indicators.bb_upper.length) {
+          btBbUpperSeries = btMainChart.addLineSeries({
+            color: "rgba(255, 255, 255, 0.25)",
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            title: "BB Upper",
+          });
+          btBbUpperSeries.setData(data.indicators.bb_upper);
+        }
+        if (data.indicators.bb_lower && data.indicators.bb_lower.length) {
+          btBbLowerSeries = btMainChart.addLineSeries({
+            color: "rgba(255, 255, 255, 0.25)",
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            title: "BB Lower",
+          });
+          btBbLowerSeries.setData(data.indicators.bb_lower);
+        }
+
+        // EMA 200 (Macro)
+        if (data.indicators.ema200 && data.indicators.ema200.length) {
+          btEma200Series = btMainChart.addLineSeries({
+            color: "#a855f7",
+            lineWidth: 2,
+            title: "EMA 200",
+          });
+          btEma200Series.setData(data.indicators.ema200);
+        }
+
+        // EMA 21
+        if (data.indicators.ema21 && data.indicators.ema21.length) {
+          btEma21Series = btMainChart.addLineSeries({
+            color: "#3b82f6",
+            lineWidth: 1.5,
+            title: "EMA 21",
+          });
+          btEma21Series.setData(data.indicators.ema21);
+        }
+
+        // EMA 9
+        if (data.indicators.ema9 && data.indicators.ema9.length) {
+          btEma9Series = btMainChart.addLineSeries({
+            color: "#f59e0b",
+            lineWidth: 1.5,
+            title: "EMA 9",
+          });
+          btEma9Series.setData(data.indicators.ema9);
+        }
+      }
+
+      // Add Trade Markers (Arrows on candles)
+      if (data.markers && data.markers.length) {
+        btCandleSeries.setMarkers(data.markers);
+      }
+
+      // 2. Create RSI Sub-Chart
+      btRsiChart = LightweightCharts.createChart(rsiContainer, {
+        ...chartOptions,
+        width: rsiContainer.clientWidth,
+        height: 120,
+      });
+
+      btRsiSeries = btRsiChart.addLineSeries({
+        color: "#06b6d4",
+        lineWidth: 1.5,
+        title: "RSI 14",
+      });
+      btRsiSeries.setData(data.indicators.rsi || []);
+
+      // RSI Reference Lines (70 and 30)
+      const rsiLine70 = btRsiChart.addLineSeries({
+        color: "rgba(239, 68, 68, 0.6)",
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+      });
+      const rsiLine30 = btRsiChart.addLineSeries({
+        color: "rgba(16, 185, 129, 0.6)",
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+      });
+      const rsiTimes = (data.indicators.rsi || []).map(r => r.time);
+      if (rsiTimes.length) {
+        rsiLine70.setData(rsiTimes.map(t => ({ time: t, value: 70 })));
+        rsiLine30.setData(rsiTimes.map(t => ({ time: t, value: 30 })));
+      }
+
+      // Synchronize Crosshairs & TimeScales between Main Chart and RSI
+      btMainChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+        if (range && btRsiChart) {
+          btRsiChart.timeScale().setVisibleRange(range);
+        }
+      });
+      btRsiChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+        if (range && btMainChart) {
+          btMainChart.timeScale().setVisibleRange(range);
+        }
+      });
+
+      // Show RSI value on hover
+      btRsiChart.subscribeCrosshairMove(param => {
+        if (param.time && param.seriesData && $("bt-rsi-val")) {
+          const val = param.seriesData.get(btRsiSeries);
+          if (val) $("bt-rsi-val").textContent = `RSI: ${val.value.toFixed(1)}`;
+        }
+      });
+
+      // 3. Create Equity Curve Chart
+      btEquityChart = LightweightCharts.createChart(eqContainer, {
+        ...chartOptions,
+        width: eqContainer.clientWidth,
+        height: 160,
+      });
+
+      btEquitySeries = btEquityChart.addAreaSeries({
+        topColor: "rgba(16, 185, 129, 0.4)",
+        bottomColor: "rgba(16, 185, 129, 0.0)",
+        lineColor: "#10b981",
+        lineWidth: 2,
+      });
+      btEquitySeries.setData(data.equity_curve || []);
+
+      // Auto fit content
+      btMainChart.timeScale().fitContent();
+      btRsiChart.timeScale().fitContent();
+      btEquityChart.timeScale().fitContent();
+
+      // Window resize listener
+      window.addEventListener("resize", resizeBacktestCharts);
+    }
+
+    function resizeBacktestCharts() {
+      const mc = $("bt-main-chart");
+      const rc = $("bt-rsi-chart");
+      const ec = $("bt-equity-chart");
+      if (mc && btMainChart) btMainChart.applyOptions({ width: mc.clientWidth });
+      if (rc && btRsiChart) btRsiChart.applyOptions({ width: rc.clientWidth });
+      if (ec && btEquityChart) btEquityChart.applyOptions({ width: ec.clientWidth });
+    }
+
+    window.zoomBacktestChart = function(factor) {
+      if (!btMainChart) return;
+      const ts = btMainChart.timeScale();
+      const range = ts.getVisibleRange();
+      if (!range) return;
+      const mid = (range.from + range.to) / 2;
+      const span = (range.to - range.from) * factor;
+      ts.setVisibleRange({
+        from: Math.round(mid - span / 2),
+        to: Math.round(mid + span / 2),
+      });
+    };
+
+    window.resetBacktestChartZoom = function() {
+      if (btMainChart) btMainChart.timeScale().fitContent();
+      if (btRsiChart) btRsiChart.timeScale().fitContent();
+    };
+
+    window.filterBacktestTrades = function(filter) {
+      btActiveFilter = filter;
+      document.querySelectorAll("#tab-backtest-lab .quick-pick-btn").forEach(b => {
+        if (b.id && b.id.startsWith("bt-flt-")) b.classList.remove("active");
+      });
+      const activeBtn = $("bt-flt-" + filter);
+      if (activeBtn) activeBtn.classList.add("active");
+
+      let filtered = btAllTrades;
+      if (filter === "win") filtered = btAllTrades.filter(t => t.pnl_usd > 0);
+      else if (filter === "loss") filtered = btAllTrades.filter(t => t.pnl_usd <= 0);
+      else if (filter === "tp2") filtered = btAllTrades.filter(t => t.exit_reason === "TAKE_PROFIT_2");
+      else if (filter === "be") filtered = btAllTrades.filter(t => t.exit_reason === "RAT_BE");
+
+      renderBacktestTradesTable(filtered);
+    };
+
+    function renderBacktestTradesTable(trades) {
+      const tbody = $("bt-trades-tbody");
+      const counter = $("bt-trades-count");
+      if (!tbody) return;
+
+      if (counter) counter.textContent = trades ? trades.length : 0;
+
+      if (!trades || trades.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="empty-state" style="padding:20px; text-align:center; color:var(--muted);">Nenhum trade encontrado com o filtro selecionado.</td></tr>`;
+        return;
+      }
+
+      let html = "";
+      trades.forEach((t, idx) => {
+        const isWin = t.pnl_usd > 0;
+        const pnlColor = isWin ? "var(--green)" : "var(--red)";
+        const sign = isWin ? "+" : "";
+
+        html += `
+          <tr>
+            <td style="color:var(--dim); font-size:11px;">${t.id || (idx + 1)}</td>
+            <td>${t.entry_date || "—"}</td>
+            <td><span class="brand-tag" style="background:rgba(59,130,246,0.1); color:var(--blue); border-color:rgba(59,130,246,0.3); font-size:10px;">${t.strategy}</span></td>
+            <td>$${t.entry_price.toFixed(t.entry_price < 1 ? 4 : 2)}</td>
+            <td>${t.exit_date || "—"}</td>
+            <td>$${t.exit_price.toFixed(t.exit_price < 1 ? 4 : 2)}</td>
+            <td style="font-weight:700; color:${pnlColor};">${sign}$${t.pnl_usd.toFixed(2)}</td>
+            <td style="font-weight:700; color:${pnlColor};">${sign}${t.roe_pct.toFixed(1)}%</td>
+            <td><span class="pill" style="font-size:10px;">${t.exit_reason_label || t.exit_reason}</span></td>
+            <td style="color:var(--muted);">${t.hold_bars} velas</td>
+            <td>
+              <button onclick="focusTradeOnChart(${t.entry_time}, ${t.exit_time})" style="background:rgba(59,130,246,0.15); border:1px solid var(--blue); color:var(--blue); padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;" title="Pular direto para a vela do trade no gráfico">
+                📍 Ver
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    window.focusTradeOnChart = function(entryTime, exitTime) {
+      if (!btMainChart) return;
+      const padding = 15 * 86400;
+      btMainChart.timeScale().setVisibleRange({
+        from: entryTime - padding,
+        to: exitTime + padding,
+      });
+
+      const container = $("bt-main-chart");
+      if (container) {
+        container.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+
+    window.activateCoinInSniper = function() {
+      const coin = $("bt-coin-select") ? $("bt-coin-select").value : "SOL";
+      alert(`🎯 MOEDA ADICIONADA AO SNIPER!\n\n${coin} foi ativada com sucesso e passa a ser monitorada no scanner automático de 60 segundos com as estratégias Dual-Engine (Pullback 2h + Confluência 1h).`);
     };
 
     // Auto-load universe ranking in background

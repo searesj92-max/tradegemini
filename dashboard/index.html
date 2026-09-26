@@ -1177,9 +1177,174 @@
       gap: 10px;
     }
 
-    #tradingview_live_chart {
-      height: 640px;
-      width: 100%;
+    /* SNIPER MISSION CONTROL CARD */
+    .sniper-control-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.7));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .scc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .scc-title-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .scc-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .scc-badge-auto {
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--green);
+      border: 1px solid var(--green);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      letter-spacing: 0.05em;
+    }
+
+    .scc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .scc-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .scc-item-lbl {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .scc-item-val {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .scc-item-sub {
+      font-size: 10px;
+      color: var(--dim);
+    }
+
+    .scc-bar-bg {
+      background: var(--surface3);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .scc-bar-fill {
+      background: var(--green);
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* CONSOLIDATED EQUITY BAR */
+    .consolidated-equity-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ce-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+    }
+
+    .ce-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .ce-val {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: var(--mono);
+    }
+
+    .ce-sub {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* WARNING BANNER FOR BACKTEST LAB */
+    .lab-warning-banner {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .lab-warning-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .lab-warning-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--amber);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .lab-warning-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 3px;
+      line-height: 1.4;
     }
 
   </style>
@@ -1229,6 +1394,86 @@
     <!-- TAB 1: COCKPIT & POSIÇÕES EXECUTIVAS       -->
     <!-- ========================================== -->
     <div id="tab-cockpit" class="tab-view active">
+
+      <!-- ========================================== -->
+      <!-- SNIPER MISSION CONTROL (NUVEM 24/7)       -->
+      <!-- ========================================== -->
+      <div class="sniper-control-card">
+        <div class="scc-top">
+          <div class="scc-title-area">
+            <span class="status-dot"></span>
+            <span class="scc-title">🎯 Piloto Automático Sniper · Nuvem Render 24/7</span>
+            <span class="scc-badge-auto">⚡ 100% AUTOMÁTICO</span>
+          </div>
+          <div style="font-size:11px; color:var(--muted); font-family:var(--mono);">
+            Varredura contínua a cada <strong style="color:var(--text);">60s</strong>
+          </div>
+        </div>
+
+        <div class="scc-grid">
+          <div class="scc-item">
+            <span class="scc-item-lbl">Capacidade de Risco</span>
+            <span class="scc-item-val" id="scc-risk-display"><strong style="color:var(--green);" id="scc-pos-count">3</strong> / 3 Posições</span>
+            <div class="scc-bar-bg">
+              <div class="scc-bar-fill" id="scc-pos-bar" style="width: 100%;"></div>
+            </div>
+            <span class="scc-item-sub">Capacidade máxima alocada</span>
+          </div>
+
+          <div class="scc-item">
+            <span class="scc-item-lbl">Próximas 2 Entradas</span>
+            <span class="scc-item-val" style="color:var(--blue);">$15.00 USDC @ 10x</span>
+            <span class="scc-item-sub">Stop Loss técnico 2.0x ATR</span>
+          </div>
+
+          <div class="scc-item">
+            <span class="scc-item-lbl">Proteção de Lucro</span>
+            <span class="scc-item-val" style="color:var(--amber);">Ratchet +30%</span>
+            <span class="scc-item-sub">Sobe Stop Loss para Breakeven</span>
+          </div>
+
+          <div class="scc-item">
+            <span class="scc-item-lbl">Status do Servidor</span>
+            <span class="scc-item-val" style="color:var(--green);">🟢 UptimeRobot Ativo</span>
+            <span class="scc-item-sub">Ping 5 min · Nunca Hiberna</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
+      <!-- BANNER DE PATRIMÔNIO REAL CONSOLIDADO     -->
+      <!-- ========================================== -->
+      <div class="consolidated-equity-bar">
+        <div class="ce-card">
+          <span class="ce-lbl">Patrimônio Real da Conta</span>
+          <div class="ce-val" id="lm-total-equity-display" style="color:var(--blue);">$50.00</div>
+          <span class="ce-sub">Hyperliquid Mainnet (Perps)</span>
+        </div>
+
+        <div class="ce-card">
+          <span class="ce-lbl">Lucro Consolidado Flutuante</span>
+          <div class="ce-val" id="lm-total-pnl-display" style="color:var(--green);">+$0.00</div>
+          <span class="ce-sub" id="lm-total-roe-display">+0.00% ROE Médio</span>
+        </div>
+
+        <div class="ce-card">
+          <span class="ce-lbl">Margem em Operação</span>
+          <div class="ce-val" id="lm-margin-used-display" style="color:var(--amber);">$51.20</div>
+          <span class="ce-sub">3 Posições Ativas</span>
+        </div>
+
+        <div class="ce-card">
+          <span class="ce-lbl">Saldo Livre Disponível</span>
+          <div class="ce-val" id="lm-avail-margin-display" style="color:var(--muted);">$0.00</div>
+          <span class="ce-sub">Liberado ao fechar trades</span>
+        </div>
+
+        <div class="ce-card">
+          <span class="ce-lbl">Blindagem de Risco</span>
+          <div class="ce-val" style="color:var(--green);">🛡️ 100% Protegido</div>
+          <span class="ce-sub">Stop Loss em todas as ordens</span>
+        </div>
+      </div>
 
       <!-- ========================================== -->
       <!-- RADAR & TERMINAL DE EXECUÇÃO AO VIVO       -->
@@ -1292,6 +1537,19 @@
       </div>
 
       <div id="backtest-lab-drawer" style="display:none;">
+        <!-- LAB WARNING BANNER -->
+        <div class="lab-warning-banner">
+          <div class="lab-warning-icon">🔬</div>
+          <div>
+            <div class="lab-warning-title">
+              Arquivo de Pesquisa Quantitativa Histórica (Backtest Teórico Simulado)
+            </div>
+            <div class="lab-warning-desc">
+              Esta área abaixo contém estudos e testes teóricos do passado em Bitcoin Spot (1x sem alavancagem). <strong>NÃO são as operações da sua conta real.</strong> As suas operações reais com dinheiro estão no topo do painel.
+            </div>
+          </div>
+        </div>
+
         <!-- HERO SELECTOR -->
         <div class="cockpit-header">
           <div>
@@ -3235,13 +3493,41 @@
         if (!res.ok) return;
         const data = await res.json();
 
-        // Update Global Metrics
+        // Compute Consolidated Metrics across all live positions
+        const positions = data.positions || [];
+        let totalUnrealizedPnl = 0;
+        let totalMarginUsed = 0;
+        positions.forEach(p => {
+          totalUnrealizedPnl += (p.unrealized_pnl || 0);
+          totalMarginUsed += (p.margin_used || 0);
+        });
+        const avgRoe = totalMarginUsed > 0 ? (totalUnrealizedPnl / totalMarginUsed) * 100 : 0;
+        const pnlSign = totalUnrealizedPnl >= 0 ? "+" : "";
+        const pnlColor = totalUnrealizedPnl >= 0 ? "var(--green)" : "var(--red)";
+
+        // Update Top Header & Consolidated Bar
         if ($("lm-total-equity")) $("lm-total-equity").textContent = "$" + (data.total_equity || 0).toFixed(2);
         if ($("lm-margin-used")) $("lm-margin-used").textContent = "$" + (data.margin_used || 0).toFixed(2);
         if ($("lm-avail-margin")) $("lm-avail-margin").textContent = "$" + (data.available_margin || 0).toFixed(2);
         if ($("hdr-total-equity")) $("hdr-total-equity").textContent = "$" + (data.total_equity || 0).toFixed(2);
         if ($("hdr-free-margin")) $("hdr-free-margin").textContent = "$" + (data.available_margin || 0).toFixed(2);
         if ($("hdr-active-margin")) $("hdr-active-margin").textContent = "$" + (data.margin_used || 0).toFixed(2);
+
+        // Mission Control & Consolidated Elements
+        if ($("lm-total-equity-display")) $("lm-total-equity-display").textContent = "$" + (data.total_equity || 0).toFixed(2);
+        if ($("lm-margin-used-display")) $("lm-margin-used-display").textContent = "$" + (data.margin_used || 0).toFixed(2);
+        if ($("lm-avail-margin-display")) $("lm-avail-margin-display").textContent = "$" + (data.available_margin || 0).toFixed(2);
+        if ($("lm-total-pnl-display")) {
+          $("lm-total-pnl-display").textContent = `${pnlSign}$${totalUnrealizedPnl.toFixed(4)}`;
+          $("lm-total-pnl-display").style.color = pnlColor;
+        }
+        if ($("lm-total-roe-display")) {
+          $("lm-total-roe-display").textContent = `${pnlSign}${avgRoe.toFixed(2)}% ROE Médio`;
+          $("lm-total-roe-display").style.color = pnlColor;
+        }
+        if ($("scc-pos-count")) $("scc-pos-count").textContent = positions.length;
+        if ($("scc-pos-bar")) $("scc-pos-bar").style.width = Math.min(100, (positions.length / 3) * 100) + "%";
+
         if ($("lm-sync-pill")) {
           const d = new Date(data.updated_at || Date.now());
           $("lm-sync-pill").textContent = "Ao Vivo: " + d.toLocaleTimeString();
@@ -3250,11 +3536,10 @@
         // Render Open Positions
         const posContainer = $("lm-positions-container");
         if (posContainer) {
-          const positions = data.positions || [];
           if (positions.length === 0) {
             posContainer.innerHTML = `
               <div style="background:var(--surface); border:1px dashed var(--border); border-radius:8px; padding:20px; text-align:center; color:var(--muted); font-size:13px;">
-                🔍 <strong>Nenhuma posição aberta no momento.</strong> O robô está escaneando a Hyperliquid procurando confluência $\\ge 5$ para novas entradas com $5 @ 10x.
+                🔍 <strong>Nenhuma posição aberta no momento.</strong> O robô está escaneando a Hyperliquid procurando confluência $\\ge 5$ para novas entradas com $15 @ 10x.
               </div>
             `;
           } else {
@@ -3301,8 +3586,11 @@
 
                     <div style="display:flex; gap:8px; align-items:center;">
                       <span class="select-label" style="font-size:11px;">Margem: $${p.margin_used.toFixed(2)} USDC</span>
+                      <button class="quick-pick-btn" onclick="viewLiveChart('${p.coin}')" style="background:rgba(56,189,248,0.15); border-color:var(--blue); color:var(--blue); font-weight:700;">
+                        📈 Gráfico Ao Vivo
+                      </button>
                       <button class="quick-pick-btn" onclick="closePositionDirectly('${p.coin}')" style="background:rgba(239,68,68,0.15); border-color:var(--red); color:var(--red); font-weight:700;">
-                        🛑 Encerrar a Mercado
+                        🛑 Encerrar
                       </button>
                     </div>
                   </div>

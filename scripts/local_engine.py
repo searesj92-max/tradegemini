@@ -95,7 +95,7 @@ def load_ohlcv(provider: str, symbol: str, interval: str = "4h", refresh: bool =
             for k in raw_k
         ]
     else:
-        iv = {"1h": "60", "2h": "120", "4h": "240", "1d": "D"}.get(interval, interval)
+        iv = {"15m": "15", "1h": "60", "2h": "120", "4h": "240", "1d": "D"}.get(interval, interval)
         raw_k = download_bybit_klines(symbol, iv)
         bars = [
             {"t": int(k[0]), "o": float(k[1]), "h": float(k[2]), "l": float(k[3]), "c": float(k[4]), "v": float(k[5])}
@@ -231,6 +231,109 @@ def crossunder(a: list[float | None], b: list[float | None] | float, i: int) -> 
     if a[i] is None or a[i - 1] is None:
         return False
     return a[i - 1] >= b and a[i] < b
+
+
+def adx(bars: list[dict], n: int = 14) -> list[float | None]:
+    out: list[float | None] = [None] * len(bars)
+    if len(bars) <= 2 * n:
+        return out
+    tr_list = [0.0] * len(bars)
+    plus_dm = [0.0] * len(bars)
+    minus_dm = [0.0] * len(bars)
+    for i in range(1, len(bars)):
+        h = bars[i]["h"]
+        l = bars[i]["l"]
+        ph = bars[i - 1]["h"]
+        pl = bars[i - 1]["l"]
+        pc = bars[i - 1]["c"]
+        tr_list[i] = max(h - l, abs(h - pc), abs(l - pc))
+        up_move = h - ph
+        down_move = pl - l
+        plus_dm[i] = up_move if (up_move > down_move and up_move > 0) else 0.0
+        minus_dm[i] = down_move if (down_move > up_move and down_move > 0) else 0.0
+
+    tr_smooth = sum(tr_list[1 : n + 1])
+    pdm_smooth = sum(plus_dm[1 : n + 1])
+    mdm_smooth = sum(minus_dm[1 : n + 1])
+
+    dx_list = [0.0] * len(bars)
+    for i in range(n + 1, len(bars)):
+        tr_smooth = tr_smooth - (tr_smooth / n) + tr_list[i]
+        pdm_smooth = pdm_smooth - (pdm_smooth / n) + plus_dm[i]
+        mdm_smooth = mdm_smooth - (mdm_smooth / n) + minus_dm[i]
+        pdi = 100.0 * (pdm_smooth / tr_smooth) if tr_smooth > 0 else 0.0
+        mdi = 100.0 * (mdm_smooth / tr_smooth) if tr_smooth > 0 else 0.0
+        diff = abs(pdi - mdi)
+        total = pdi + mdi
+        dx_list[i] = 100.0 * (diff / total) if total > 0 else 0.0
+
+    if len(bars) > 2 * n:
+        adx_smooth = sum(dx_list[n + 1 : 2 * n + 1]) / n
+        out[2 * n] = adx_smooth
+        for i in range(2 * n + 1, len(bars)):
+            adx_smooth = (adx_smooth * (n - 1) + dx_list[i]) / n
+            out[i] = adx_smooth
+    return out
+
+
+def supertrend(bars: list[dict], period: int = 10, multiplier: float = 3.0) -> tuple[list[float | None], list[int]]:
+    n = len(bars)
+    trend = [1] * n
+    st_line: list[float | None] = [None] * n
+    a = atr(bars, period)
+    if n <= period:
+        return st_line, trend
+
+    upper_band = [0.0] * n
+    lower_band = [0.0] * n
+    for i in range(period, n):
+        hl2 = (bars[i]["h"] + bars[i]["l"]) / 2.0
+        atr_val = a[i] or 0.0
+        basic_upper = hl2 + multiplier * atr_val
+        basic_lower = hl2 - multiplier * atr_val
+
+        prev_c = bars[i - 1]["c"]
+        prev_upper = upper_band[i - 1]
+        prev_lower = lower_band[i - 1]
+
+        upper_band[i] = basic_upper if (basic_upper < prev_upper or prev_c > prev_upper) else prev_upper
+        lower_band[i] = basic_lower if (basic_lower > prev_lower or prev_c < prev_lower) else prev_lower
+
+        prev_trend = trend[i - 1]
+        curr_c = bars[i]["c"]
+        if prev_trend == 1:
+            trend[i] = -1 if curr_c < lower_band[i] else 1
+        else:
+            trend[i] = 1 if curr_c > upper_band[i] else -1
+
+        st_line[i] = lower_band[i] if trend[i] == 1 else upper_band[i]
+
+    return st_line, trend
+
+
+def keltner_channel(bars: list[dict], n: int = 20, mult: float = 1.5) -> tuple[list[float | None], list[float | None], list[float | None]]:
+    c = [b["c"] for b in bars]
+    mid = ema(c, n)
+    a = atr(bars, n)
+    upper: list[float | None] = [None] * len(bars)
+    lower: list[float | None] = [None] * len(bars)
+    for i in range(len(bars)):
+        if mid[i] is not None and a[i] is not None:
+            upper[i] = mid[i] + mult * a[i]
+            lower[i] = mid[i] - mult * a[i]
+    return mid, upper, lower
+
+
+def bollinger_bands(c: list[float], n: int = 20, mult: float = 2.0) -> tuple[list[float | None], list[float | None], list[float | None]]:
+    mid = sma(c, n)
+    sd = stdev(c, n)
+    upper: list[float | None] = [None] * len(c)
+    lower: list[float | None] = [None] * len(c)
+    for i in range(len(c)):
+        if mid[i] is not None and sd[i] is not None:
+            upper[i] = mid[i] + mult * sd[i]
+            lower[i] = mid[i] - mult * sd[i]
+    return mid, upper, lower
 
 
 @dataclass
@@ -448,6 +551,180 @@ def _signal_fn(name: str, bars: list[dict]) -> Callable[[int], str | None]:
 
         return sig
 
+    if name == "confluence-6p":
+        e200 = ema(c, 200)
+        e21 = ema(c, 21)
+        e9 = ema(c, 9)
+        dh = highest(bars, 20, "h")
+        v = [b["v"] for b in bars]
+        v_ma = sma(v, 20)
+
+        def sig(i: int, e200=e200, e21=e21, e9=e9, r=r, dh=dh, v=v, v_ma=v_ma) -> str | None:
+            if i < 200 or None in (e200[i], e21[i], e9[i], r[i], dh[i - 1]):
+                return None
+            macro_bull = c[i] > e200[i]
+            fast_bull = e9[i] > e21[i]
+            rsi_ok = 50.0 <= r[i] <= 72.0
+            vol_ok = (v[i] >= (v_ma[i] or 0) * 0.85) if v_ma[i] else True
+            donchian_break = (c[i] >= dh[i - 1] * 0.99)
+            triggered = crossover(e9, e21, i) or crossover(r, 50.0, i) or (c[i] >= dh[i - 1] and c[i - 1] < dh[i - 1])
+            if macro_bull and fast_bull and rsi_ok and vol_ok and donchian_break and triggered:
+                return "long"
+            return None
+
+        return sig
+
+    if name == "supertrend-adx":
+        _st_line, trend = supertrend(bars, 10, 3.0)
+        adx_val = adx(bars, 14)
+        e200 = ema(c, 200)
+
+        def sig(i: int, trend=trend, adx_val=adx_val, e200=e200) -> str | None:
+            if i < 30 or None in (adx_val[i], e200[i]):
+                return None
+            strong_trend = (adx_val[i] or 0) >= 22.0
+            if strong_trend and trend[i] == 1 and trend[i - 1] == -1 and c[i] > e200[i]:
+                return "long"
+            if strong_trend and trend[i] == -1 and trend[i - 1] == 1 and c[i] < e200[i]:
+                return "short"
+            return None
+
+        return sig
+
+    if name == "keltner-bb-squeeze":
+        _k_mid, k_up, k_low = keltner_channel(bars, 20, 1.5)
+        _b_mid, b_up, b_low = bollinger_bands(c, 20, 2.0)
+        squeeze = [
+            (b_up[j] is not None and k_up[j] is not None and b_up[j] < k_up[j] and b_low[j] > k_low[j])
+            for j in range(len(bars))
+        ]
+
+        def sig(i: int, b_up=b_up, b_low=b_low, squeeze=squeeze) -> str | None:
+            if i < 25 or None in (b_up[i], b_low[i]):
+                return None
+            was_squeezed = any(squeeze[i - k] for k in range(1, 6))
+            if was_squeezed:
+                if c[i] > b_up[i] and c[i] > o[i]:
+                    return "long"
+                if c[i] < b_low[i] and c[i] < o[i]:
+                    return "short"
+            return None
+
+        return sig
+
+    if name == "dip-pullback-v2":
+        e200 = ema(c, 200)
+        e50 = ema(c, 50)
+        fast_r = rsi(c, 7)
+
+        def sig(i: int, e200=e200, e50=e50, fast_r=fast_r) -> str | None:
+            if i < 200 or None in (e200[i], e50[i], fast_r[i]):
+                return None
+            uptrend = c[i] > e200[i] and e50[i] > e200[i]
+            dip_bounce = crossover(fast_r, 32.0, i)
+            bull_candle = c[i] > o[i]
+            if uptrend and dip_bounce and bull_candle:
+                return "long"
+            return None
+
+        return sig
+
+    if name == "waddah-attar-explosion":
+        e20 = ema(c, 20)
+        e40 = ema(c, 40)
+        _bb_mid, bb_up, bb_low = bollinger_bands(c, 20, 2.0)
+        atr_100 = atr(bars, 100)
+        e200 = ema(c, 200)
+
+        macd_diff = [
+            (e20[j] - e40[j]) if (e20[j] is not None and e40[j] is not None) else None
+            for j in range(len(bars))
+        ]
+        expl_line = [
+            (bb_up[j] - bb_low[j]) if (bb_up[j] is not None and bb_low[j] is not None) else None
+            for j in range(len(bars))
+        ]
+        dead_zone = [
+            (atr_100[j] * 3.7) if atr_100[j] is not None else None
+            for j in range(len(bars))
+        ]
+
+        def sig(i: int, macd_diff=macd_diff, expl_line=expl_line, dead_zone=dead_zone, e200=e200) -> str | None:
+            if i < 105 or None in (macd_diff[i], expl_line[i], dead_zone[i], e200[i]):
+                return None
+            m = macd_diff[i]
+            prev_m = macd_diff[i - 1] or 0.0
+            e = expl_line[i]
+            d = dead_zone[i]
+            if m > 0 and m > e and m > d and m > prev_m and c[i] > e200[i]:
+                if prev_m <= (expl_line[i - 1] or 0.0) or prev_m <= (dead_zone[i - 1] or 0.0):
+                    return "long"
+            if m < 0 and abs(m) > e and abs(m) > d and abs(m) > abs(prev_m) and c[i] < e200[i]:
+                if abs(prev_m) <= (expl_line[i - 1] or 0.0) or abs(prev_m) <= (dead_zone[i - 1] or 0.0):
+                    return "short"
+            return None
+
+        return sig
+
+    if name == "chandelier-exit":
+        hh22 = highest(bars, 22, "h")
+        ll22 = lowest(bars, 22, "l")
+        a22 = atr(bars, 22)
+        e200 = ema(c, 200)
+
+        def sig(i: int, hh22=hh22, ll22=ll22, a22=a22, e200=e200) -> str | None:
+            if i < 30 or None in (hh22[i - 1], ll22[i - 1], a22[i], e200[i]):
+                return None
+            long_stop = hh22[i - 1] - 3.0 * a22[i]
+            short_stop = ll22[i - 1] + 3.0 * a22[i]
+
+            prev_long_stop = (hh22[i - 2] if i >= 2 and hh22[i - 2] is not None else hh22[i - 1]) - 3.0 * (a22[i - 1] or a22[i])
+            prev_short_stop = (ll22[i - 2] if i >= 2 and ll22[i - 2] is not None else ll22[i - 1]) + 3.0 * (a22[i - 1] or a22[i])
+
+            if c[i] > long_stop and c[i - 1] <= prev_long_stop and c[i] > e200[i] and c[i] > o[i]:
+                return "long"
+            if c[i] < short_stop and c[i - 1] >= prev_short_stop and c[i] < e200[i] and c[i] < o[i]:
+                return "short"
+            return None
+
+        return sig
+
+    if name == "stoch-rsi-t200":
+        e200 = ema(c, 200)
+        r = rsi(c, 14)
+
+        stoch_k = [None] * len(c)
+        for i in range(14, len(c)):
+            window = [r[j] for j in range(i - 13, i + 1) if r[j] is not None]
+            if len(window) == 14:
+                min_r = min(window)
+                max_r = max(window)
+                diff = max_r - min_r
+                stoch_k[i] = ((r[i] - min_r) / diff * 100.0) if diff > 0 else 50.0
+
+        smooth_k: list[float | None] = [None] * len(c)
+        for i in range(len(c)):
+            w = [stoch_k[j] for j in range(max(0, i - 2), i + 1) if stoch_k[j] is not None]
+            if len(w) == 3:
+                smooth_k[i] = sum(w) / 3.0
+
+        smooth_d: list[float | None] = [None] * len(c)
+        for i in range(len(c)):
+            w = [smooth_k[j] for j in range(max(0, i - 2), i + 1) if smooth_k[j] is not None]
+            if len(w) == 3:
+                smooth_d[i] = sum(w) / 3.0
+
+        def sig(i: int, smooth_k=smooth_k, smooth_d=smooth_d, e200=e200) -> str | None:
+            if i < 200 or None in (smooth_k[i], smooth_k[i - 1], smooth_d[i], smooth_d[i - 1], e200[i]):
+                return None
+            if c[i] > e200[i] and smooth_k[i - 1] <= 25.0 and crossover(smooth_k, smooth_d, i) and c[i] > o[i]:
+                return "long"
+            if c[i] < e200[i] and smooth_k[i - 1] >= 75.0 and crossunder(smooth_k, smooth_d, i) and c[i] < o[i]:
+                return "short"
+            return None
+
+        return sig
+
     raise KeyError(f"unknown strategy {name}")
 
 
@@ -465,11 +742,18 @@ def _sl_tp(name: str) -> tuple[float, float]:
         "bull-pb": (1.8, 1.6),
         "hh-brk": (2.0, 2.5),
         "dc-long": (2.2, 3.0),
+        "confluence-6p": (2.0, 3.0),
+        "supertrend-adx": (2.0, 3.5),
+        "keltner-bb-squeeze": (1.8, 2.8),
+        "dip-pullback-v2": (1.6, 2.0),
+        "waddah-attar-explosion": (2.0, 3.0),
+        "chandelier-exit": (2.0, 3.5),
+        "stoch-rsi-t200": (2.0, 2.5),
     }[name]
 
 
 def _exit_only_long(name: str) -> bool:
-    return name in ("rsi-t-l", "gold-pb", "mom-dip", "bull-pb", "hh-brk", "dc-long")
+    return name in ("rsi-t-l", "gold-pb", "mom-dip", "bull-pb", "hh-brk", "dc-long", "confluence-6p", "dip-pullback-v2")
 
 
 def backtest(strategy: str, symbol: str, bars: list[dict], timeframe: str = "4h",
@@ -590,6 +874,8 @@ STRATEGIES = [
     "rsi-t200b", "rsi-t200", "rsi-t100", "rsi-t-l",
     "squeeze", "gold-pb", "mom-dip", "ema20-50", "ema9-21",
     "bull-pb", "hh-brk", "dc-long",
+    "confluence-6p", "supertrend-adx", "keltner-bb-squeeze", "dip-pullback-v2",
+    "waddah-attar-explosion", "chandelier-exit", "stoch-rsi-t200",
 ]
 
 

@@ -83,97 +83,107 @@ def calculate_atr(candles: list[dict], period: int = 14) -> float:
     return atr
 
 
+TOP_25_UNIVERSE = [
+    "SOL", "NEAR", "AVAX", "SUI", "DOGE", "LINK", "ETH", "ARB", "INJ", 
+    "STRK", "0G", "BNB", "LAYER", "ZORA", "MOODENG", "BERA", "KAITO", 
+    "CELO", "ZEC", "VVV", "kNEIRO", "PNUT", "ANIME", "GMT", "BTC"
+]
+
+
 def get_watchlist() -> list[dict]:
-    """Loads elite and approved candidate coins from the universe ranking."""
-    if not RANKING_FILE.exists():
-        # Fallback to standard robust perps
-        return [{"coin": c} for c in ["SOL", "INJ", "AVAX", "BERA", "ZEC", "ZRO", "REZ", "ENA", "ICP", "BTC", "ETH"]]
-    
-    try:
-        data = json.loads(RANKING_FILE.read_text(encoding="utf-8"))
-        top_coins = data.get("top_coins", [])
-        # Select coins with ELITE_CANDIDATE or CANDIDATE
-        elite = [c for c in top_coins if c.get("verdict") in ("ELITE_CANDIDATE", "CANDIDATE")]
-        if not elite:
-            elite = top_coins[:20]
-        return elite[:25] # Monitor top 25 high-probability assets
-    except Exception as e:
-        print(f"[-] Erro ao carregar universe_ranking.json: {e}")
-        return [{"coin": c} for c in ["SOL", "INJ", "AVAX", "BERA", "ZEC", "ZRO", "REZ", "ENA", "ICP"]]
+    """Returns the verified Top 25 high-probability assets on Hyperliquid."""
+    return [{"coin": c} for c in TOP_25_UNIVERSE]
 
 
 def evaluate_asset(executor: HyperliquidExecutor, coin: str) -> dict | None:
-    """Evaluates real-time 6-pillar confluence on 1h candles."""
+    """Evaluates both 2h Macro Pullback (rsi-t200b) and 1h Confluence Breakout."""
     now_ms = int(time.time() * 1000)
-    start_ms = now_ms - (15 * 24 * 3600 * 1000) # 15 days of 1h candles
+    start_1h_ms = now_ms - (15 * 24 * 3600 * 1000)
+    start_2h_ms = now_ms - (35 * 24 * 3600 * 1000)
 
     try:
-        candles = executor.info.candles_snapshot(coin, "1h", start_ms, now_ms)
-        if len(candles) < 205:
+        # 1. Fetch 1h Candles for Confluence
+        candles_1h = executor.info.candles_snapshot(coin, "1h", start_1h_ms, now_ms)
+        if len(candles_1h) < 205:
             return None
 
-        closes = [float(c["c"]) for c in candles]
-        highs = [float(c["h"]) for c in candles]
-        lows = [float(c["l"]) for c in candles]
-        volumes = [float(c["v"]) for c in candles]
-        current_price = closes[-1]
+        closes_1h = [float(c["c"]) for c in candles_1h]
+        highs_1h = [float(c["h"]) for c in candles_1h]
+        volumes_1h = [float(c["v"]) for c in candles_1h]
+        current_price = closes_1h[-1]
 
-        # EMAs
-        ema200_series = calculate_ema(closes, 200)
-        ema21_series = calculate_ema(closes, 21)
-        ema9_series = calculate_ema(closes, 9)
+        ema200_1h_series = calculate_ema(closes_1h, 200)
+        ema21_1h_series = calculate_ema(closes_1h, 21)
+        ema9_1h_series = calculate_ema(closes_1h, 9)
 
-        ema200 = ema200_series[-1] if ema200_series else current_price
-        ema21 = ema21_series[-1] if ema21_series else current_price
-        ema9 = ema9_series[-1] if ema9_series else current_price
+        ema200_1h = ema200_1h_series[-1] if ema200_1h_series else current_price
+        ema21_1h = ema21_1h_series[-1] if ema21_1h_series else current_price
+        ema9_1h = ema9_1h_series[-1] if ema9_1h_series else current_price
 
-        rsi = calculate_rsi(closes, 14)
-        atr = calculate_atr(candles, 14)
-        donchian_high = max(highs[-21:-1])
+        rsi_1h = calculate_rsi(closes_1h, 14)
+        atr_1h = calculate_atr(candles_1h, 14)
+        donchian_high = max(highs_1h[-21:-1])
 
-        score = 0
+        # 1h Confluence scoring
+        score_1h = 0
         details = []
-
-        # 1. Macro Trend (Preço > EMA 200)
-        if current_price > ema200:
-            score += 2
-            details.append("Preço acima da EMA 200 (Tendência de Alta)")
-
-        # 2. RSI 14 (Pullback Saudável 48-68)
-        if 48.0 <= rsi <= 68.0:
-            score += 1
-            details.append(f"RSI 14 Saudável ({rsi:.1f})")
-
-        # 3. Donchian 20 Breakout / Proximidade do Topo
+        if current_price > ema200_1h:
+            score_1h += 2
+            details.append("Preço acima da EMA 200 1h")
+        if 48.0 <= rsi_1h <= 68.0:
+            score_1h += 1
+            details.append(f"RSI 1h Saudável ({rsi_1h:.1f})")
         dist_to_donchian = (donchian_high - current_price) / current_price * 100
         if current_price >= donchian_high or dist_to_donchian <= 1.0:
-            score += 1
-            details.append("Rompimento / Proximidade do Topo Donchian 20")
-
-        # 4. Médias Rápidas Alinhadas (EMA 9 > EMA 21)
-        if ema9 > ema21:
-            score += 1
+            score_1h += 1
+            details.append("Rompimento Donchian 20")
+        if ema9_1h > ema21_1h:
+            score_1h += 1
             details.append("Médias Rápidas Alinhadas (EMA 9 > 21)")
-
-        # 5. Volume Acima da Média
-        avg_vol = sum(volumes[-21:-1]) / 20 if len(volumes) >= 21 else volumes[-1]
-        if volumes[-1] > avg_vol * 0.85:
-            score += 1
+        avg_vol = sum(volumes_1h[-21:-1]) / 20 if len(volumes_1h) >= 21 else volumes_1h[-1]
+        if volumes_1h[-1] > avg_vol * 0.85:
+            score_1h += 1
             details.append("Volume Relevante")
 
-        sl_price = current_price - (2.0 * atr)
-        sl_pct = ((current_price - sl_price) / current_price) * 100
+        # 2. Check 2h Macro Pullback (rsi-t200b) — Highest Alpha Priority
+        is_2h_pullback = False
+        strategy_name = "1h Confluência"
+        sl_price = current_price - (2.0 * atr_1h)
         tp1_price = current_price + (1.5 * (current_price - sl_price))
+
+        try:
+            candles_2h = executor.info.candles_snapshot(coin, "2h", start_2h_ms, now_ms)
+            if len(candles_2h) >= 205:
+                closes_2h = [float(c["c"]) for c in candles_2h]
+                ema200_2h_series = calculate_ema(closes_2h, 200)
+                ema200_2h = ema200_2h_series[-1] if ema200_2h_series else current_price
+                rsi_2h = calculate_rsi(closes_2h, 14)
+                atr_2h = calculate_atr(candles_2h, 14)
+
+                # Macro Bull + RSI Pullback
+                if current_price > ema200_2h and rsi_2h <= 38.0:
+                    is_2h_pullback = True
+                    strategy_name = "2h Pullback Alpha (rsi-t200b)"
+                    sl_price = current_price - (2.5 * atr_2h)
+                    tp1_price = current_price + (1.6 * atr_2h)
+                    details = [f"⭐ PULLBACK 2H CONFIRMADO: Preço > EMA 200 e RSI 2h em sobrevenda ({rsi_2h:.1f})"]
+        except Exception:
+            pass
+
+        final_score = 6 if is_2h_pullback else score_1h
+        sl_pct = ((current_price - sl_price) / current_price) * 100
         tp2_price = current_price + (2.5 * (current_price - sl_price))
         tp3_price = current_price + (4.0 * (current_price - sl_price))
 
         return {
             "coin": coin,
-            "score": score,
+            "score": final_score,
+            "strategy": strategy_name,
+            "is_2h_pullback": is_2h_pullback,
             "current_price": current_price,
-            "rsi": round(rsi, 1),
-            "ema200": round(ema200, 4),
-            "atr": round(atr, 4),
+            "rsi": round(rsi_1h, 1),
+            "ema200": round(ema200_1h, 4),
+            "atr": round(atr_1h, 4),
             "sl_price": round(sl_price, 4),
             "sl_pct": round(sl_pct, 2),
             "tp1_price": round(tp1_price, 4),
@@ -181,7 +191,7 @@ def evaluate_asset(executor: HyperliquidExecutor, coin: str) -> dict | None:
             "tp3_price": round(tp3_price, 4),
             "details": details
         }
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -209,11 +219,11 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
         f"🎯 *BOTRADE SNIPER ATIVADO NO MODO AUTOMÁTICO*\n\n"
         f"• Modo: *{mode_str}*\n"
         f"• Limite de Carteira: *Até {max_positions} operações simultâneas*\n"
-        f"• Margem por Nova Entrada: *${margin_usdc:.2f} USDC @ 10x*\n"
-        f"• Stop Loss: *2.0x ATR Obrigatório*\n"
+        f"• Setups Ativos: *2h Macro Pullback (rsi-t200b) + 1h Confluence Breakout*\n"
+        f"• Stop Loss: *2.5x ATR (Pullback 2h) / 2.0x ATR (Confluência 1h)*\n"
         f"• Trailing: *Ratchet +30% Automático (Risco Zero)*\n"
         f"• Universo: *Top 25 Moedas Campeãs da Hyperliquid*\n\n"
-        f"O robô está ativo e executará as próximas 2 oportunidades automaticamente!"
+        f"O robô está ativo e executará as próximas oportunidades automaticamente!"
     )
 
     while True:
@@ -248,8 +258,8 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                     
                     time.sleep(0.08) # Polite rate limit
 
-                # Sort by highest score, then lowest SL distance
-                candidates_found.sort(key=lambda x: (x["score"], -x["sl_pct"]), reverse=True)
+                # Sort: 2h pullbacks first (highest alpha priority), then highest score, then lowest SL distance
+                candidates_found.sort(key=lambda x: (1 if x.get("is_2h_pullback") else 0, x["score"], -x["sl_pct"]), reverse=True)
 
                 if candidates_found:
                     best = candidates_found[0]
@@ -257,8 +267,9 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                     px = best["current_price"]
                     sl = best["sl_price"]
                     tp = best["tp1_price"]
+                    strategy_label = best.get("strategy", "Confluência Técnica")
 
-                    print(f"\n[!] MELHOR OPORTUNIDADE DO MERCADO ENCONTRADA: {coin}")
+                    print(f"\n[!] MELHOR OPORTUNIDADE DO MERCADO ENCONTRADA: {coin} ({strategy_label})")
                     print(f"    Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp} | Score: {best['score']}/6")
 
                     if auto_trade:
@@ -278,6 +289,7 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                             send(
                                 f"🚀 *NOVA OPERAÇÃO DISPARADA AUTOMATICAMENTE!*\n\n"
                                 f"• Ativo: *{coin} / USDC (LONG)*\n"
+                                f"• Estratégia: *{strategy_label}*\n"
                                 f"• Vagas Ocupadas: *{current_open_count + 1}/{max_positions}*\n"
                                 f"• Preço de Entrada: *${px:.4f}*\n"
                                 f"• Margem Alocada: *${margin_usdc:.2f} USDC @ 10x* (Notional: ~${margin_usdc*10:.2f} USD)\n"
@@ -285,7 +297,7 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                                 f"• Alvo 1 (TP1): *${tp:.4f}*\n"
                                 f"• Confluência Técnica: *Score {best['score']}/6*\n\n"
                                 f"🛡️ *Ratchet Trailing Stop* já ativado para proteger no 0x0 ao atingir +30% ROE.\n"
-                                f"🌐 *Painel:* http://192.168.18.12:8765/"
+                                f"🌐 *Painel:* https://botrade-hyperliquid.onrender.com/"
                             )
                         else:
                             print(f"    [-] Falha na execução: {trade_res.get('error') or trade_res.get('message')}")

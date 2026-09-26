@@ -1,5 +1,8 @@
-"""Market Confluence Scanner for Hyperliquid Mainnet.
-Evaluates the 6 quantitative pillars across top perpetual pairs on Hyperliquid.
+"""Market Dual-Strategy Scanner for Hyperliquid Mainnet.
+Evaluates both:
+1. 2h Macro Pullback (rsi-t200b): Trend Macro Bull + RSI < 38 Pullback Recovery (Top Alpha)
+2. 1h Confluence Breakout: 6-Pillar Confluence (Trend + Fast EMAs + RSI + Donchian + Vol)
+across the verified Top 25 high-performing assets on Hyperliquid.
 """
 from __future__ import annotations
 
@@ -16,10 +19,11 @@ from hyperliquid.utils import constants
 ROOT = Path(r"C:\Users\seares\Desktop\botrade")
 sys.path.insert(0, str(ROOT))
 
+# Verified Top 25 high-probability assets on Hyperliquid Mainnet
 CANDIDATES = [
-    "BTC", "ETH", "SOL", "HYPE", "INJ", "AVAX", "SUI", "DOGE", "XRP", 
-    "NEAR", "LINK", "APT", "TIA", "RENDER", "ARB", "OP", "PEPE", "WIF", 
-    "AAVE", "ENA", "PENDLE", "FET", "SEI", "DOT", "ADA"
+    "SOL", "NEAR", "AVAX", "SUI", "DOGE", "LINK", "ETH", "ARB", "INJ", 
+    "STRK", "0G", "BNB", "LAYER", "ZORA", "MOODENG", "BERA", "KAITO", 
+    "CELO", "ZEC", "VVV", "kNEIRO", "PNUT", "ANIME", "GMT", "BTC"
 ]
 
 
@@ -76,103 +80,108 @@ def scan_markets():
     universe = {coin["name"]: coin for coin in meta.get("universe", [])}
     
     now = int(time.time() * 1000)
-    start_1h = now - 24 * 3600 * 1000 * 15 # 15 days of 1h candles = 360 candles
+    start_1h = now - (15 * 24 * 3600 * 1000) # 15 days of 1h
+    start_2h = now - (35 * 24 * 3600 * 1000) # 35 days of 2h
     
     results = []
-    print(f"[*] Escaneando {len(CANDIDATES)} ativos na Hyperliquid Mainnet (Tempo Gráfico 1h)...")
+    print(f"[*] Escaneando {len(CANDIDATES)} ativos no Universo Campeão Hyperliquid (1h & 2h)...")
 
     for coin in CANDIDATES:
         if coin not in universe:
             continue
         try:
-            candles = info.candles_snapshot(coin, "1h", start_1h, now)
-            if len(candles) < 205:
+            # 1. Fetch 1h Candles for Confluence
+            candles_1h = info.candles_snapshot(coin, "1h", start_1h, now)
+            if len(candles_1h) < 205:
                 continue
 
-            closes = [float(c["c"]) for c in candles]
-            highs = [float(c["h"]) for c in candles]
-            lows = [float(c["l"]) for c in candles]
-            volumes = [float(c["v"]) for c in candles]
-            current_price = closes[-1]
+            closes_1h = [float(c["c"]) for c in candles_1h]
+            highs_1h = [float(c["h"]) for c in candles_1h]
+            lows_1h = [float(c["l"]) for c in candles_1h]
+            volumes_1h = [float(c["v"]) for c in candles_1h]
+            current_price = closes_1h[-1]
 
-            # Indicators
-            ema200_series = calculate_ema(closes, 200)
-            ema21_series = calculate_ema(closes, 21)
-            ema9_series = calculate_ema(closes, 9)
+            ema200_1h_series = calculate_ema(closes_1h, 200)
+            ema21_1h_series = calculate_ema(closes_1h, 21)
+            ema9_1h_series = calculate_ema(closes_1h, 9)
 
-            ema200 = ema200_series[-1] if ema200_series else current_price
-            ema21 = ema21_series[-1] if ema21_series else current_price
-            ema9 = ema9_series[-1] if ema9_series else current_price
+            ema200_1h = ema200_1h_series[-1] if ema200_1h_series else current_price
+            ema21_1h = ema21_1h_series[-1] if ema21_1h_series else current_price
+            ema9_1h = ema9_1h_series[-1] if ema9_1h_series else current_price
 
-            rsi = calculate_rsi(closes, 14)
-            atr = calculate_atr(candles, 14)
+            rsi_1h = calculate_rsi(closes_1h, 14)
+            atr_1h = calculate_atr(candles_1h, 14)
+            donchian_high = max(highs_1h[-21:-1])
 
-            # Donchian 20 High
-            donchian_high = max(highs[-21:-1])
-
-            # 6 Pillars Scoring
-            score = 0
-            details = []
-
-            # 1. Macro Trend (EMA 200) - Weight 2
-            if current_price > ema200:
-                score += 2
-                details.append("Tendência Macro Altista (Preço > EMA 200)")
-            else:
-                details.append("Preço abaixo da EMA 200 (Alerta de Fraqueza)")
-
-            # 2. Momentum RSI 14 - Weight 1
-            if 50.0 <= rsi <= 72.0:
-                score += 1
-                details.append(f"RSI 14 Saudável ({rsi:.1f} - Expansão Sem Sobrecompra)")
-            elif rsi > 72.0:
-                details.append(f"RSI 14 Esticado ({rsi:.1f} - Zona de Sobrecompra)")
-            else:
-                details.append(f"RSI 14 Frio ({rsi:.1f} - Abaixo de 50)")
-
-            # 3. Donchian 20 Breakout - Weight 1
+            # 1h Confluence Scoring
+            score_1h = 0
+            details_1h = []
+            if current_price > ema200_1h:
+                score_1h += 2
+                details_1h.append("Tendência Macro 1h (Preço > EMA 200)")
+            if 50.0 <= rsi_1h <= 72.0:
+                score_1h += 1
+                details_1h.append(f"RSI 1h Saudável ({rsi_1h:.1f})")
             dist_to_breakout = (donchian_high - current_price) / current_price * 100
             if current_price >= donchian_high or dist_to_breakout <= 1.0:
-                score += 1
-                details.append(f"Rompimento Donchian 20 (Distância do Topo: {dist_to_breakout:+.2f}%)")
-            else:
-                details.append(f"Abaixo do Topo Donchian 20 ({dist_to_breakout:+.2f}%)")
+                score_1h += 1
+                details_1h.append("Rompimento Donchian 20")
+            if ema9_1h > ema21_1h:
+                score_1h += 1
+                details_1h.append("Médias Rápidas (EMA 9 > 21)")
+            avg_vol_20 = sum(volumes_1h[-21:-1]) / 20 if len(volumes_1h) >= 21 else volumes_1h[-1]
+            if volumes_1h[-1] > avg_vol_20 * 0.9:
+                score_1h += 1
+                details_1h.append("Volume Relevante")
 
-            # 4. Short-term EMAs (9 > 21) - Weight 1
-            if ema9 > ema21:
-                score += 1
-                details.append("Médias Rápidas Alinhadas (EMA 9 > EMA 21)")
-            else:
-                details.append("Médias Rápidas Cruzadas para Baixo (EMA 9 < EMA 21)")
-
-            # 5. Volume Expansion - Weight 1
-            avg_vol_20 = sum(volumes[-21:-1]) / 20 if len(volumes) >= 21 else volumes[-1]
-            if volumes[-1] > avg_vol_20 * 0.9:
-                score += 1
-                details.append("Volume Acima da Média de 20 períodos")
-            else:
-                details.append("Volume Abaixo da Média")
-
-            # Risk Calculations (2.0x ATR for Stop Loss)
-            sl_price = current_price - (2.0 * atr)
-            sl_pct = ((current_price - sl_price) / current_price) * 100
+            # 2. Fetch 2h Candles for Macro Pullback (rsi-t200b)
+            is_2h_pullback = False
+            rsi_2h = 50.0
+            atr_2h = atr_1h
+            sl_price = current_price - (2.0 * atr_1h)
             tp1_price = current_price + (1.5 * (current_price - sl_price))
+            setup_name = "1h Confluência"
+
+            try:
+                candles_2h = info.candles_snapshot(coin, "2h", start_2h, now)
+                if len(candles_2h) >= 205:
+                    closes_2h = [float(c["c"]) for c in candles_2h]
+                    ema200_2h_series = calculate_ema(closes_2h, 200)
+                    ema200_2h = ema200_2h_series[-1] if ema200_2h_series else current_price
+                    rsi_2h = calculate_rsi(closes_2h, 14)
+                    atr_2h = calculate_atr(candles_2h, 14)
+
+                    # 2h Pullback condition: Macro Bull + RSI in pullback zone (< 38.0)
+                    if current_price > ema200_2h and rsi_2h <= 38.0:
+                        is_2h_pullback = True
+                        setup_name = "2h Pullback Alpha (rsi-t200b)"
+                        sl_price = current_price - (2.5 * atr_2h) # Calibração campeã
+                        tp1_price = current_price + (1.6 * atr_2h) # Calibração campeã
+            except Exception:
+                pass
+
+            sl_pct = ((current_price - sl_price) / current_price) * 100
             tp2_price = current_price + (2.5 * (current_price - sl_price))
             tp3_price = current_price + (4.0 * (current_price - sl_price))
 
-            # Notional sizing for $5.00 margin @ 10x
-            notional_usd = 50.0
+            final_score = 6 if is_2h_pullback else score_1h
+            final_details = ["⭐ Oportunidade Campeã 2h: Preço acima de EMA 200 com RSI em Pullback Saudável"] if is_2h_pullback else details_1h
+            status = "[2H PULLBACK ALPHA]" if is_2h_pullback else ("[FORTE COMPRA 1H]" if score_1h >= 5 else ("[RADAR]" if score_1h >= 3 else "[FORA]"))
+
             sz_decimals = int(universe[coin].get("szDecimals", 2))
             factor = 10 ** sz_decimals
-            size = math.floor((notional_usd / current_price) * factor) / factor
+            size = math.floor((50.0 / current_price) * factor) / factor
 
             results.append({
                 "coin": coin,
-                "score": score,
+                "score": final_score,
+                "setup": setup_name,
+                "status": status,
+                "is_2h_pullback": is_2h_pullback,
                 "current_price": current_price,
-                "rsi": round(rsi, 1),
-                "ema200": round(ema200, 4),
-                "atr": round(atr, 4),
+                "rsi_1h": round(rsi_1h, 1),
+                "rsi_2h": round(rsi_2h, 1),
+                "atr": round(atr_2h if is_2h_pullback else atr_1h, 4),
                 "sl_price": round(sl_price, 4),
                 "sl_pct": round(sl_pct, 2),
                 "tp1_price": round(tp1_price, 4),
@@ -180,15 +189,15 @@ def scan_markets():
                 "tp3_price": round(tp3_price, 4),
                 "size": size,
                 "sz_decimals": sz_decimals,
-                "details": details
+                "details": final_details
             })
 
-            time.sleep(0.08) # Respect rate limits
-        except Exception as e:
+            time.sleep(0.06)
+        except Exception:
             continue
 
-    # Sort by score descending
-    results.sort(key=lambda x: (x["score"], -x["sl_pct"]), reverse=True)
+    # Sort: 2h pullbacks first, then highest score
+    results.sort(key=lambda x: (1 if x["is_2h_pullback"] else 0, x["score"], -x["sl_pct"]), reverse=True)
     return results
 
 
@@ -196,16 +205,15 @@ if __name__ == "__main__":
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8')
     scan = scan_markets()
-    print("\n" + "="*75)
-    print(f"{'RANK':<5} {'ATIVO':<8} {'SCORE':<7} {'PRECO':<12} {'RSI 14':<8} {'STOP LOSS %':<12} {'CLASSIFICACAO'}")
-    print("="*75)
-    for i, r in enumerate(scan[:10], 1):
-        status = "[FORTE COMPRA]" if r["score"] >= 5 else ("[RADAR]" if r["score"] >= 3 else "[FORA]")
-        print(f"{i:<5} {r['coin']:<8} {r['score']}/6    ${r['current_price']:<11.4f} {r['rsi']:<8} -{r['sl_pct']:<10.2f}% {status}")
-    print("="*75)
+    print("\n" + "="*85)
+    print(f"{'RANK':<5} {'ATIVO':<8} {'SCORE':<7} {'SETUP':<28} {'PRECO':<12} {'RSI 2h/1h':<12} {'STATUS'}")
+    print("="*85)
+    for i, r in enumerate(scan[:12], 1):
+        rsi_str = f"{r['rsi_2h']:.0f} / {r['rsi_1h']:.0f}"
+        print(f"{i:<5} {r['coin']:<8} {r['score']}/6    {r['setup']:<28} ${r['current_price']:<11.4f} {rsi_str:<12} {r['status']}")
+    print("="*85)
 
-    # Save to json for quick consumption
     out_file = ROOT / "data" / "market_scan_latest.json"
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(scan, f, indent=2, ensure_ascii=False)
-    print(f"\n[+] Scan completo salvo em: {out_file}")
+    print(f"\n[+] Scan Dual-Strategy salvo com sucesso em: {out_file}")

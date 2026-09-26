@@ -121,13 +121,15 @@ class HyperliquidExecutor:
                         "liquidation_px": float(item.get("liquidationPx") or 0)
                     })
 
-            # Spot balances
+            # Spot balances (apenas saldo livre disponível, descontando garantia em hold)
             spot_usdc = 0.0
             try:
                 spot_state = self.info.spot_user_state(self.main_address)
                 for b in spot_state.get("balances", []):
                     if b.get("coin") == "USDC":
-                        spot_usdc = float(b.get("total", 0))
+                        tot = float(b.get("total", 0))
+                        hld = float(b.get("hold", 0))
+                        spot_usdc = round(max(0.0, tot - hld), 2)
             except Exception:
                 pass
 

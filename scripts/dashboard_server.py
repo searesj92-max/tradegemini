@@ -401,6 +401,77 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
                 return
 
+        if parsed.path == "/api/user_fills":
+            try:
+                from datetime import datetime, timezone
+                executor = HyperliquidExecutor()
+                fills = executor.info.user_fills(executor.main_address)
+                
+                total_realized_pnl = 0.0
+                total_fees_paid = 0.0
+                win_trades = 0
+                loss_trades = 0
+                formatted_fills = []
+
+                for f in fills:
+                    cpnl = float(f.get("closedPnl", 0.0))
+                    fee = float(f.get("fee", 0.0))
+                    sz = float(f.get("sz", 0.0))
+                    px = float(f.get("px", 0.0))
+                    coin = f.get("coin", "")
+                    side = f.get("side", "")
+                    dir_str = f.get("dir", "")
+                    t_ms = int(f.get("time", 0))
+
+                    total_realized_pnl += cpnl
+                    total_fees_paid += fee
+
+                    if cpnl > 0:
+                        win_trades += 1
+                    elif cpnl < 0:
+                        loss_trades += 1
+
+                    formatted_fills.append({
+                        "coin": coin,
+                        "side": side,
+                        "dir": dir_str,
+                        "size": sz,
+                        "price": px,
+                        "fee": round(fee, 4),
+                        "closed_pnl": round(cpnl, 4),
+                        "time_ms": t_ms,
+                        "time_str": datetime.fromtimestamp(t_ms / 1000, timezone.utc).strftime("%d/%m/%Y %H:%M UTC") if t_ms > 0 else "—"
+                    })
+
+                total_closed = win_trades + loss_trades
+                win_rate = (win_trades / total_closed * 100.0) if total_closed > 0 else 0.0
+
+                resp = {
+                    "status": "ok",
+                    "total_fills": len(fills),
+                    "closed_trades_count": total_closed,
+                    "win_trades": win_trades,
+                    "loss_trades": loss_trades,
+                    "win_rate_pct": round(win_rate, 1),
+                    "total_realized_pnl_usd": round(total_realized_pnl, 4),
+                    "total_fees_paid_usd": round(total_fees_paid, 4),
+                    "net_realized_usd": round(total_realized_pnl - total_fees_paid, 4),
+                    "fills": formatted_fills
+                }
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.end_headers()
+                self.wfile.write(json.dumps(resp, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
         if parsed.path == "/api/macro_regime":
             try:
                 regime_data = get_cached_btc_macro_regime()

@@ -125,6 +125,47 @@ def calculate_bollinger_bands(prices: list[float], period: int = 20, num_std: fl
     return mid + (num_std * std), mid, mid - (num_std * std)
 
 
+def check_orderbook_spread(executor: HyperliquidExecutor, coin: str, max_spread_pct: float = 0.15) -> tuple[bool, float, str]:
+    """Inspects top of book for bid-ask spread to avoid entering illiquid assets."""
+    try:
+        l2 = executor.info.l2_snapshot(coin)
+        levels = l2.get("levels", [])
+        if len(levels) >= 2 and levels[0] and levels[1]:
+            bids = levels[0]
+            asks = levels[1]
+            best_bid = float(bids[0]["px"])
+            best_ask = float(asks[0]["px"])
+            mid = (best_bid + best_ask) / 2.0
+            if mid > 0:
+                spread_pct = ((best_ask - best_bid) / mid) * 100.0
+                if spread_pct > max_spread_pct:
+                    return False, spread_pct, f"Spread excessivo ({spread_pct:.3f}% > {max_spread_pct:.2f}%)"
+                return True, spread_pct, f"Spread saudável ({spread_pct:.3f}%)"
+    except Exception as e:
+        return True, 0.0, f"Erro ao checar livro: {e}"
+    return True, 0.0, "Livro OK"
+
+
+def check_funding_rate(executor: HyperliquidExecutor, coin: str, max_apr_pct: float = 40.0) -> tuple[bool, float, str]:
+    """Inspects predicted funding rate to prevent entering longs when costs are predatory."""
+    try:
+        meta_ctx = executor.info.meta_and_asset_ctxs()
+        universe = meta_ctx[0]["universe"]
+        metas = meta_ctx[1]
+        for i, u in enumerate(universe):
+            if u["name"] == coin and i < len(metas):
+                funding_hourly = float(metas[i].get("funding", 0.0))
+                funding_apr = funding_hourly * 24 * 365 * 100.0
+                if funding_apr > max_apr_pct:
+                    return False, funding_apr, f"Funding tóxico para Long (+{funding_apr:.1f}% APR)"
+                elif funding_apr < 0:
+                    return True, funding_apr, f"Shorts pagam Longs ({funding_apr:.1f}% APR - Alta Assimetria)"
+                return True, funding_apr, f"Funding aceitável (+{funding_apr:.1f}% APR)"
+    except Exception as e:
+        return True, 0.0, f"Erro ao checar funding: {e}"
+    return True, 0.0, "Funding OK"
+
+
 def load_approved_strategies() -> list[dict]:
     """Loads all Candidate and Incubate strategies from dashboard/data.json."""
     if not DATA_FILE.exists():
@@ -422,8 +463,26 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
                 print(f"\n[!] MELHOR ENTRADA QUANTITATIVA SELECIONADA: {coin} ({strat_name})")
                 print(f"    Veredito: {best['verdict']} | PF Histórico: {best['profit_factor']:.2f} | Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp}")
 
+                # 1. Orderbook Spread Guard
+                spread_ok, spread_val, spread_reason = check_orderbook_spread(executor, coin, max_spread_pct=0.15)
+                print(f"    📖 Livro de Ofertas: {spread_reason}")
+                if not spread_ok:
+                    print(f"    🛑 ENTRADA ABORTADA: Spread no livro de {coin} muito alto ({spread_val:.3f}% > 0.150%). Protegendo contra slippage.")
+                    if dry_run: break
+                    time.sleep(interval_sec)
+                    continue
+
+                # 2. Funding Rate Bleed Filter
+                funding_ok, funding_apr, funding_reason = check_funding_rate(executor, coin, max_apr_pct=40.0)
+                print(f"    ⚡ Funding Rate: {funding_reason}")
+                if not funding_ok:
+                    print(f"    🛑 ENTRADA ABORTADA: Funding rate tóxico para Long (+{funding_apr:.1f}% APR). Evitando sangria de taxas.")
+                    if dry_run: break
+                    time.sleep(interval_sec)
+                    continue
+
                 if dry_run:
-                    print("    [DRY-RUN] Simulação concluída com sucesso. Nenhuma ordem foi enviada ao livro.")
+                    print("    [DRY-RUN] Simulação e checagens concluídas com sucesso. Nenhuma ordem enviada ao livro.")
                     break
 
                 if auto_trade:

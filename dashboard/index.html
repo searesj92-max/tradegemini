@@ -4500,7 +4500,7 @@
           if (positions.length === 0) {
             posContainer.innerHTML = `
               <div style="background:var(--surface); border:1px dashed var(--border); border-radius:8px; padding:20px; text-align:center; color:var(--muted); font-size:13px;">
-                🔍 <strong>Nenhuma posição aberta no momento.</strong> O robô está escaneando a Hyperliquid procurando confluência $\\ge 5$ para novas entradas com $15 @ 10x.
+                🔍 <strong>Nenhuma posição aberta no momento.</strong> O robô está escaneando a Hyperliquid procurando confluência técnica (Score ≥ 5/6) para novas entradas com margem de $15 @ 10x.
               </div>
             `;
           } else {
@@ -4680,17 +4680,40 @@
             let trHtml = "";
             orders.slice().reverse().forEach(o => {
               const plan = o.plan || {};
-              const res = o.order_result || {};
+              const res = o.order_result || o.result || o.close_result || {};
               const statusList = (res.response && res.response.data && res.response.data.statuses) || [];
               let orderId = "—";
               let statusLabel = '<span style="color:var(--amber);">PENDENTE</span>';
-              let execPrice = plan.current_price ? "$" + plan.current_price.toFixed(2) : "—";
+
+              const coin = plan.coin || o.coin || "—";
+              let sideColor = "var(--green)";
+              let sideText = plan.side || "";
+              if (!sideText) {
+                if (o.action === "PARTIAL_CLOSE") {
+                  sideText = `PARCIAL (LUCRO)`;
+                  sideColor = "var(--blue)";
+                } else if (o.action === "CLOSE_MARKET") {
+                  sideText = `ENCERRAMENTO`;
+                  sideColor = "var(--red)";
+                } else {
+                  sideText = o.side ? `${o.side}` : "ORDEM";
+                }
+              }
+
+              let sizeText = plan.notional_size ? `${plan.notional_size} ${coin}` : (o.closed_size ? `${o.closed_size} ${coin}` : (o.size ? `${o.size} ${coin}` : "—"));
+              let execPrice = plan.current_price ? "$" + plan.current_price.toFixed(4) : (o.entry_px ? "$" + parseFloat(o.entry_px).toFixed(4) : "—");
+
+              if (o.action === "CLOSE_MARKET") {
+                statusLabel = '<span style="color:var(--green); font-weight:700;">✅ ENCERRADA</span>';
+              } else if (o.action === "PARTIAL_CLOSE") {
+                statusLabel = `<span style="color:var(--green); font-weight:700;">💰 +$${parseFloat(o.realized_pnl || 0).toFixed(2)} (${parseFloat(o.roe_pct || 0).toFixed(1)}%)</span>`;
+              }
 
               statusList.forEach(st => {
                 if (st.filled) {
-                  statusLabel = '<span style="color:var(--green); font-weight:700;">✅ EXECUTADA (FILLED)</span>';
+                  statusLabel = '<span style="color:var(--green); font-weight:700;">✅ EXECUTADA</span>';
                   orderId = st.filled.oid || "—";
-                  execPrice = "$" + parseFloat(st.filled.avgPx).toFixed(2);
+                  execPrice = "$" + parseFloat(st.filled.avgPx).toFixed(4);
                 } else if (st.error) {
                   statusLabel = `<span style="color:var(--red);">❌ ${st.error}</span>`;
                 }
@@ -4700,11 +4723,11 @@
               trHtml += `
                 <tr>
                   <td>${dateStr}</td>
-                  <td><strong style="color:var(--blue);">${plan.coin || '—'}</strong></td>
-                  <td><span class="brand-tag" style="color:var(--green);">${plan.side || '—'} ${plan.leverage || '10x'}</span></td>
-                  <td>${plan.notional_size || '—'} ${plan.coin || ''}</td>
+                  <td><strong style="color:var(--blue);">${coin}</strong></td>
+                  <td><span class="brand-tag" style="color:${sideColor}; border-color:${sideColor};">${sideText}</span></td>
+                  <td>${sizeText}</td>
                   <td style="font-weight:700;">${execPrice}</td>
-                  <td style="color:var(--dim);">${orderId}</td>
+                  <td style="color:var(--dim); font-family:var(--mono);">${orderId}</td>
                   <td>${statusLabel}</td>
                 </tr>
               `;

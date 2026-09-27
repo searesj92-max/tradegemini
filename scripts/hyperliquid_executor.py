@@ -397,6 +397,128 @@ class HyperliquidExecutor:
             "details": close_record
         }
 
+    def close_partial_position(self, coin: str, pct: float = 0.5, move_sl_to_be: bool = True) -> dict:
+        """Executes a partial close (e.g. 50%) at market, locks in profit, and moves SL of remainder to Breakeven."""
+        coin = coin.upper()
+        account_status = self.get_account_status()
+        open_pos = account_status.get("open_positions", [])
+        target_pos = next((p for p in open_pos if p["coin"] == coin), None)
+
+        if not target_pos:
+            return {"status": "not_found", "message": f"Nenhuma posição ativa encontrada para {coin}."}
+
+        full_size = target_pos["size"]
+        is_buy = target_pos["side"] == "LONG"
+        entry_px = target_pos["entry_px"]
+        roe = target_pos["roe_pct"]
+        full_pnl = target_pos["unrealized_pnl"]
+
+        coin_meta = self.universe.get(coin, {})
+        sz_decimals = int(coin_meta.get("szDecimals", 2))
+        close_size = round(full_size * pct, sz_decimals)
+
+        if close_size <= 0:
+            return {"status": "error", "message": f"Tamanho parcial ({close_size}) é menor que a precisão permitida ({sz_decimals} decimais)."}
+
+        remaining_size = round(full_size - close_size, sz_decimals)
+        realized_pnl = round(full_pnl * (close_size / full_size), 4)
+
+        print(f"\n[HYPERLIQUID MAINNET] Realizando {pct*100:.0f}% da posição em {coin}: Vendendo {close_size} (Restarão: {remaining_size} @ 0x0)...")
+
+        # 1. Market order to close partial size
+        close_res = self.exchange.market_open(coin, not is_buy, close_size, slippage=0.01)
+
+        # 2. Cancel existing trigger/SL orders for this coin
+        cancelled_orders = []
+        try:
+            orders = self.info.frontend_open_orders(MAIN_ADDRESS)
+            for o in orders:
+                if o.get("coin") == coin:
+                    oid = o.get("oid")
+                    if oid:
+                        self.exchange.cancel(coin, oid)
+                        cancelled_orders.append(oid)
+        except Exception as ex:
+            print(f"[Aviso] Falha ao cancelar ordens em aberto: {ex}")
+
+        # 3. If remaining size > 0 and move_sl_to_be requested: place new SL at Breakeven
+        new_sl_res = None
+        new_sl_px = None
+        if remaining_size > 0 and move_sl_to_be:
+            # Entry + 0.2% cushion to cover round-trip exchange fees
+            new_sl_px = entry_px * (1.002 if is_buy else 0.998)
+            clean_sl = round(float(f"{new_sl_px:.5g}"), 6 - sz_decimals)
+            try:
+                new_sl_res = self.exchange.order(
+                    coin,
+                    not is_buy,
+                    remaining_size,
+                    clean_sl,
+                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}}
+                )
+            except Exception as sl_err:
+                print(f"[Aviso] Erro ao colocar Stop Loss no Breakeven: {sl_err}")
+
+            # Update trailing state for remainder
+            state = self._load_trailing_state()
+            if coin in state:
+                state[coin]["size"] = remaining_size
+                state[coin]["current_sl"] = clean_sl
+                state[coin]["ratchet_stage"] = max(1, state[coin].get("ratchet_stage", 0))
+                state[coin]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                TRAILING_STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+        elif remaining_size <= 0:
+            # Full position was closed
+            state = self._load_trailing_state()
+            if coin in state:
+                del state[coin]
+                TRAILING_STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+
+        # 4. Log in journal
+        harvest_record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "action": "PARTIAL_CLOSE",
+            "coin": coin,
+            "side": target_pos["side"],
+            "closed_size": close_size,
+            "remaining_size": remaining_size,
+            "entry_px": entry_px,
+            "realized_pnl": realized_pnl,
+            "roe_pct": roe,
+            "new_sl_px": new_sl_px,
+            "result": close_res
+        }
+        self._save_order_journal(harvest_record)
+
+        # 5. Telegram notification
+        try:
+            from send_telegram import send
+            sign = "+" if realized_pnl >= 0 else ""
+            msg = (
+                f"💰 *LUCRO PARCIAL REALIZADO ({pct*100:.0f}%) — HYPERLIQUID*\n\n"
+                f"• *Ativo:* {coin}/USDC ({target_pos['side']})\n"
+                f"• *Lote Vendido:* {close_size} {coin} (Restam: *{remaining_size} {coin}*)\n"
+                f"• *Preço de Entrada:* ${entry_px:.4f}\n"
+                f"• *Lucro Embolsado:* 🟢 *{sign}${realized_pnl:.4f}* ({sign}{roe:.1f}% ROE)\n"
+                f"• *Proteção do Restante:* 🛡️ Stop Loss travado no 0x0 (${new_sl_px:.4f}) — *Risco Zero!*\n\n"
+                f"💸 *Margem liberada imediatamente para novas operações!*\n"
+                f"🌐 *Painel:* http://192.168.18.12:8765/"
+            )
+            send(msg)
+        except Exception as tg_err:
+            print(f"[Telegram Aviso] {tg_err}")
+
+        return {
+            "status": "partial_closed",
+            "coin": coin,
+            "closed_size": close_size,
+            "remaining_size": remaining_size,
+            "realized_pnl": realized_pnl,
+            "roe_pct": roe,
+            "new_sl_px": new_sl_px,
+            "message": f"Realizado {pct*100:.0f}% de {coin}. Lucro embolsado: +${realized_pnl:.2f}. Restante protegido no 0x0!"
+        }
+
     def _init_trailing_state(self, coin: str, is_buy: bool, entry: float, size: float, initial_sl: float, lev: int):
         state = self._load_trailing_state()
         state[coin] = {

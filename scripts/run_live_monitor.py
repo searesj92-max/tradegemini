@@ -27,6 +27,16 @@ def run_monitor():
     TRAILING_STEP_PCT = 30.0
     active_snapshot: dict[str, dict] = {}
 
+    # Start Telegram Interactive Bot in background thread
+    try:
+        import threading
+        from telegram_bot_service import run_telegram_bot_daemon
+        tg_thread = threading.Thread(target=run_telegram_bot_daemon, daemon=True, name="TelegramBotThread")
+        tg_thread.start()
+        print("[*] Telegram Interactive Bot iniciado em segundo plano com sucesso.")
+    except Exception as tg_init_err:
+        print(f"[Aviso] Telegram Bot não iniciado: {tg_init_err}")
+
     while True:
         try:
             status = executor.get_account_status()
@@ -228,6 +238,13 @@ def run_monitor():
             # Update active snapshot
             for c_name, p in current_coins.items():
                 active_snapshot[c_name] = p
+
+            # Run Profit Harvester (+10% ROE -> 50% partial harvest & move SL to BE)
+            try:
+                from profit_harvester import check_and_harvest
+                check_and_harvest(min_roe=10.0, min_pnl_usd=2.50, executor=executor)
+            except Exception as h_err:
+                pass
 
             # Save state
             TRAILING_STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")

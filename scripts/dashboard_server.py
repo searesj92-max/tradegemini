@@ -20,11 +20,31 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from hyperliquid_executor import HyperliquidExecutor
 from backtest_engine import run_backtest_pipeline
+from funding_radar import fetch_funding_radar
+from universe_scanner import scan_universe, LEADERBOARD_FILE
 
 _MACRO_CACHE = {
     "last_fetched": 0,
     "data": None
 }
+
+_FUNDING_CACHE = {
+    "last_fetched": 0,
+    "data": None
+}
+
+
+def get_cached_funding_radar() -> dict:
+    now = time.time()
+    if _FUNDING_CACHE["data"] and (now - _FUNDING_CACHE["last_fetched"] < 45):
+        return _FUNDING_CACHE["data"]
+    try:
+        data = fetch_funding_radar()
+        _FUNDING_CACHE["data"] = data
+        _FUNDING_CACHE["last_fetched"] = now
+        return data
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 _SYMBOLS_CACHE = {
     "last_fetched": 0,
@@ -176,6 +196,23 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
             try:
                 executor = HyperliquidExecutor()
                 res = executor.close_position(coin)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        if path == "/api/position/partial_close":
+            coin = query.get("coin", ["SOL"])[0].upper()
+            pct = float(query.get("pct", [0.5])[0])
+            try:
+                executor = HyperliquidExecutor()
+                res = executor.close_partial_position(coin=coin, pct=pct, move_sl_to_be=True)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
@@ -401,6 +438,53 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/funding/radar":
+            try:
+                data = get_cached_funding_radar()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
+        if parsed.path == "/api/backtest/scanner":
+            try:
+                query = parse_qs(parsed.query)
+                force = query.get("force", ["false"])[0].lower() in ("true", "1", "yes")
+                limit = int(query.get("limit", [20])[0])
+                days = int(query.get("days", [180])[0])
+                timeframe = query.get("timeframe", ["4h"])[0]
+
+                if not force and LEADERBOARD_FILE.exists():
+                    try:
+                        cached = json.loads(LEADERBOARD_FILE.read_text(encoding="utf-8"))
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.end_headers()
+                        self.wfile.write(json.dumps(cached, ensure_ascii=False).encode("utf-8"))
+                        return
+                    except Exception:
+                        pass
+
+                data = scan_universe(limit=limit, days=days, timeframe=timeframe)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
                 return
             except Exception as e:
                 self.send_response(500)

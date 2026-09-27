@@ -230,7 +230,11 @@ class HyperliquidExecutor:
         if not current_price:
             return {"status": "error", "message": f"Não foi possível obter preço em tempo real de {coin}"}
 
-        size = self.format_size(coin, usdc_margin, leverage, current_price)
+        coin_meta = self.universe.get(coin, {})
+        allowed_max_lev = int(coin_meta.get("maxLeverage", self.max_leverage))
+        effective_leverage = min(leverage, allowed_max_lev, self.max_leverage)
+
+        size = self.format_size(coin, usdc_margin, effective_leverage, current_price)
         if size <= 0:
             return {"status": "error", "message": f"Tamanho calculado muito pequeno para os decimais de {coin}"}
 
@@ -240,7 +244,7 @@ class HyperliquidExecutor:
             "side": "COMPRA (LONG)" if is_buy else "VENDA (SHORT)",
             "current_price": current_price,
             "margin_usdc": usdc_margin,
-            "leverage": f"{leverage}x",
+            "leverage": f"{effective_leverage}x",
             "notional_size": size,
             "notional_usd": round(size * current_price, 2),
             "stop_loss_px": sl_price,
@@ -253,14 +257,14 @@ class HyperliquidExecutor:
         }
 
         if not confirm:
-            plan["notice"] = "PLANO PRÉ-VOO GERADO ($5.00 USDC @ 10x). Para enviar ao livro de ofertas real da Hyperliquid, use a flag --confirm."
+            plan["notice"] = f"PLANO PRÉ-VOO GERADO (${usdc_margin:.2f} USDC @ {effective_leverage}x). Para enviar ao livro de ofertas real da Hyperliquid, use a flag --confirm."
             return plan
 
         # 2. DISPATCH TO HYPERLIQUID MAINNET
-        print(f"\n[HYPERLIQUID MAINNET] Enviando ordem real para {coin}: Tamanho {size} @ ${current_price} (Margem: ${usdc_margin} | Alavancagem: {leverage}x)...")
+        print(f"\n[HYPERLIQUID MAINNET] Enviando ordem real para {coin}: Tamanho {size} @ ${current_price} (Margem: ${usdc_margin} | Alavancagem: {effective_leverage}x)...")
         try:
             # Step A: Set leverage
-            self.exchange.update_leverage(leverage, coin, is_cross=True)
+            self.exchange.update_leverage(effective_leverage, coin, is_cross=True)
             
             # Step B: Market order using official market_open method with 1% max slippage
             order_res = self.exchange.market_open(coin, is_buy, size, slippage=0.01)
@@ -277,10 +281,9 @@ class HyperliquidExecutor:
                         "details": order_res
                     }
             
-            # Step C: Dispatch Initial Stop Loss Trigger Order
+            # Step C: Dispatch Initial Stop Loss Trigger Order with reduce_only=True
             sl_res = None
             try:
-                coin_meta = self.universe.get(coin, {})
                 sz_decimals = int(coin_meta.get("szDecimals", 2))
                 clean_sl = round(float(f"{sl_price:.5g}"), 6 - sz_decimals)
                 sl_res = self.exchange.order(
@@ -288,7 +291,8 @@ class HyperliquidExecutor:
                     not is_buy,
                     size,
                     clean_sl,
-                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}}
+                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}},
+                    reduce_only=True
                 )
             except Exception as sl_err:
                 print(f"[Alerta SL] Erro ao anexar ordem trigger de SL: {sl_err}")
@@ -342,7 +346,7 @@ class HyperliquidExecutor:
         # 2. Cancel resting trigger/SL orders for this coin
         cancelled_orders = []
         try:
-            orders = self.info.frontend_open_orders(MAIN_ADDRESS)
+            orders = self.info.frontend_open_orders(self.main_address)
             for o in orders:
                 if o.get("coin") == coin:
                     oid = o.get("oid")
@@ -431,7 +435,7 @@ class HyperliquidExecutor:
         # 2. Cancel existing trigger/SL orders for this coin
         cancelled_orders = []
         try:
-            orders = self.info.frontend_open_orders(MAIN_ADDRESS)
+            orders = self.info.frontend_open_orders(self.main_address)
             for o in orders:
                 if o.get("coin") == coin:
                     oid = o.get("oid")
@@ -454,7 +458,8 @@ class HyperliquidExecutor:
                     not is_buy,
                     remaining_size,
                     clean_sl,
-                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}}
+                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}},
+                    reduce_only=True
                 )
             except Exception as sl_err:
                 print(f"[Aviso] Erro ao colocar Stop Loss no Breakeven: {sl_err}")
@@ -602,7 +607,17 @@ class HyperliquidExecutor:
                         # Dispatch new Stop Loss order to Hyperliquid
                         if self.exchange:
                             try:
-                                # Cancel previous SL by placing the new trigger SL
+                                # Cancel previous SL orders for this coin
+                                try:
+                                    old_orders = self.info.frontend_open_orders(self.main_address)
+                                    for o in old_orders:
+                                        if o.get("coin") == coin and o.get("isTrigger"):
+                                            oid = o.get("oid")
+                                            if oid:
+                                                self.exchange.cancel(coin, oid)
+                                except Exception:
+                                    pass
+
                                 coin_meta = self.universe.get(coin, {})
                                 sz_dec = int(coin_meta.get("szDecimals", 2))
                                 factor = 10 ** sz_dec
@@ -614,7 +629,8 @@ class HyperliquidExecutor:
                                     not is_buy,
                                     clean_size,
                                     clean_sl,
-                                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}}
+                                    {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}},
+                                    reduce_only=True
                                 )
                                 print(f"-> Ordem de Stop Loss atualizada na Hyperliquid para ${clean_sl} com sucesso!")
                                 

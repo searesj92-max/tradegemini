@@ -29,11 +29,12 @@ def trigger_deploy(clear_cache=True):
     print('TRIGGER DEPLOY STATUS:', r.status_code)
     try:
         data = r.json()
-        dep = data.get('deploy', {})
-        print(f"Novo Deploy Iniciado! ID: {dep.get('id')} | Status: {dep.get('status')}")
-        return dep.get('id')
-    except Exception:
-        print(r.text)
+        dep = data.get('deploy', data)
+        dep_id = dep.get('id')
+        print(f"Deploy em andamento! ID: {dep_id} | Status: {dep.get('status')}")
+        return dep_id
+    except Exception as e:
+        print("Erro lendo resposta:", e, r.text)
         return None
 
 def wait_for_deploy(deploy_id=None, timeout_sec=300):

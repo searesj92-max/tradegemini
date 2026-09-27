@@ -3,11 +3,12 @@
 import urllib.request
 import sys
 
-def verify():
-    url = "http://localhost:8765/"
+def verify(target_url=None):
+    url = target_url or (sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8765/")
+    print(f"Testing URL: {url}")
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "BotradeVerification/1.0"})
-        resp = urllib.request.urlopen(req, timeout=5)
+        resp = urllib.request.urlopen(req, timeout=15)
     except Exception as e:
         print(f"[FAIL] Could not connect to {url}: {e}")
         sys.exit(1)

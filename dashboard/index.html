@@ -2899,8 +2899,10 @@
       });
 
       // Copy Pine buttons
-      $("btn-copy-active-pine").addEventListener("click", copyActivePine);
-      $("btn-copy-code").addEventListener("click", copyActivePine);
+      const btnCopyActive = $("btn-copy-active-pine");
+      if (btnCopyActive) btnCopyActive.addEventListener("click", copyActivePine);
+      const btnCopyCode = $("btn-copy-code");
+      if (btnCopyCode) btnCopyCode.addEventListener("click", copyActivePine);
 
       // Render Cockpit for active strategy
       loadCockpitStrategy(S.activeId);
@@ -3322,7 +3324,6 @@
       if (!tbody) return;
       const strats = S.data.strategies || [];
       const fams = strats.filter(s => s.is_rollup);
-      const tbody = $("fam-tbody");
 
       if (!fams.length) {
         tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Sem rollups de família registrados.</td></tr>`;
@@ -3378,7 +3379,8 @@
 
     async function copyActivePine() {
       const s = (S.data.strategies || []).find(x => x.id === S.activeId);
-      const text = $("pine-display-box").textContent;
+      const box = $("pine-display-box");
+      const text = box ? box.textContent : "";
       if (text && !text.startsWith("// Nenhum") && !text.startsWith("// Arquivo")) {
         await navigator.clipboard.writeText(text);
         alert("Código Pine Script copiado para a área de transferência!");

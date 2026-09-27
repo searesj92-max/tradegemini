@@ -138,33 +138,43 @@
     /* TABS */
     .nav-tabs {
       display: flex;
-      gap: 4px;
-      background: var(--surface2);
-      padding: 4px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      padding: 5px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
     }
 
     .nav-tab {
       background: transparent;
-      border: none;
-      color: var(--muted);
-      padding: 6px 14px;
+      border: 1px solid transparent;
+      color: #94a3b8;
+      padding: 7px 16px;
       font-size: 13px;
       font-weight: 600;
-      border-radius: 6px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .nav-tab:hover {
-      color: var(--text);
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
     }
 
     .nav-tab.active {
-      background: var(--blue);
+      background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
       color: #04101e;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      font-weight: 700;
+      border-color: #38bdf8;
+      box-shadow: 0 2px 14px rgba(56, 189, 248, 0.35);
     }
 
     /* MAIN CONTAINER */
@@ -1446,14 +1456,22 @@
     }
 
     .ce-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 10px;
-      padding: 12px 16px;
+      padding: 14px 18px;
       display: flex;
       flex-direction: column;
       gap: 4px;
       position: relative;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .ce-card:hover {
+      border-color: rgba(56, 189, 248, 0.25);
+      transform: translateY(-2px);
     }
 
     .ce-lbl {
@@ -1536,15 +1554,13 @@
         <span id="hdr-curves" style="display:none;">480</span>
       </div>
 
-      <!-- NAVIGATION TABS -->
+      <!-- NAVIGATION TABS (5 PILARES ESSENCIAIS) -->
       <div class="nav-tabs">
-        <button class="nav-tab active" data-tab="cockpit">⚡ Mesa de Operações (Ao Vivo)</button>
-        <button class="nav-tab" data-tab="backtest-lab" style="color:var(--amber); font-weight:700;">🔬 Laboratório de Backtest 720d</button>
-        <button class="nav-tab" data-tab="universe">🏆 Ranking Hyperliquid (234 Moedas)</button>
-        <button class="nav-tab" data-tab="live">🔍 Radar de Oportunidades & Gráficos</button>
-        <button class="nav-tab" data-tab="explorer">📊 Todas Estratégias (690)</button>
-        <button class="nav-tab" data-tab="families">🧬 Famílias</button>
-        <button class="nav-tab" data-tab="pine">💻 Pine Script</button>
+        <button class="nav-tab active" data-tab="cockpit">⚡ Mesa de Operações</button>
+        <button class="nav-tab" data-tab="backtest-lab" style="color:var(--amber); font-weight:700;">🔬 Laboratório 720d</button>
+        <button class="nav-tab" data-tab="universe">🏆 Ranking 234 Moedas</button>
+        <button class="nav-tab" data-tab="live">📈 Gráfico & Radar</button>
+        <button class="nav-tab" data-tab="explorer">📁 Arquivo (690)</button>
       </div>
     </div>
   </header>
@@ -1585,7 +1601,7 @@
           <div class="scc-item">
             <span class="scc-item-lbl">Estratégias Ativas</span>
             <span class="scc-item-val" style="color:var(--blue);">2h Pullback + 1h Confluência</span>
-            <span class="scc-item-sub">Top 25 Hyperliquid · $15 @ 10x</span>
+            <span class="scc-item-sub">Top 25 Hyperliquid · $20 @ 10x (Teto)</span>
           </div>
 
           <div class="scc-item">
@@ -1607,33 +1623,33 @@
       <!-- ========================================== -->
       <div class="consolidated-equity-bar">
         <div class="ce-card">
-          <span class="ce-lbl">Patrimônio Real da Conta</span>
-          <div class="ce-val" id="lm-total-equity-display" style="color:var(--blue);">$50.00</div>
-          <span class="ce-sub">Hyperliquid Mainnet (Perps)</span>
+          <span class="ce-lbl">Patrimônio Consolidado</span>
+          <div class="ce-val" id="lm-total-equity-display" style="color:var(--blue);">$0.00</div>
+          <span class="ce-sub" id="lm-equity-breakdown-sub">Spot: $0.00 · Perps: $0.00</span>
         </div>
 
         <div class="ce-card">
-          <span class="ce-lbl">Lucro Consolidado Flutuante</span>
+          <span class="ce-lbl">Lucro Flutuante (uPnL)</span>
           <div class="ce-val" id="lm-total-pnl-display" style="color:var(--green);">+$0.00</div>
           <span class="ce-sub" id="lm-total-roe-display">+0.00% ROE Médio</span>
         </div>
 
         <div class="ce-card">
           <span class="ce-lbl">Margem em Operação</span>
-          <div class="ce-val" id="lm-margin-used-display" style="color:var(--amber);">$51.20</div>
-          <span class="ce-sub">3 Posições Ativas</span>
+          <div class="ce-val" id="lm-margin-used-display" style="color:var(--amber);">$0.00</div>
+          <span class="ce-sub" id="lm-positions-count-sub">0 de 3 Posições Ativas</span>
         </div>
 
         <div class="ce-card">
-          <span class="ce-lbl">Saldo Livre Disponível</span>
-          <div class="ce-val" id="lm-avail-margin-display" style="color:var(--muted);">$0.00</div>
-          <span class="ce-sub">Liberado ao fechar trades</span>
+          <span class="ce-lbl">Margem Disponível</span>
+          <div class="ce-val" id="lm-avail-margin-display" style="color:var(--green);">$0.00</div>
+          <span class="ce-sub">Livre para novas entradas</span>
         </div>
 
         <div class="ce-card">
-          <span class="ce-lbl">Blindagem de Risco</span>
+          <span class="ce-lbl">Blindagem & Risco</span>
           <div class="ce-val" style="color:var(--green);">🛡️ 100% Protegido</div>
-          <span class="ce-sub">Stop Loss em todas as ordens</span>
+          <span class="ce-sub">Stop Loss & Ratchet Breakeven</span>
         </div>
       </div>
 
@@ -1651,12 +1667,18 @@
             </span>
           </div>
 
-          <div class="live-metrics-bar">
-            <div class="pill">PATRIMÔNIO TOTAL: <strong id="lm-total-equity" style="color:var(--blue);">$351.81</strong></div>
-            <div class="pill">RESERVA SPOT: <strong id="lm-spot-usdc" style="color:var(--green);">$297.12</strong></div>
-            <div class="pill">MARGEM EM USO: <strong id="lm-margin-used" style="color:var(--amber);">$54.91</strong></div>
-            <div class="pill pill-green">DISPONÍVEL: <strong id="lm-avail-margin">$296.90</strong></div>
-            <div class="pill" id="lm-sync-pill" style="font-size:10px; color:var(--muted);">Sincronizando...</div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <!-- Hidden spans to preserve backwards-compatible JS IDs -->
+            <span id="lm-total-equity" style="display:none;"></span>
+            <span id="lm-spot-usdc" style="display:none;"></span>
+            <span id="lm-margin-used" style="display:none;"></span>
+            <span id="lm-avail-margin" style="display:none;"></span>
+            <div class="pill" id="lm-sync-pill" style="font-size:11px; font-family:var(--mono); color:var(--muted); display:flex; align-items:center; gap:6px;">
+              <span class="status-dot" style="width:7px; height:7px;"></span> Sincronizando...
+            </div>
+            <button class="quick-pick-btn" onclick="fetchLivePositions(true)" style="background:var(--surface3); display:flex; align-items:center; gap:5px; font-size:11px; font-weight:600; cursor:pointer;">
+              🔄 Atualizar
+            </button>
           </div>
         </div>
 
@@ -1739,164 +1761,6 @@
           </div>
         </div>
       </div>
-
-      <!-- BOTÃO PARA EXPANDIR LABORATÓRIO HISTÓRICO (OCULTO POR PADRÃO) -->
-      <div style="margin: 24px 0 12px 0; text-align: center;">
-        <button id="btn-toggle-lab" onclick="toggleBacktestLab()" style="background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:600; padding:9px 18px; border-radius:6px; cursor:pointer;">
-          🔬 Laboratório de Backtest & Pesquisa Histórica (Oculto) · Clique para Expandir
-        </button>
-      </div>
-
-      <div id="backtest-lab-drawer" style="display:none;">
-        <!-- LAB WARNING BANNER -->
-        <div class="lab-warning-banner">
-          <div class="lab-warning-icon">🔬</div>
-          <div>
-            <div class="lab-warning-title">
-              Arquivo de Pesquisa Quantitativa Histórica (Backtest Teórico Simulado)
-            </div>
-            <div class="lab-warning-desc">
-              Esta área abaixo contém estudos e testes teóricos do passado em Bitcoin Spot (1x sem alavancagem). <strong>NÃO são as operações da sua conta real.</strong> As suas operações reais com dinheiro estão no topo do painel.
-            </div>
-          </div>
-        </div>
-
-        <!-- HERO SELECTOR -->
-        <div class="cockpit-header">
-          <div>
-            <div class="strat-select-group">
-              <span class="select-label">Estratégia Ativa:</span>
-              <select id="active-strat-select" style="min-width: 280px; font-weight: 600;">
-                <!-- Filled via JS -->
-              </select>
-              <div style="display:flex; gap:5px; align-items:center;">
-                <span class="select-label" style="font-size:11px;">Destaques:</span>
-                <button class="quick-pick-btn active" data-pick="loc-rsi-t200b-BTC-4h">⭐ RSI 200b (BTC 4h)</button>
-                <button class="quick-pick-btn" data-pick="loc-rsi-t200b-ARB-4h">🚀 RSI 200b (ARB 4h)</button>
-                <button class="quick-pick-btn" data-pick="loc-rsi-t200b-AVAX-4h">💎 RSI 200b (AVAX 4h)</button>
-                <button class="quick-pick-btn" data-pick="sol-donchian-trail-validation-28mo-SOLUSDT-15">⚡ Donchian (SOL 15m)</button>
-                <button class="quick-pick-btn" data-pick="loc-squeeze-BTC-4h">🎯 Squeeze (BTC 4h)</button>
-                <button class="quick-pick-btn" data-pick="loc-gold-pb-PEPE-4h">🏆 Pullback Ouro (PEPE 4h)</button>
-              </div>
-            </div>
-            <div class="strat-identity">
-              <span class="strat-name" id="hero-name">RSI Trend 200b</span>
-              <span class="strat-badge badge-Candidate" id="hero-badge">Candidate</span>
-              <span class="select-label" id="hero-meta">BTC · 4h · Família: locfam-rsi-t200b · Engine: Local Vectorized</span>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:8px;">
-            <button id="btn-copy-active-pine" style="display:flex; align-items:center; gap:6px; background:var(--surface3);">
-              📋 Copiar Pine Script
-            </button>
-          </div>
-        </div>
-
-        <!-- METRIC CARDS RIBBON -->
-        <div class="metric-grid">
-          <div class="metric-card good" id="mc-net">
-            <div class="metric-label">Lucro Líquido</div>
-            <div class="metric-value good" id="m-net">+145.4%</div>
-            <div class="metric-sub" id="m-net-sub">vs Buy & Hold</div>
-          </div>
-          <div class="metric-card good" id="mc-pf">
-            <div class="metric-label">Profit Factor</div>
-            <div class="metric-value good" id="m-pf">1.82</div>
-            <div class="metric-sub">Meta: ≥ 1.30</div>
-          </div>
-          <div class="metric-card warn" id="mc-dd">
-            <div class="metric-label">Max Drawdown</div>
-            <div class="metric-value warn" id="m-dd">18.4%</div>
-            <div class="metric-sub">Tolerância: ≤ 30%</div>
-          </div>
-          <div class="metric-card" id="mc-wr">
-            <div class="metric-label">Taxa de Acerto</div>
-            <div class="metric-value" id="m-wr">58.2%</div>
-            <div class="metric-sub" id="m-wr-sub">18W / 13L</div>
-          </div>
-          <div class="metric-card" id="mc-trades">
-            <div class="metric-label">Total Trades</div>
-            <div class="metric-value" id="m-trades">31</div>
-            <div class="metric-sub" id="m-ls">Long: 20 · Short: 11</div>
-          </div>
-          <div class="metric-card" id="mc-exp">
-            <div class="metric-label">Expectativa / Trade</div>
-            <div class="metric-value" id="m-exp">+2.14%</div>
-            <div class="metric-sub" id="m-sharpe">Sharpe: 1.45</div>
-          </div>
-        </div>
-
-        <!-- CHARTS SECTION: EQUITY & UNDERWATER -->
-        <div class="chart-panel">
-          <div class="chart-panel-header">
-            <div class="panel-title">📈 Curva de Patrimônio (Equity Curve)</div>
-            <div class="panel-meta" id="chart-meta">Banca Inicial: $10,000 · Atual: $24,540</div>
-          </div>
-          <div class="svg-container" id="chart-equity-svg">
-            <!-- SVG rendered here -->
-          </div>
-        </div>
-
-        <div class="chart-panel">
-          <div class="chart-panel-header">
-            <div class="panel-title">🌊 Underwater Drawdown (%)</div>
-            <div class="panel-meta" id="uw-meta">Períodos de Rebaixamento de Capital</div>
-          </div>
-          <div class="svg-container" id="chart-uw-svg">
-            <!-- Underwater SVG rendered here -->
-          </div>
-        </div>
-
-        <!-- POSITIONS JOURNAL / TRADES TABLE -->
-        <div class="positions-panel">
-          <div class="positions-toolbar">
-            <div>
-              <div class="panel-title">📋 Registro de Posições Executadas (Trade Journal)</div>
-              <div class="panel-meta" id="positions-count">31 posições registradas nesta estratégia</div>
-            </div>
-            <div class="trade-filter-btns">
-              <button class="trade-filter-btn active" data-tfilter="all">Todas (<span id="cnt-all">31</span>)</button>
-              <button class="trade-filter-btn" data-tfilter="win">Vencedoras (<span id="cnt-win">18</span>)</button>
-              <button class="trade-filter-btn" data-tfilter="loss">Perdedoras (<span id="cnt-loss">13</span>)</button>
-              <button class="trade-filter-btn" data-tfilter="long">Apenas Long</button>
-              <button class="trade-filter-btn" data-tfilter="short">Apenas Short</button>
-            </div>
-          </div>
-
-          <div class="table-responsive">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Tipo</th>
-                  <th>Data Entrada</th>
-                  <th>Data Saída</th>
-                  <th>Preço Entrada</th>
-                  <th>Preço Saída</th>
-                  <th>Resultado (PnL)</th>
-                  <th>Saída Por</th>
-                </tr>
-              </thead>
-              <tbody id="positions-tbody">
-                <!-- Filled via JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- MONTHLY HEATMAP -->
-        <div class="chart-panel">
-          <div class="chart-panel-header">
-            <div class="panel-title">🗓️ Desempenho Mensal (%)</div>
-            <div class="panel-meta">Matriz Ano / Mês</div>
-          </div>
-          <div class="monthly-grid" id="monthly-container">
-            <!-- Heatmap table rendered here -->
-          </div>
-        </div>
-      </div>
-
     </div>
 
     <!-- ========================================== -->
@@ -2304,6 +2168,168 @@
     <!-- TAB 2: EXPLORADOR GERAL DE 690 ESTRATÉGIAS -->
     <!-- ========================================== -->
     <div id="tab-explorer" class="tab-view">
+
+            <!-- INSPECTOR DE ESTRATÉGIA HISTÓRICA (EXPANDÍVEL) -->
+      <div id="backtest-lab-drawer" style="display:none; margin-bottom: 24px; border: 1px solid rgba(56,189,248,0.25); border-radius: 10px; padding: 16px; background: rgba(15,23,42,0.65);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+          <div style="font-size:14px; font-weight:800; color:var(--blue); display:flex; align-items:center; gap:8px;">
+            <span>🔬 Inspeção Histórica Detalhada da Estratégia</span>
+          </div>
+          <button onclick="$('backtest-lab-drawer').style.display='none'" style="background:var(--surface3); border:1px solid var(--border); font-size:11px; padding:4px 10px; cursor:pointer; border-radius:5px; color:var(--text);">
+            ✕ Fechar Inspeção
+          </button>
+        </div>
+        <!-- LAB WARNING BANNER -->
+        <div class="lab-warning-banner">
+          <div class="lab-warning-icon">🔬</div>
+          <div>
+            <div class="lab-warning-title">
+              Arquivo de Pesquisa Quantitativa Histórica (Backtest Teórico Simulado)
+            </div>
+            <div class="lab-warning-desc">
+              Esta área abaixo contém estudos e testes teóricos do passado em Bitcoin Spot (1x sem alavancagem). <strong>NÃO são as operações da sua conta real.</strong> As suas operações reais com dinheiro estão no topo do painel.
+            </div>
+          </div>
+        </div>
+
+        <!-- HERO SELECTOR -->
+        <div class="cockpit-header">
+          <div>
+            <div class="strat-select-group">
+              <span class="select-label">Estratégia Ativa:</span>
+              <select id="active-strat-select" style="min-width: 280px; font-weight: 600;">
+                <!-- Filled via JS -->
+              </select>
+              <div style="display:flex; gap:5px; align-items:center;">
+                <span class="select-label" style="font-size:11px;">Destaques:</span>
+                <button class="quick-pick-btn active" data-pick="loc-rsi-t200b-BTC-4h">⭐ RSI 200b (BTC 4h)</button>
+                <button class="quick-pick-btn" data-pick="loc-rsi-t200b-ARB-4h">🚀 RSI 200b (ARB 4h)</button>
+                <button class="quick-pick-btn" data-pick="loc-rsi-t200b-AVAX-4h">💎 RSI 200b (AVAX 4h)</button>
+                <button class="quick-pick-btn" data-pick="sol-donchian-trail-validation-28mo-SOLUSDT-15">⚡ Donchian (SOL 15m)</button>
+                <button class="quick-pick-btn" data-pick="loc-squeeze-BTC-4h">🎯 Squeeze (BTC 4h)</button>
+                <button class="quick-pick-btn" data-pick="loc-gold-pb-PEPE-4h">🏆 Pullback Ouro (PEPE 4h)</button>
+              </div>
+            </div>
+            <div class="strat-identity">
+              <span class="strat-name" id="hero-name">RSI Trend 200b</span>
+              <span class="strat-badge badge-Candidate" id="hero-badge">Candidate</span>
+              <span class="select-label" id="hero-meta">BTC · 4h · Família: locfam-rsi-t200b · Engine: Local Vectorized</span>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px;">
+            <button id="btn-copy-active-pine" style="display:flex; align-items:center; gap:6px; background:var(--surface3);">
+              📋 Copiar Pine Script
+            </button>
+          </div>
+        </div>
+
+        <!-- METRIC CARDS RIBBON -->
+        <div class="metric-grid">
+          <div class="metric-card good" id="mc-net">
+            <div class="metric-label">Lucro Líquido</div>
+            <div class="metric-value good" id="m-net">+145.4%</div>
+            <div class="metric-sub" id="m-net-sub">vs Buy & Hold</div>
+          </div>
+          <div class="metric-card good" id="mc-pf">
+            <div class="metric-label">Profit Factor</div>
+            <div class="metric-value good" id="m-pf">1.82</div>
+            <div class="metric-sub">Meta: ≥ 1.30</div>
+          </div>
+          <div class="metric-card warn" id="mc-dd">
+            <div class="metric-label">Max Drawdown</div>
+            <div class="metric-value warn" id="m-dd">18.4%</div>
+            <div class="metric-sub">Tolerância: ≤ 30%</div>
+          </div>
+          <div class="metric-card" id="mc-wr">
+            <div class="metric-label">Taxa de Acerto</div>
+            <div class="metric-value" id="m-wr">58.2%</div>
+            <div class="metric-sub" id="m-wr-sub">18W / 13L</div>
+          </div>
+          <div class="metric-card" id="mc-trades">
+            <div class="metric-label">Total Trades</div>
+            <div class="metric-value" id="m-trades">31</div>
+            <div class="metric-sub" id="m-ls">Long: 20 · Short: 11</div>
+          </div>
+          <div class="metric-card" id="mc-exp">
+            <div class="metric-label">Expectativa / Trade</div>
+            <div class="metric-value" id="m-exp">+2.14%</div>
+            <div class="metric-sub" id="m-sharpe">Sharpe: 1.45</div>
+          </div>
+        </div>
+
+        <!-- CHARTS SECTION: EQUITY & UNDERWATER -->
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <div class="panel-title">📈 Curva de Patrimônio (Equity Curve)</div>
+            <div class="panel-meta" id="chart-meta">Banca Inicial: $10,000 · Atual: $24,540</div>
+          </div>
+          <div class="svg-container" id="chart-equity-svg">
+            <!-- SVG rendered here -->
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <div class="panel-title">🌊 Underwater Drawdown (%)</div>
+            <div class="panel-meta" id="uw-meta">Períodos de Rebaixamento de Capital</div>
+          </div>
+          <div class="svg-container" id="chart-uw-svg">
+            <!-- Underwater SVG rendered here -->
+          </div>
+        </div>
+
+        <!-- POSITIONS JOURNAL / TRADES TABLE -->
+        <div class="positions-panel">
+          <div class="positions-toolbar">
+            <div>
+              <div class="panel-title">📋 Registro de Posições Executadas (Trade Journal)</div>
+              <div class="panel-meta" id="positions-count">31 posições registradas nesta estratégia</div>
+            </div>
+            <div class="trade-filter-btns">
+              <button class="trade-filter-btn active" data-tfilter="all">Todas (<span id="cnt-all">31</span>)</button>
+              <button class="trade-filter-btn" data-tfilter="win">Vencedoras (<span id="cnt-win">18</span>)</button>
+              <button class="trade-filter-btn" data-tfilter="loss">Perdedoras (<span id="cnt-loss">13</span>)</button>
+              <button class="trade-filter-btn" data-tfilter="long">Apenas Long</button>
+              <button class="trade-filter-btn" data-tfilter="short">Apenas Short</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tipo</th>
+                  <th>Data Entrada</th>
+                  <th>Data Saída</th>
+                  <th>Preço Entrada</th>
+                  <th>Preço Saída</th>
+                  <th>Resultado (PnL)</th>
+                  <th>Saída Por</th>
+                </tr>
+              </thead>
+              <tbody id="positions-tbody">
+                <!-- Filled via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- MONTHLY HEATMAP -->
+        <div class="chart-panel">
+          <div class="chart-panel-header">
+            <div class="panel-title">🗓️ Desempenho Mensal (%)</div>
+            <div class="panel-meta">Matriz Ano / Mês</div>
+          </div>
+          <div class="monthly-grid" id="monthly-container">
+            <!-- Heatmap table rendered here -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
       
       <div class="filter-bar">
         <input type="search" id="exp-search" placeholder="🔍 Buscar por nome, par, tipo, família ou ID..." style="min-width: 240px;" />
@@ -2364,58 +2390,6 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- TAB 3: MATRIZ DE FAMÍLIAS & ROBUSTEZ      -->
-    <!-- ========================================== -->
-    <div id="tab-families" class="tab-view">
-      
-      <div class="chart-panel">
-        <div class="chart-panel-header">
-          <div class="panel-title">🧬 Robustez Multipar por Família</div>
-          <div class="panel-meta">Estratégias agregadas testadas nos pares (BTC, ETH, SOL, BNB, etc.)</div>
-        </div>
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Família</th>
-                <th>Pares Aprovados</th>
-                <th>Profit Factor</th>
-                <th>Win Rate</th>
-                <th>Lucro Líq. Médio</th>
-                <th>Max DD Médio</th>
-                <th>Trades Totais</th>
-                <th>Status Geral</th>
-              </tr>
-            </thead>
-            <tbody id="fam-tbody">
-              <!-- Filled via JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ========================================== -->
-    <!-- TAB 4: PINE SCRIPT & CÓDIGO FONTE          -->
-    <!-- ========================================== -->
-    <div id="tab-pine" class="tab-view">
-      
-      <div class="chart-panel">
-        <div class="chart-panel-header">
-          <div class="panel-title">💻 Código Pine Script (@version=6)</div>
-          <div style="display:flex; gap:8px;">
-            <button id="btn-copy-code" style="background:var(--blue); color:#04101e; font-weight:700;">Copiar para Área de Transferência</button>
-          </div>
-        </div>
-        <div class="pine-box" id="pine-display-box">
-          // Selecione uma estratégia no Cockpit para inspecionar o código Pine Script correspondente.
-        </div>
-      </div>
-
-    </div>
-
-      <!-- ========================================== -->
     <!-- TAB: GRÁFICOS AO VIVO & RADAR DE SINAIS    -->
     <!-- ========================================== -->
     <div id="tab-live" class="tab-view">
@@ -3329,19 +3303,23 @@
     window.openInCockpit = function(id) {
       document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active"));
-      document.querySelector('.nav-tab[data-tab="cockpit"]').classList.add("active");
-      $("tab-cockpit").classList.add("active");
+      const expTab = document.querySelector('.nav-tab[data-tab="explorer"]');
+      if (expTab) expTab.classList.add("active");
+      const expView = $("tab-explorer");
+      if (expView) expView.classList.add("active");
       const d = $("backtest-lab-drawer");
-      if (d) d.style.display = "block";
-      const b = $("btn-toggle-lab");
-      if (b) b.textContent = "🔬 Ocultar Laboratório de Backtest & Pesquisa";
+      if (d) {
+        d.style.display = "block";
+        d.scrollIntoView({ behavior: "smooth" });
+      }
       $("active-strat-select").value = id;
       loadCockpitStrategy(id);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     // FAMILIES TABLE
     function renderFamiliesTable() {
+      const tbody = $("fam-tbody");
+      if (!tbody) return;
       const strats = S.data.strategies || [];
       const fams = strats.filter(s => s.is_rollup);
       const tbody = $("fam-tbody");
@@ -3373,6 +3351,8 @@
 
     // PINE SCRIPT
     async function loadPineCode(key) {
+      const box = $("pine-display-box");
+      if (!box) return;
       if (!key) {
         $("pine-display-box").textContent = "// Nenhum arquivo Pine associado.";
         return;
@@ -4408,7 +4388,13 @@
 
         // Mission Control & Consolidated Elements
         if ($("lm-total-equity-display")) $("lm-total-equity-display").textContent = "$" + (data.total_equity || 0).toFixed(2);
+        if ($("lm-equity-breakdown-sub")) {
+          const spot = (data.spot_usdc || 0).toFixed(2);
+          const perps = ((data.total_equity || 0) - (data.spot_usdc || 0)).toFixed(2);
+          $("lm-equity-breakdown-sub").textContent = `Spot: $${spot} · Perps: $${perps}`;
+        }
         if ($("lm-margin-used-display")) $("lm-margin-used-display").textContent = "$" + (data.margin_used || 0).toFixed(2);
+        if ($("lm-positions-count-sub")) $("lm-positions-count-sub").textContent = `${positions.length} de 3 Posições Ativas`;
         if ($("lm-avail-margin-display")) {
           $("lm-avail-margin-display").textContent = "$" + window.latestAvailableMargin.toFixed(2);
           $("lm-avail-margin-display").style.color = isBalanceLow ? "var(--amber)" : "var(--green)";

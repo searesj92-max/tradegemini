@@ -1,13 +1,20 @@
-"""Botrade Autonomous Market Sniper & Confluence Executor.
-Continuously scans Hyperliquid's top-ranked crypto universe, detects high-confluence
-setups (Score >= 5/6), and executes trades automatically ($5.00 USDC @ 10x) with
-mandatory Stop Loss and Ratchet Trailing Stop.
+#!/usr/bin/env python3
+"""Botrade Dynamic Multi-Strategy Autonomous Sniper (Candidate & Incubate Universe).
+Scans all approved Candidate and Incubate strategies from dashboard/data.json 24/7.
+Evaluates modular quantitative models:
+- 2h Macro Pullback (BTC, ETH, SOL, SUI, LINK)
+- 4h RSI Trend Pullback (AVAX, DOGE, ADA, BCH, ETH, LINK, LTC, SOL, TRUMP)
+- 4h Squeeze Momentum (ARB, TAO, XLM)
+- 4h EMA Golden Cross Trend (XLM, XRP - Incubadas)
+- 1h Bollinger Mean Reversion (ETH, AVAX, NEAR, ARB)
+- 1h Confluence Breakout (Top 25 Universe)
 
 Guardrails:
-- Maximum 1 concurrent position by default (never over-allocates capital).
-- Only operates on verified Elite & Candidate coins.
-- Fixed $5.00 margin per trade.
-- Immediate Telegram alert on every detection and execution.
+- Fixed $15.00-$20.00 margin per trade.
+- Respects coin maxLeverage (3x for meme/micro, up to 10x for majors).
+- Mandatory Stop Loss with reduce_only=True and Ratchet Trailing at +30% ROE.
+- Maximum 3 concurrent open positions.
+- BTC Macro Circuit Breaker.
 """
 from __future__ import annotations
 
@@ -31,9 +38,33 @@ if hasattr(sys.stderr, "reconfigure"):
 from hyperliquid_executor import HyperliquidExecutor
 from send_telegram import send
 
-RANKING_FILE = ROOT / "dashboard" / "universe_ranking.json"
 STATE_FILE = ROOT / "data" / "journal" / "auto_sniper_state.json"
 STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+DATA_FILE = ROOT / "dashboard" / "data.json"
+
+# In-memory candle cache: (coin, tf) -> (timestamp, candles)
+_CANDLE_CACHE: dict[tuple[str, str], tuple[float, list[dict]]] = {}
+CACHE_TTL_SEC = 45.0
+
+
+def get_cached_candles(executor: HyperliquidExecutor, coin: str, tf: str, days: int = 35) -> list[dict]:
+    now = time.time()
+    cache_key = (coin, tf)
+    if cache_key in _CANDLE_CACHE:
+        ts, candles = _CANDLE_CACHE[cache_key]
+        if now - ts < CACHE_TTL_SEC:
+            return candles
+
+    now_ms = int(now * 1000)
+    start_ms = now_ms - (days * 24 * 3600 * 1000)
+    try:
+        candles = executor.info.candles_snapshot(coin, tf, start_ms, now_ms)
+        if candles:
+            _CANDLE_CACHE[cache_key] = (now, candles)
+            return candles
+    except Exception:
+        pass
+    return []
 
 
 def calculate_ema(prices: list[float], period: int) -> list[float]:
@@ -83,124 +114,194 @@ def calculate_atr(candles: list[dict], period: int = 14) -> float:
     return atr
 
 
-TOP_25_UNIVERSE = [
-    "SOL", "NEAR", "AVAX", "SUI", "DOGE", "LINK", "ETH", "ARB", "INJ", 
-    "STRK", "0G", "BNB", "LAYER", "ZORA", "MOODENG", "BERA", "KAITO", 
-    "CELO", "ZEC", "VVV", "kNEIRO", "PNUT", "ANIME", "GMT", "BTC"
-]
+def calculate_bollinger_bands(prices: list[float], period: int = 20, num_std: float = 2.0) -> tuple[float, float, float]:
+    """Returns (upper, mid, lower)."""
+    if len(prices) < period:
+        return 0.0, 0.0, 0.0
+    recent = prices[-period:]
+    mid = sum(recent) / period
+    variance = sum((x - mid) ** 2 for x in recent) / period
+    std = math.sqrt(variance)
+    return mid + (num_std * std), mid, mid - (num_std * std)
 
 
-def get_watchlist() -> list[dict]:
-    """Returns the verified Top 25 high-probability assets on Hyperliquid."""
-    return [{"coin": c} for c in TOP_25_UNIVERSE]
-
-
-def evaluate_asset(executor: HyperliquidExecutor, coin: str) -> dict | None:
-    """Evaluates both 2h Macro Pullback (rsi-t200b) and 1h Confluence Breakout."""
-    now_ms = int(time.time() * 1000)
-    start_1h_ms = now_ms - (15 * 24 * 3600 * 1000)
-    start_2h_ms = now_ms - (35 * 24 * 3600 * 1000)
-
+def load_approved_strategies() -> list[dict]:
+    """Loads all Candidate and Incubate strategies from dashboard/data.json."""
+    if not DATA_FILE.exists():
+        return []
     try:
-        # 1. Fetch 1h Candles for Confluence
-        candles_1h = executor.info.candles_snapshot(coin, "1h", start_1h_ms, now_ms)
-        if len(candles_1h) < 205:
-            return None
+        d = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        strategies = d.get("strategies", [])
+        approved = []
+        seen = set()
 
-        closes_1h = [float(c["c"]) for c in candles_1h]
-        highs_1h = [float(c["h"]) for c in candles_1h]
-        volumes_1h = [float(c["v"]) for c in candles_1h]
-        current_price = closes_1h[-1]
+        for s in strategies:
+            verdict = s.get("verdict", "")
+            if verdict in ("Candidate", "Incubate"):
+                sym = s.get("symbol", "")
+                if not sym or "BASKET" in sym or "rows" in sym:
+                    continue
+                coin = sym.replace("USDT", "").replace("USDC", "").strip()
+                tf = s.get("timeframe", "2h").strip()
+                fam = s.get("family", s.get("id", ""))
+                key = (coin, tf, fam)
+                if key in seen:
+                    continue
+                seen.add(key)
 
-        ema200_1h_series = calculate_ema(closes_1h, 200)
-        ema21_1h_series = calculate_ema(closes_1h, 21)
-        ema9_1h_series = calculate_ema(closes_1h, 9)
+                pf = float(s.get("profit_factor", 1.5))
+                wr = float(s.get("win_rate", 55.0)) if s.get("win_rate") else 55.0
+                approved.append({
+                    "id": s.get("id"),
+                    "name": s.get("name", s.get("id")),
+                    "coin": coin,
+                    "timeframe": tf,
+                    "family": fam,
+                    "verdict": verdict,
+                    "profit_factor": pf,
+                    "win_rate": wr
+                })
 
-        ema200_1h = ema200_1h_series[-1] if ema200_1h_series else current_price
-        ema21_1h = ema21_1h_series[-1] if ema21_1h_series else current_price
-        ema9_1h = ema9_1h_series[-1] if ema9_1h_series else current_price
+        # Sort: Incubated first, then highest profit factor
+        approved.sort(key=lambda x: (1 if x["verdict"] == "Incubate" else 0, x["profit_factor"]), reverse=True)
+        return approved
+    except Exception as e:
+        print(f"[Aviso] Erro ao carregar estratégias aprovadas: {e}")
+        return []
 
-        rsi_1h = calculate_rsi(closes_1h, 14)
-        atr_1h = calculate_atr(candles_1h, 14)
-        donchian_high = max(highs_1h[-21:-1])
 
-        # 1h Confluence scoring
-        score_1h = 0
-        details = []
-        if current_price > ema200_1h:
-            score_1h += 2
-            details.append("Preço acima da EMA 200 1h")
-        if 48.0 <= rsi_1h <= 68.0:
-            score_1h += 1
-            details.append(f"RSI 1h Saudável ({rsi_1h:.1f})")
-        dist_to_donchian = (donchian_high - current_price) / current_price * 100
-        if current_price >= donchian_high or dist_to_donchian <= 1.0:
-            score_1h += 1
-            details.append("Rompimento Donchian 20")
-        if ema9_1h > ema21_1h:
-            score_1h += 1
-            details.append("Médias Rápidas Alinhadas (EMA 9 > 21)")
-        avg_vol = sum(volumes_1h[-21:-1]) / 20 if len(volumes_1h) >= 21 else volumes_1h[-1]
-        if volumes_1h[-1] > avg_vol * 0.85:
-            score_1h += 1
-            details.append("Volume Relevante")
+def evaluate_approved_strategy(executor: HyperliquidExecutor, strat: dict) -> dict | None:
+    """Evaluates an approved strategy against real-time candles."""
+    coin = strat["coin"]
+    tf = strat["timeframe"]
+    fam = strat["family"]
+    
+    # Map timeframe string for Hyperliquid API
+    api_tf = tf
+    if tf in ("60", "1h"):
+        api_tf = "1h"
+    elif tf in ("15", "15m"):
+        api_tf = "15m"
+    elif tf == "2h":
+        api_tf = "2h"
+    elif tf == "4h":
+        api_tf = "4h"
 
-        # 2. Check 2h Macro Pullback (rsi-t200b) — Highest Alpha Priority
-        is_2h_pullback = False
-        strategy_name = "1h Confluência"
-        sl_price = current_price - (2.0 * atr_1h)
-        tp1_price = current_price + (1.5 * (current_price - sl_price))
-
-        try:
-            candles_2h = executor.info.candles_snapshot(coin, "2h", start_2h_ms, now_ms)
-            if len(candles_2h) >= 205:
-                closes_2h = [float(c["c"]) for c in candles_2h]
-                ema200_2h_series = calculate_ema(closes_2h, 200)
-                ema200_2h = ema200_2h_series[-1] if ema200_2h_series else current_price
-                rsi_2h = calculate_rsi(closes_2h, 14)
-                atr_2h = calculate_atr(candles_2h, 14)
-
-                # Macro Bull + RSI Pullback
-                if current_price > ema200_2h and rsi_2h <= 38.0:
-                    is_2h_pullback = True
-                    strategy_name = "2h Pullback Alpha (rsi-t200b)"
-                    sl_price = current_price - (2.5 * atr_2h)
-                    tp1_price = current_price + (1.6 * atr_2h)
-                    details = [f"⭐ PULLBACK 2H CONFIRMADO: Preço > EMA 200 e RSI 2h em sobrevenda ({rsi_2h:.1f})"]
-        except Exception:
-            pass
-
-        final_score = 6 if is_2h_pullback else score_1h
-        sl_pct = ((current_price - sl_price) / current_price) * 100
-        tp2_price = current_price + (2.5 * (current_price - sl_price))
-        tp3_price = current_price + (4.0 * (current_price - sl_price))
-
-        return {
-            "coin": coin,
-            "score": final_score,
-            "strategy": strategy_name,
-            "is_2h_pullback": is_2h_pullback,
-            "current_price": current_price,
-            "rsi": round(rsi_1h, 1),
-            "ema200": round(ema200_1h, 4),
-            "atr": round(atr_1h, 4),
-            "sl_price": round(sl_price, 4),
-            "sl_pct": round(sl_pct, 2),
-            "tp1_price": round(tp1_price, 4),
-            "tp2_price": round(tp2_price, 4),
-            "tp3_price": round(tp3_price, 4),
-            "details": details
-        }
-    except Exception:
+    candles = get_cached_candles(executor, coin, api_tf, days=45)
+    if not candles or len(candles) < 205:
         return None
+
+    closes = [float(c["c"]) for c in candles]
+    highs = [float(c["h"]) for c in candles]
+    lows = [float(c["l"]) for c in candles]
+    current_price = closes[-1]
+    atr = calculate_atr(candles, 14)
+    if atr <= 0:
+        return None
+
+    is_signal = False
+    details = []
+    sl_multiplier = 2.0
+    tp_multiplier = 2.0
+
+    # Model 1: fam-pullback-majors (2h)
+    if fam == "fam-pullback-majors" or (tf == "2h" and fam in ("pullback", "rsi-t200")):
+        ema200_series = calculate_ema(closes, 200)
+        ema200 = ema200_series[-1] if ema200_series else current_price
+        rsi = calculate_rsi(closes, 14)
+        if current_price > ema200 and rsi <= 38.0:
+            is_signal = True
+            sl_multiplier = 2.5
+            tp_multiplier = 1.6
+            details.append(f"⭐ Pullback 2h: Preço > EMA 200 e RSI 2h em sobrevenda ({rsi:.1f})")
+
+    # Model 2: rsi-t200 (4h)
+    elif fam in ("rsi-t200", "discovery") and tf == "4h":
+        ema200_series = calculate_ema(closes, 200)
+        ema200 = ema200_series[-1] if ema200_series else current_price
+        rsi = calculate_rsi(closes, 14)
+        if current_price > ema200 and rsi <= 40.0:
+            is_signal = True
+            sl_multiplier = 2.5
+            tp_multiplier = 1.8
+            details.append(f"⭐ Trend Pullback 4h: Preço > EMA 200 e RSI 4h em sobrevenda ({rsi:.1f})")
+
+    # Model 3: squeeze (4h)
+    elif fam == "squeeze" and tf == "4h":
+        bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(closes, 20, 2.0)
+        # Keltner 1.5 ATR
+        kelt_upper = bb_mid + (1.5 * atr)
+        kelt_lower = bb_mid - (1.5 * atr)
+        is_squeezed = bb_upper < kelt_upper or bb_lower > kelt_lower
+        ema20 = bb_mid
+        if is_squeezed and current_price > ema20 and closes[-1] > closes[-2]:
+            is_signal = True
+            sl_multiplier = 2.0
+            tp_multiplier = 2.0
+            details.append(f"🌪️ Volatility Squeeze 4h: Compressão BB/Keltner com expansão altista")
+
+    # Model 4: ema9-21 (4h, Incubadas)
+    elif fam == "ema9-21" and tf == "4h":
+        ema9_s = calculate_ema(closes, 9)
+        ema21_s = calculate_ema(closes, 21)
+        ema50_s = calculate_ema(closes, 50)
+        if ema9_s and ema21_s and ema50_s:
+            if ema9_s[-1] > ema21_s[-1] and current_price > ema50_s[-1]:
+                rsi = calculate_rsi(closes, 14)
+                if 45.0 <= rsi <= 68.0:
+                    is_signal = True
+                    sl_multiplier = 2.0
+                    tp_multiplier = 2.0
+                    details.append(f"📈 Tendência 4h: EMA 9 > 21 acima da EMA 50 e RSI saudável ({rsi:.1f})")
+
+    # Model 5: fam-bb-reversion (1h)
+    elif fam == "fam-bb-reversion" and tf in ("1h", "60"):
+        bb_upper, bb_mid, bb_lower = calculate_bollinger_bands(closes, 20, 2.0)
+        rsi = calculate_rsi(closes, 14)
+        if current_price <= bb_lower * 1.002 and rsi <= 32.0:
+            is_signal = True
+            sl_multiplier = 1.5
+            tp_multiplier = 1.5
+            details.append(f"🔄 Reversão à Média 1h: Toque na Banda Inferior com RSI ({rsi:.1f})")
+
+    # Model 6: leaderboard / high-wr (15m)
+    elif tf in ("15", "15m"):
+        donch_high = max(highs[-21:-1])
+        ema200_s = calculate_ema(closes, 200)
+        ema200 = ema200_s[-1] if ema200_s else current_price
+        if current_price >= donch_high and current_price > ema200:
+            is_signal = True
+            sl_multiplier = 1.8
+            tp_multiplier = 2.0
+            details.append(f"⚡ Donchian Breakout 15m: Rompimento de máxima de 20 períodos acima da EMA 200")
+
+    if not is_signal:
+        return None
+
+    sl_price = current_price - (sl_multiplier * atr)
+    tp1_price = current_price + (tp_multiplier * atr)
+    sl_pct = ((current_price - sl_price) / current_price) * 100
+
+    return {
+        "coin": coin,
+        "strategy": f"{strat['name']} ({tf})",
+        "family": fam,
+        "timeframe": tf,
+        "verdict": strat["verdict"],
+        "profit_factor": strat["profit_factor"],
+        "win_rate": strat["win_rate"],
+        "current_price": current_price,
+        "sl_price": round(sl_price, 4 if sl_price > 1 else 6),
+        "sl_pct": round(sl_pct, 2),
+        "tp1_price": round(tp1_price, 4 if tp1_price > 1 else 6),
+        "details": details
+    }
 
 
 def check_btc_macro_circuit_breaker(executor: HyperliquidExecutor) -> tuple[bool, str]:
-    """Checks Bitcoin Markov Macro Regime. Returns (allow_trades, reason)."""
+    """Checks Bitcoin 20d Macro Trend. Pauses entries if BTC drops > 5% in 20d."""
     try:
-        now_ms = int(time.time() * 1000)
-        start_ms = now_ms - (30 * 24 * 3600 * 1000)
-        candles = executor.info.candles_snapshot("BTC", "1d", start_ms, now_ms)
+        candles = get_cached_candles(executor, "BTC", "1d", days=30)
         if not candles or len(candles) < 21:
             return True, "Dados normais de mercado"
         closes = [float(c["c"]) for c in candles]
@@ -214,199 +315,180 @@ def check_btc_macro_circuit_breaker(executor: HyperliquidExecutor) -> tuple[bool
         return True, f"Verificação normal ({e})"
 
 
-def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc: float = 20.0, interval_sec: int = 60):
-    print("=" * 70)
-    print("🎯 BOTRADE AUTONOMOUS SNIPER & CONFLUENCE EXECUTOR INICIADO")
-    print(f"[*] Modo de Execução: {'⚡ AUTOMÁTICO (DINHEIRO REAL)' if auto_trade else '📡 APENAS NOTIFICAÇÃO (CO-PILOTO)'}")
-    print(f"[*] Limite de Posições Simultâneas: {max_positions}")
-    print(f"[*] Margem por Nova Entrada: ${margin_usdc:.2f} USDC @ 10x (Teto configurado)")
+def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc: float = 15.0, interval_sec: int = 60, dry_run: bool = False):
+    print("=" * 72)
+    print("🎯 BOTRADE DYNAMIC SNIPER (CANDIDATE & INCUBATE UNIVERSE)")
+    print(f"[*] Modo: {'🧪 SIMULAÇÃO (DRY-RUN)' if dry_run else ('⚡ AUTOMÁTICO (DINHEIRO REAL)' if auto_trade else '📡 CO-PILOTO')}")
+    print(f"[*] Margem por Entrada: ${margin_usdc:.2f} USDC (Teto seguro)")
+    print(f"[*] Vagas Simultâneas: {max_positions}")
     print(f"[*] Intervalo de Varredura: {interval_sec}s")
-    print("=" * 70)
+    print("=" * 72)
 
     executor = HyperliquidExecutor()
     valid, msg = executor.check_credentials()
-    while not valid:
-        print(f"[-] Erro de credenciais: {msg}. Aguardando credenciais... (tentando em 10s)")
-        time.sleep(10)
-        executor = HyperliquidExecutor()
-        valid, msg = executor.check_credentials()
+    if not valid and not dry_run:
+        print(f"[-] Erro de credenciais: {msg}")
+        return
 
-    # Notify Telegram of startup
-    mode_str = "⚡ 100% AUTOMÁTICO (DINHEIRO REAL)" if auto_trade else "📡 MODO CO-PILOTO (Sinais)"
-    send(
-        f"🎯 *BOTRADE SNIPER ATIVADO NO MODO AUTOMÁTICO*\n\n"
-        f"• Modo: *{mode_str}*\n"
-        f"• Limite de Carteira: *Até {max_positions} operações simultâneas*\n"
-        f"• Setups Ativos: *2h Macro Pullback (rsi-t200b) + 1h Confluence Breakout*\n"
-        f"• Stop Loss: *2.5x ATR (Pullback 2h) / 2.0x ATR (Confluência 1h)*\n"
-        f"• Trailing: *Ratchet +30% Automático (Risco Zero)*\n"
-        f"• Universo: *Top 25 Moedas Campeãs da Hyperliquid*\n\n"
-        f"O robô está ativo e executará as próximas oportunidades automaticamente!"
-    )
+    approved_strategies = load_approved_strategies()
+    print(f"[*] Estratégias Aprovadas Carregadas do Catálogo: {len(approved_strategies)} estratégias ativas!")
+    
+    unique_coins = sorted(list(set(s["coin"] for s in approved_strategies)))
+    print(f"[*] Ativos no Radar ({len(unique_coins)} moedas): {', '.join(unique_coins)}")
 
     while True:
         try:
-            # Check pause state from state file
-            is_paused = False
-            if STATE_FILE.exists():
-                try:
-                    sdata = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-                    is_paused = bool(sdata.get("paused", False))
-                except Exception:
-                    pass
-
             status = executor.get_account_status()
             open_positions = status.get("open_positions", status.get("positions", []))
             current_open_count = len(open_positions)
             open_coins = [p["coin"] for p in open_positions]
 
-            # Check BTC Macro Circuit Breaker
             allow_macro, macro_reason = check_btc_macro_circuit_breaker(executor)
 
-            # Check Free Margin (Saldo Livre Real na Hyperliquid)
             free_margin = float(status.get("withdrawable", 0.0))
             if free_margin <= 0:
                 perps_val = float(status.get("perps_account_value", 0.0))
                 tot_margin = float(status.get("total_margin_used", 0.0))
                 free_margin = max(0.0, perps_val - tot_margin)
 
-            min_required_margin = max(5.0, margin_usdc)
-            has_sufficient_balance = free_margin >= min_required_margin
+            min_required = max(10.0, margin_usdc)
+            has_sufficient = free_margin >= min_required
+            vagas = max_positions - current_open_count
 
-            # Update heartbeat state
+            now_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
+            print(f"\n[{now_str}] Carteira: {current_open_count}/{max_positions} abertas ({', '.join(open_coins) if open_coins else 'Nenhuma'}) | Margem Livre: ${free_margin:.2f} USDC")
+            print(f"  -> Disjuntor Macro BTC: {macro_reason}")
+
+            # Save state for dashboard
             state_payload = {
                 "updated_at": datetime.now(timezone.utc).isoformat(),
-                "paused": is_paused,
                 "open_positions_count": current_open_count,
                 "open_coins": open_coins,
                 "max_positions": max_positions,
+                "free_margin": round(free_margin, 2),
+                "required_margin": round(min_required, 2),
+                "has_sufficient_balance": has_sufficient,
                 "macro_status": macro_reason,
                 "macro_allowed": allow_macro,
-                "free_margin": round(free_margin, 2),
-                "required_margin": round(min_required_margin, 2),
-                "has_sufficient_balance": has_sufficient_balance,
-                "status_message": "Aguardando saldo" if not has_sufficient_balance else ("Pausado" if is_paused else ("Disjuntor macro ativo" if not allow_macro else "Operando normalmente")),
-                "auto_trade": auto_trade,
-                "margin_usdc": margin_usdc
+                "monitored_strategies_count": len(approved_strategies),
+                "monitored_coins": unique_coins,
+                "status_message": "Aguardando saldo" if not has_sufficient else ("Capacidade máxima de risco atingida" if vagas <= 0 else "Varrendo mercado 24/7")
             }
-            try:
-                STATE_FILE.write_text(json.dumps(state_payload, indent=2), encoding="utf-8")
-            except Exception:
-                pass
-
-            now_str = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
-            print(f"\n[{now_str}] Status da Carteira: {current_open_count}/{max_positions} posições abertas ({', '.join(open_coins) if open_coins else 'Nenhuma'})")
-            print(f"  -> Margem Livre Disponível: ${free_margin:.2f} USDC | Mínimo por trade: ${min_required_margin:.2f} USDC")
-            print(f"  -> Filtro Macro Bitcoin: {macro_reason}")
-
-            if is_paused:
-                print(f"  -> ⏸️ SNIPER EM PAUSA PELO COCKPIT. Aguardando liberação para novas entradas.")
-                time.sleep(interval_sec)
-                continue
+            STATE_FILE.write_text(json.dumps(state_payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
             if not allow_macro:
-                print(f"  -> 🛑 DISJUNTOR MACRO ATIVO: {macro_reason}. Novas entradas bloqueadas.")
+                print(f"  -> 🛑 DISJUNTOR MACRO ATIVO: {macro_reason}. Aguardando...")
+                if dry_run: break
                 time.sleep(interval_sec)
                 continue
 
-            # Trava de Saldo Insuficiente: Não escaneia, não tenta abrir ordens e não envia calls
-            if not has_sufficient_balance:
-                print(f"  -> 🔒 SALDO DISPONÍVEL INSUFICIENTE: ${free_margin:.2f} USDC livres (mínimo necessário: ${min_required_margin:.2f} USDC).")
-                print(f"  -> Capital alocado nas posições atuais ({', '.join(open_coins) if open_coins else 'sem posições'}).")
-                print(f"  -> O robô suspende varreduras, novas calls e tentativas de compra até que uma posição encerre e libere margem.")
+            if vagas <= 0:
+                print(f"  -> 🔒 Limite de risco atingido ({current_open_count}/{max_positions}). Aguardando encerramento...")
+                if dry_run: break
                 time.sleep(interval_sec)
                 continue
 
-            # Check if capacity allows opening a new position
-            if current_open_count >= max_positions:
-                print(f"  -> Capacidade máxima de risco atingida ({current_open_count}/{max_positions} trades em andamento: {', '.join(open_coins)}).")
-                print(f"  -> O robô monitora as posições e aguarda liberação de vaga para novas entradas.")
+            if not has_sufficient and not dry_run:
+                print(f"  -> 🔒 Saldo livre insuficiente (${free_margin:.2f} < ${min_required:.2f}). Aguardando...")
+                if dry_run: break
                 time.sleep(interval_sec)
                 continue
 
-            watchlist = get_watchlist()
-            vagas_disponiveis = max_positions - current_open_count
-            print(f"  -> Temos {vagas_disponiveis} vaga(s) disponível(is) e ${free_margin:.2f} USDC livres! Varrendo {len(watchlist)} moedas campeãs em busca de Confluência Score >= 5/6...")
+            print(f"  -> Varrendo {len(approved_strategies)} estratégias aprovadas (Candidatas & Incubadas) em busca de sinais...")
 
-            candidates_found = []
-            for item in watchlist:
-                coin = item["coin"]
+            signals_detected = []
+            for strat in approved_strategies:
+                coin = strat["coin"]
                 if coin in open_coins:
-                    continue # Already in this position
+                    continue  # Already open
 
-                res = evaluate_asset(executor, coin)
-                if res and res["score"] >= 5:
-                    candidates_found.append(res)
-                    print(f"    ⭐ SINAL DETECTADO: {coin} (Score {res['score']}/6 | Preço ${res['current_price']})")
+                sig = evaluate_approved_strategy(executor, strat)
+                if sig:
+                    signals_detected.append(sig)
+                    print(f"    ⭐ SINAL APROVADO: {sig['coin']} via {sig['strategy']} | Preço: ${sig['current_price']} | SL: ${sig['sl_price']} (-{sig['sl_pct']}%)")
                 
-                time.sleep(0.08) # Polite rate limit
+                time.sleep(0.04)  # Polite API spacing
 
-            # Sort: 2h pullbacks first (highest alpha priority), then highest score, then lowest SL distance
-            candidates_found.sort(key=lambda x: (1 if x.get("is_2h_pullback") else 0, x["score"], -x["sl_pct"]), reverse=True)
-
-            if candidates_found:
-                best = candidates_found[0]
+            if signals_detected:
+                # Prioritize: Incubate first, then highest profit factor, then lowest SL distance
+                signals_detected.sort(key=lambda x: (1 if x["verdict"] == "Incubate" else 0, x["profit_factor"], -x["sl_pct"]), reverse=True)
+                best = signals_detected[0]
                 coin = best["coin"]
                 px = best["current_price"]
                 sl = best["sl_price"]
                 tp = best["tp1_price"]
-                strategy_label = best.get("strategy", "Confluência Técnica")
+                strat_name = best["strategy"]
 
-                print(f"\n[!] MELHOR OPORTUNIDADE DO MERCADO ENCONTRADA: {coin} ({strategy_label})")
-                print(f"    Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp} | Score: {best['score']}/6")
+                print(f"\n[!] MELHOR ENTRADA QUANTITATIVA SELECIONADA: {coin} ({strat_name})")
+                print(f"    Veredito: {best['verdict']} | PF Histórico: {best['profit_factor']:.2f} | Preço: ${px} | SL: ${sl} (-{best['sl_pct']}%) | TP1: ${tp}")
+
+                if dry_run:
+                    print("    [DRY-RUN] Simulação concluída com sucesso. Nenhuma ordem foi enviada ao livro.")
+                    break
 
                 if auto_trade:
-                    print(f"    🚀 DISPARANDO EXECUÇÃO AUTOMÁTICA NA HYPERLIQUID (${margin_usdc:.2f} @ 10x)...")
+                    print(f"    🚀 DISPARANDO EXECUÇÃO AUTOMÁTICA NA HYPERLIQUID (${margin_usdc:.2f} USDC)...")
+                    
+                    # Pre-flight check: minimum $10 notional
+                    coin_meta = executor.universe.get(coin, {})
+                    allowed_max_lev = int(coin_meta.get("maxLeverage", 10))
+                    eff_lev = min(10, allowed_max_lev)
+
                     trade_res = executor.execute_trade(
                         coin=coin,
                         side="buy",
                         usdc_margin=margin_usdc,
-                        leverage=10,
+                        leverage=eff_lev,
                         sl_price=sl,
                         tp_price=tp,
                         confirm=True
                     )
 
                     if trade_res.get("status") in ("ok", "executed"):
-                        print(f"    ✅ SUCESSO! Ordem de {coin} executada e Stop Loss registrado na Hyperliquid!")
+                        print(f"    ✅ SUCESSO! Ordem de {coin} executada e Stop Loss registrado com reduce_only na Hyperliquid!")
                         send(
-                            f"🚀 *NOVA OPERAÇÃO DISPARADA AUTOMATICAMENTE!*\n\n"
+                            f"🚀 *NOVA OPERAÇÃO DISPARADA PELO SNIPER!*\n\n"
                             f"• Ativo: *{coin} / USDC (LONG)*\n"
-                            f"• Estratégia: *{strategy_label}*\n"
+                            f"• Estratégia: *{strat_name}*\n"
+                            f"• Veredito: *{best['verdict']}* (PF Histórico: *{best['profit_factor']:.2f}*)\n"
                             f"• Vagas Ocupadas: *{current_open_count + 1}/{max_positions}*\n"
                             f"• Preço de Entrada: *${px:.4f}*\n"
-                            f"• Margem Alocada: *${margin_usdc:.2f} USDC @ 10x* (Notional: ~${margin_usdc*10:.2f} USD)\n"
-                            f"• Stop Loss Obrigatório: *${sl:.4f}* (-{best['sl_pct']}%)\n"
+                            f"• Margem: *${margin_usdc:.2f} USDC @ {eff_lev}x*\n"
+                            f"• Stop Loss: *${sl:.4f}* (-{best['sl_pct']}% com `reduce_only`)\n"
                             f"• Alvo 1 (TP1): *${tp:.4f}*\n"
-                            f"• Confluência Técnica: *Score {best['score']}/6*\n\n"
-                            f"🛡️ *Ratchet Trailing Stop* já ativado para proteger no 0x0 ao atingir +30% ROE.\n"
-                            f"🌐 *Painel:* https://botrade-hyperliquid.onrender.com/"
+                            f"• Detalhes: _{', '.join(best['details'])}_\n\n"
+                            f"🛡️ *Ratchet Trailing Stop* ativo para proteger no 0x0 ao atingir +30% ROE."
                         )
                     else:
                         print(f"    [-] Falha na execução: {trade_res.get('error') or trade_res.get('message')}")
-                else:
-                    send(
-                        f"📡 *OPORTUNIDADE DE OURO DETECTADA!*\n\n"
-                        f"• Ativo: *{coin}* (Score: *{best['score']}/6*)\n"
-                        f"• Preço Atual: *${px:.4f}*\n"
-                        f"• Stop Loss Sugerido: *${sl:.4f}* (-{best['sl_pct']}%)\n"
-                        f"• Alvo Estimado: *${tp:.4f}*\n\n"
-                        f"Acesse o Cockpit para executar com 1 clique: http://192.168.18.12:8765/"
-                    )
+            else:
+                print(f"  -> Nenhum sinal de confluência extrema disparado neste ciclo. Mercado calmo.")
+
+            if dry_run:
+                break
 
             time.sleep(interval_sec)
 
         except Exception as e:
             print(f"[-] Erro no loop do sniper: {e}")
+            if dry_run:
+                break
             time.sleep(30)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Botrade Autonomous Sniper")
-    parser.add_argument("--auto", action="store_true", default=True, help="Executa ordens automaticamente com dinheiro real (padrão: True)")
-    parser.add_argument("--margin", type=float, default=20.0, help="Margem em USDC por operação (padrão: 20.0)")
+    parser = argparse.ArgumentParser(description="Botrade Dynamic Multi-Strategy Sniper")
+    parser.add_argument("--auto", action="store_true", default=True, help="Executa ordens automaticamente (padrão: True)")
+    parser.add_argument("--margin", type=float, default=15.0, help="Margem em USDC por operação (padrão: 15.0)")
     parser.add_argument("--max-positions", type=int, default=3, help="Número máximo de posições abertas simultâneas (padrão: 3)")
     parser.add_argument("--interval", type=int, default=60, help="Intervalo de varredura em segundos (padrão: 60s)")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="Executa 1 ciclo de teste sem emitir ordens reais")
     args = parser.parse_args()
 
-    run_sniper_loop(auto_trade=args.auto, max_positions=args.max_positions, margin_usdc=args.margin, interval_sec=args.interval)
+    run_sniper_loop(
+        auto_trade=args.auto,
+        max_positions=args.max_positions,
+        margin_usdc=args.margin,
+        interval_sec=args.interval,
+        dry_run=args.dry_run
+    )

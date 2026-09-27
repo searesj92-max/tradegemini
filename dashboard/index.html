@@ -1647,14 +1647,15 @@
             <span class="status-dot"></span>
             <span>📡 Monitor de Posições Ao Vivo · Hyperliquid Mainnet</span>
             <span class="brand-tag" style="background:rgba(16,185,129,0.15); color:var(--green); border-color:rgba(16,185,129,0.3);">
-              Dinheiro Real ($5.00 @ 10x)
+              Dinheiro Real ($20.00 @ 10x)
             </span>
           </div>
 
           <div class="live-metrics-bar">
-            <div class="pill">PATRIMÔNIO TOTAL: <strong id="lm-total-equity" style="color:var(--blue);">$57.00</strong></div>
-            <div class="pill">MARGEM EM USO: <strong id="lm-margin-used" style="color:var(--amber);">$5.00</strong></div>
-            <div class="pill pill-green">DISPONÍVEL: <strong id="lm-avail-margin">$52.00</strong></div>
+            <div class="pill">PATRIMÔNIO TOTAL: <strong id="lm-total-equity" style="color:var(--blue);">$351.81</strong></div>
+            <div class="pill">RESERVA SPOT: <strong id="lm-spot-usdc" style="color:var(--green);">$297.12</strong></div>
+            <div class="pill">MARGEM EM USO: <strong id="lm-margin-used" style="color:var(--amber);">$54.91</strong></div>
+            <div class="pill pill-green">DISPONÍVEL: <strong id="lm-avail-margin">$296.90</strong></div>
             <div class="pill" id="lm-sync-pill" style="font-size:10px; color:var(--muted);">Sincronizando...</div>
           </div>
         </div>
@@ -2200,6 +2201,7 @@
                 <th>Data Entrada</th>
                 <th>Estratégia</th>
                 <th>Preço Entrada</th>
+                <th>Margem Entrou</th>
                 <th>Data Saída</th>
                 <th>Preço Saída</th>
                 <th>Lucro Líquido ($)</th>
@@ -4391,6 +4393,7 @@
 
         // Update Top Header & Consolidated Bar
         if ($("lm-total-equity")) $("lm-total-equity").textContent = "$" + (data.total_equity || 0).toFixed(2);
+        if ($("lm-spot-usdc")) $("lm-spot-usdc").textContent = "$" + (data.spot_usdc || 0).toFixed(2);
         if ($("lm-margin-used")) $("lm-margin-used").textContent = "$" + (data.margin_used || 0).toFixed(2);
         if ($("lm-avail-margin")) {
           $("lm-avail-margin").textContent = "$" + window.latestAvailableMargin.toFixed(2);
@@ -4493,33 +4496,39 @@
 
                   <!-- METRICS GRID -->
                   <div class="live-pos-grid">
+                    <div class="live-data-cell" style="border-color:rgba(56,189,248,0.4); background:rgba(56,189,248,0.06);">
+                      <div class="live-cell-lbl" style="color:var(--blue); font-weight:700;">💵 Capital de Entrada (Margem)</div>
+                      <div class="live-cell-val" style="color:var(--text); font-weight:800;">$${margin.toFixed(2)} USDC</div>
+                      <div class="live-cell-sub">Posição Total: $${(margin * p.leverage).toFixed(2)} (${p.leverage}x)</div>
+                    </div>
+
                     <div class="live-data-cell">
                       <div class="live-cell-lbl">Preço de Entrada</div>
-                      <div class="live-cell-val" style="color:var(--text);">$${p.entry_px.toFixed(2)}</div>
+                      <div class="live-cell-val" style="color:var(--text);">$${p.entry_px < 0.01 ? p.entry_px.toFixed(6) : (p.entry_px < 1 ? p.entry_px.toFixed(4) : p.entry_px.toFixed(2))}</div>
                       <div class="live-cell-sub">Lote: ${p.size} ${p.coin}</div>
                     </div>
 
                     <div class="live-data-cell">
                       <div class="live-cell-lbl">Preço Atual</div>
-                      <div class="live-cell-val" style="color:var(--blue);">$${p.current_price.toFixed(3)}</div>
+                      <div class="live-cell-val" style="color:var(--blue);">$${p.current_price < 0.01 ? p.current_price.toFixed(6) : (p.current_price < 1 ? p.current_price.toFixed(4) : p.current_price.toFixed(3))}</div>
                       <div class="live-cell-sub">Ao vivo na Hyperliquid</div>
                     </div>
 
                     <div class="live-data-cell" style="border-color:${isProfit ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};">
                       <div class="live-cell-lbl">Lucro / Prejuízo (PnL)</div>
                       <div class="live-cell-val" style="color:${pnlColor};">${pnlText}</div>
-                      <div class="live-cell-sub">ROE sobre Margem de $${(p.margin_used || 5.0).toFixed(2)}</div>
+                      <div class="live-cell-sub">ROE sobre Margem de $${margin.toFixed(2)}</div>
                     </div>
 
                     <div class="live-data-cell" style="border-color:rgba(239,68,68,0.3);">
                       <div class="live-cell-lbl" style="color:var(--red);">Stop Loss Ativo</div>
-                      <div class="live-cell-val" style="color:var(--red);">$${p.current_sl.toFixed(2)}</div>
+                      <div class="live-cell-val" style="color:var(--red);">$${p.current_sl < 0.01 ? p.current_sl.toFixed(6) : (p.current_sl < 1 ? p.current_sl.toFixed(4) : p.current_sl.toFixed(2))}</div>
                       <div class="live-cell-sub">${p.sl_distance_pct > 0 ? '-' : '+'}${Math.abs(p.sl_distance_pct).toFixed(2)}% de distância</div>
                     </div>
 
                     <div class="live-data-cell" style="border-color:rgba(16,185,129,0.3);">
                       <div class="live-cell-lbl" style="color:var(--green);">Próximo Ratchet (+30%)</div>
-                      <div class="live-cell-val" style="color:var(--green);">$${p.next_ratchet_price.toFixed(2)}</div>
+                      <div class="live-cell-val" style="color:var(--green);">$${p.next_ratchet_price < 0.01 ? p.next_ratchet_price.toFixed(6) : (p.next_ratchet_price < 1 ? p.next_ratchet_price.toFixed(4) : p.next_ratchet_price.toFixed(2))}</div>
                       <div class="live-cell-sub">Gatilho de Breakeven</div>
                     </div>
                   </div>
@@ -4538,8 +4547,8 @@
                       <div class="ratchet-fill" style="width: ${p.progress_pct}%;"></div>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--muted); font-family:var(--mono);">
-                      <span>Entrada: $${p.entry_px.toFixed(2)}</span>
-                      <span>Próximo Passo: $${p.next_ratchet_price.toFixed(2)} (+${p.next_ratchet_roe}% ROE)</span>
+                      <span>Entrada: $${p.entry_px < 0.01 ? p.entry_px.toFixed(6) : (p.entry_px < 1 ? p.entry_px.toFixed(4) : p.entry_px.toFixed(2))}</span>
+                      <span>Próximo Passo: $${p.next_ratchet_price < 0.01 ? p.next_ratchet_price.toFixed(6) : (p.next_ratchet_price < 1 ? p.next_ratchet_price.toFixed(4) : p.next_ratchet_price.toFixed(2))} (+${p.next_ratchet_roe}% ROE)</span>
                     </div>
                   </div>
 
@@ -4547,45 +4556,45 @@
                   <div style="margin-top:14px; background:linear-gradient(135deg, rgba(16,185,129,0.06), rgba(56,189,248,0.06)); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:14px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                       <span style="font-weight:700; font-size:13px; color:var(--text); display:flex; align-items:center; gap:6px;">
-                        💰 Quanto você ganha em $ com as metas batidas (Margem: $${margin.toFixed(2)} USDC):
+                        💰 Retorno Financeiro Projetado (Entrou com: <strong style="color:var(--blue);">$${margin.toFixed(2)} USDC</strong> @ ${p.leverage}x):
                       </span>
                       <span class="pill pill-green" style="font-size:11px; font-weight:700;">
-                        Retorno Financeiro Real (10x)
+                        Simulação em Dinheiro Real (${p.leverage}x)
                       </span>
                     </div>
 
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
                       <!-- META 1 -->
                       <div style="background:var(--surface2); border:1px solid rgba(16,185,129,0.35); border-radius:8px; padding:12px;">
-                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 1 (Alvo Parcial @ $${p.tp1.toFixed(2)})</div>
-                        <div style="font-size:20px; font-weight:800; color:var(--green); margin:4px 0;">+$${pnlTp1.toFixed(2)} USD</div>
-                        <div style="font-size:11px; color:var(--text);">Retorno Total: <strong style="color:var(--green);">$${totalTp1.toFixed(2)}</strong> (+${roeTp1.toFixed(1)}%)</div>
+                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 1 (Alvo Parcial @ $${p.tp1 < 0.01 ? p.tp1.toFixed(6) : (p.tp1 < 1 ? p.tp1.toFixed(4) : p.tp1.toFixed(2))})</div>
+                        <div style="font-size:18px; font-weight:800; color:var(--green); margin:4px 0;">+$${pnlTp1.toFixed(2)} USD</div>
+                        <div style="font-size:11px; color:var(--text);">Entrou: <strong>$${margin.toFixed(2)}</strong> → Sai com: <strong style="color:var(--green);">$${totalTp1.toFixed(2)}</strong> (+${roeTp1.toFixed(1)}%)</div>
                       </div>
 
                       <!-- META 2 -->
                       <div style="background:var(--surface2); border:1px solid rgba(56,189,248,0.35); border-radius:8px; padding:12px;">
-                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 2 (Alvo Principal @ $${p.tp2.toFixed(2)})</div>
-                        <div style="font-size:20px; font-weight:800; color:var(--blue); margin:4px 0;">+$${pnlTp2.toFixed(2)} USD</div>
-                        <div style="font-size:11px; color:var(--text);">Retorno Total: <strong style="color:var(--blue);">$${totalTp2.toFixed(2)}</strong> (+${roeTp2.toFixed(1)}%)</div>
+                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 2 (Alvo Principal @ $${p.tp2 < 0.01 ? p.tp2.toFixed(6) : (p.tp2 < 1 ? p.tp2.toFixed(4) : p.tp2.toFixed(2))})</div>
+                        <div style="font-size:18px; font-weight:800; color:var(--blue); margin:4px 0;">+$${pnlTp2.toFixed(2)} USD</div>
+                        <div style="font-size:11px; color:var(--text);">Entrou: <strong>$${margin.toFixed(2)}</strong> → Sai com: <strong style="color:var(--blue);">$${totalTp2.toFixed(2)}</strong> (+${roeTp2.toFixed(1)}%)</div>
                       </div>
 
                       <!-- META 3 -->
                       <div style="background:var(--surface2); border:1px solid rgba(168,85,247,0.35); border-radius:8px; padding:12px;">
-                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 3 (Alvo Máximo @ $${p.tp3.toFixed(2)})</div>
-                        <div style="font-size:20px; font-weight:800; color:var(--purple); margin:4px 0;">+$${pnlTp3.toFixed(2)} USD</div>
-                        <div style="font-size:11px; color:var(--text);">Retorno Total: <strong style="color:var(--purple);">$${totalTp3.toFixed(2)}</strong> (+${roeTp3.toFixed(1)}%)</div>
+                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Meta 3 (Alvo Máximo @ $${p.tp3 < 0.01 ? p.tp3.toFixed(6) : (p.tp3 < 1 ? p.tp3.toFixed(4) : p.tp3.toFixed(2))})</div>
+                        <div style="font-size:18px; font-weight:800; color:var(--purple); margin:4px 0;">+$${pnlTp3.toFixed(2)} USD</div>
+                        <div style="font-size:11px; color:var(--text);">Entrou: <strong>$${margin.toFixed(2)}</strong> → Sai com: <strong style="color:var(--purple);">$${totalTp3.toFixed(2)}</strong> (+${roeTp3.toFixed(1)}%)</div>
                       </div>
 
                       <!-- STOP LOSS -->
                       <div style="background:var(--surface2); border:1px solid rgba(239,68,68,0.35); border-radius:8px; padding:12px;">
-                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Stop Loss (Pior Caso @ $${p.current_sl.toFixed(2)})</div>
-                        <div style="font-size:20px; font-weight:800; color:var(--red); margin:4px 0;">-$${Math.abs(pnlSl).toFixed(2)} USD</div>
-                        <div style="font-size:11px; color:var(--text);">Preserva: <strong style="color:var(--amber);">$${totalSl.toFixed(2)}</strong> (${roeSl.toFixed(1)}%)</div>
+                        <div style="font-size:11px; color:var(--muted); font-weight:600;">Stop Loss (Pior Caso @ $${p.current_sl < 0.01 ? p.current_sl.toFixed(6) : (p.current_sl < 1 ? p.current_sl.toFixed(4) : p.current_sl.toFixed(2))})</div>
+                        <div style="font-size:18px; font-weight:800; color:var(--red); margin:4px 0;">-$${Math.abs(pnlSl).toFixed(2)} USD</div>
+                        <div style="font-size:11px; color:var(--text);">Entrou: <strong>$${margin.toFixed(2)}</strong> → Preserva: <strong style="color:var(--amber);">$${totalSl.toFixed(2)}</strong> (${roeSl.toFixed(1)}%)</div>
                       </div>
                     </div>
 
                     <div style="margin-top:10px; font-size:11px; color:var(--dim); display:flex; align-items:center; gap:6px;">
-                      <span>🛡️ <strong>Blindagem Automática:</strong> Ao atingir $${p.next_ratchet_price.toFixed(2)} (+30% ROE), o Stop Loss sobe para o preço de entrada ($${p.entry_px.toFixed(2)}), zerando qualquer possibilidade de perda ($0.00)!</span>
+                      <span>🛡️ <strong>Blindagem Automática:</strong> Ao atingir $${p.next_ratchet_price < 0.01 ? p.next_ratchet_price.toFixed(6) : (p.next_ratchet_price < 1 ? p.next_ratchet_price.toFixed(4) : p.next_ratchet_price.toFixed(2))} (+30% ROE), o Stop Loss sobe para o preço de entrada, zerando qualquer possibilidade de perda ($0.00)!</span>
                     </div>
                   </div>
                 </div>
@@ -5406,6 +5415,7 @@
             <td>${t.entry_date || "—"}</td>
             <td><span class="brand-tag" style="background:rgba(59,130,246,0.1); color:var(--blue); border-color:rgba(59,130,246,0.3); font-size:10px;">${t.strategy}</span></td>
             <td>$${t.entry_price.toFixed(t.entry_price < 1 ? 4 : 2)}</td>
+            <td style="color:var(--blue); font-weight:700;">$${(t.margin_usd || 20).toFixed(2)} (${t.leverage || 10}x)</td>
             <td>${t.exit_date || "—"}</td>
             <td>$${t.exit_price.toFixed(t.exit_price < 1 ? 4 : 2)}</td>
             <td style="font-weight:700; color:${pnlColor};">${sign}$${t.pnl_usd.toFixed(2)}</td>
@@ -5435,6 +5445,15 @@
       const container = $("bt-main-chart");
       if (container) {
         container.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+
+    window.viewLiveChart = function(coin) {
+      const sym = (coin || "SOL").toUpperCase();
+      loadTvChart(sym + "USDT", "15", sym);
+      const tvEl = $("tradingview_live_chart");
+      if (tvEl) {
+        tvEl.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     };
 

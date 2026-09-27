@@ -41,7 +41,7 @@ def get_config():
     return {
         "MAIN_ADDRESS": os.getenv("HYPERLIQUID_MAIN_ADDRESS", "").strip(),
         "AGENT_KEY": os.getenv("HYPERLIQUID_AGENT_KEY", "").strip(),
-        "MAX_TRADE_USDC": float(os.getenv("HYPERLIQUID_MAX_TRADE_USDC", "5.0")),
+        "MAX_TRADE_USDC": float(os.getenv("HYPERLIQUID_MAX_TRADE_USDC", "20.0")),
         "MAX_LEVERAGE": int(os.getenv("HYPERLIQUID_MAX_LEVERAGE", "10")),
         "TRAILING_STEP_PCT": float(os.getenv("HYPERLIQUID_TRAILING_STEP_PCT", "30.0")),
         "IS_MAINNET": os.getenv("HYPERLIQUID_IS_MAINNET", "true").lower() in ("true", "1", "yes")

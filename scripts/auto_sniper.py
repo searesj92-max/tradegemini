@@ -214,12 +214,12 @@ def check_btc_macro_circuit_breaker(executor: HyperliquidExecutor) -> tuple[bool
         return True, f"Verificação normal ({e})"
 
 
-def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc: float = 15.0, interval_sec: int = 60):
+def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc: float = 20.0, interval_sec: int = 60):
     print("=" * 70)
     print("🎯 BOTRADE AUTONOMOUS SNIPER & CONFLUENCE EXECUTOR INICIADO")
     print(f"[*] Modo de Execução: {'⚡ AUTOMÁTICO (DINHEIRO REAL)' if auto_trade else '📡 APENAS NOTIFICAÇÃO (CO-PILOTO)'}")
     print(f"[*] Limite de Posições Simultâneas: {max_positions}")
-    print(f"[*] Margem por Nova Entrada: ${margin_usdc:.2f} USDC @ 10x")
+    print(f"[*] Margem por Nova Entrada: ${margin_usdc:.2f} USDC @ 10x (Teto configurado)")
     print(f"[*] Intervalo de Varredura: {interval_sec}s")
     print("=" * 70)
 
@@ -404,7 +404,7 @@ def run_sniper_loop(auto_trade: bool = True, max_positions: int = 3, margin_usdc
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Botrade Autonomous Sniper")
     parser.add_argument("--auto", action="store_true", default=True, help="Executa ordens automaticamente com dinheiro real (padrão: True)")
-    parser.add_argument("--margin", type=float, default=15.0, help="Margem em USDC por operação (padrão: 15.0)")
+    parser.add_argument("--margin", type=float, default=20.0, help="Margem em USDC por operação (padrão: 20.0)")
     parser.add_argument("--max-positions", type=int, default=3, help="Número máximo de posições abertas simultâneas (padrão: 3)")
     parser.add_argument("--interval", type=int, default=60, help="Intervalo de varredura em segundos (padrão: 60s)")
     args = parser.parse_args()

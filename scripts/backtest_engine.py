@@ -312,6 +312,9 @@ def run_simulation(
                     "exit_price": round(exit_price, 4),
                     "exit_reason": "TAKE_PROFIT_2",
                     "exit_reason_label": "🎯 Alvo TP2",
+                    "margin_usd": round(margin_per_trade, 2),
+                    "notional_usd": round(margin_per_trade * leverage, 2),
+                    "leverage": leverage,
                     "pnl_usd": round(realized_pnl_trade, 2),
                     "roe_pct": round(final_roe_pct, 2),
                     "hold_bars": i - pos_entry_index,
@@ -357,6 +360,9 @@ def run_simulation(
                     "exit_price": round(exit_price, 4),
                     "exit_reason": "RAT_BE" if is_be else "STOP_LOSS",
                     "exit_reason_label": "🛡️ 0x0 Protegido" if is_be else "🛑 Stop Loss",
+                    "margin_usd": round(margin_per_trade, 2),
+                    "notional_usd": round(margin_per_trade * leverage, 2),
+                    "leverage": leverage,
                     "pnl_usd": round(realized_pnl_trade, 2),
                     "roe_pct": round(final_roe_pct, 2),
                     "hold_bars": i - pos_entry_index,
@@ -401,6 +407,9 @@ def run_simulation(
                     "exit_price": round(exit_price, 4),
                     "exit_reason": "TIME_EXIT",
                     "exit_reason_label": "⏱️ Time Exit",
+                    "margin_usd": round(margin_per_trade, 2),
+                    "notional_usd": round(margin_per_trade * leverage, 2),
+                    "leverage": leverage,
                     "pnl_usd": round(realized_pnl_trade, 2),
                     "roe_pct": round(final_roe_pct, 2),
                     "hold_bars": i - pos_entry_index,
@@ -503,7 +512,7 @@ def run_simulation(
                     "position": "belowBar",
                     "color": "#10b981",
                     "shape": "arrowUp",
-                    "text": f"BUY ${pos_entry_price:.2f}"
+                    "text": f"COMPRA ${pos_entry_price:.2f} (${margin_per_trade:.0f} @ {leverage}x = ${pos_notional:.0f})"
                 })
 
         # Track Equity Curve and Drawdown

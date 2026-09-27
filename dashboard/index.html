@@ -1334,6 +1334,7 @@
       border-radius: 12px;
       overflow: hidden;
       margin-bottom: 24px;
+      transition: all 0.2s ease;
     }
 
     .tv-toolbar {
@@ -1345,6 +1346,39 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 10px;
+    }
+
+    #tradingview_live_chart {
+      width: 100%;
+      height: 650px;
+      min-height: 500px;
+      background: #080c14;
+      position: relative;
+    }
+
+    #tradingview_live_chart iframe {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 500px !important;
+      border: none !important;
+    }
+
+    .tv-container-box.fullscreen-mode {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      z-index: 999999 !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .tv-container-box.fullscreen-mode #tradingview_live_chart {
+      flex: 1 !important;
+      height: calc(100vh - 85px) !important;
     }
 
     /* SNIPER MISSION CONTROL CARD */
@@ -2712,7 +2746,16 @@
             <span id="tv-active-label" class="pill pill-green" style="font-weight:700;">BINANCE:SOLUSDT · 15m</span>
           </div>
 
+          <!-- CONTROLE DE ALTURA & EXPANSÃO DO GRÁFICO -->
           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <span class="select-label" style="font-size:11px;">Altura do Gráfico:</span>
+            <button class="quick-pick-btn tv-h-btn" onclick="setTvChartHeight(500)">500px</button>
+            <button class="quick-pick-btn tv-h-btn active" id="btn-tv-h650" onclick="setTvChartHeight(650)">650px (Padrão)</button>
+            <button class="quick-pick-btn tv-h-btn" onclick="setTvChartHeight(850)">🔭 850px (Grande)</button>
+            <button class="quick-pick-btn" id="btn-tv-fullscreen" onclick="toggleTvFullscreen()" style="background:var(--blue); color:#04101e; font-weight:700; border-color:var(--blue);">⛶ Tela Cheia</button>
+          </div>
+
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; width:100%; border-top:1px solid var(--border); padding-top:8px; margin-top:4px;">
             <span class="select-label" style="font-size:11px;">Trocar Par:</span>
             <button class="quick-pick-btn active" onclick="loadTvChart('SOLUSDT', '15', 'Rompimento Donchian')">⚡ SOL (15m)</button>
             <button class="quick-pick-btn" onclick="loadTvChart('DOTUSDT', '240', 'RSI Seguidor 200b')">🏆 DOT (4h)</button>
@@ -3537,7 +3580,35 @@
 
     let currentTvSymbol = "SOLUSDT";
     let currentTvTf = "15";
+    let currentTvHeight = 650;
     let tvWidgetInstance = null;
+
+    window.setTvChartHeight = function(h) {
+      currentTvHeight = h;
+      const container = $("tradingview_live_chart");
+      if (container) {
+        container.style.height = h + "px";
+      }
+      document.querySelectorAll(".tv-h-btn").forEach(b => {
+        b.classList.remove("active");
+        if (b.textContent.includes(h + "px")) b.classList.add("active");
+      });
+      initTradingViewChart(currentTvSymbol, currentTvTf);
+    };
+
+    window.toggleTvFullscreen = function() {
+      const box = document.querySelector(".tv-container-box");
+      if (!box) return;
+      box.classList.toggle("fullscreen-mode");
+      const isFs = box.classList.contains("fullscreen-mode");
+      const fsBtn = $("btn-tv-fullscreen");
+      if (fsBtn) {
+        fsBtn.textContent = isFs ? "✕ Sair da Tela Cheia" : "⛶ Tela Cheia";
+        fsBtn.style.background = isFs ? "var(--red)" : "var(--blue)";
+        fsBtn.style.color = isFs ? "#ffffff" : "#04101e";
+      }
+      initTradingViewChart(currentTvSymbol, currentTvTf);
+    };
 
     function initTradingViewChart(symbol = "SOLUSDT", interval = "15") {
       currentTvSymbol = symbol;
@@ -3546,15 +3617,24 @@
       if (!container) return;
       container.innerHTML = "";
 
+      const box = document.querySelector(".tv-container-box");
+      const isFs = box && box.classList.contains("fullscreen-mode");
+      const chartHeight = isFs ? (window.innerHeight - 85) : currentTvHeight;
+      container.style.height = chartHeight + "px";
+
       if (typeof TradingView === "undefined") {
         container.innerHTML = '<div class="empty-state" style="padding:40px;">Carregando motor TradingView...</div>';
         return;
       }
 
-      $("tv-active-label").textContent = `BINANCE:${symbol} · ${interval === "240" ? "4h" : interval + "m"}`;
+      const activeLabel = $("tv-active-label");
+      if (activeLabel) {
+        activeLabel.textContent = `BINANCE:${symbol} · ${interval === "240" ? "4h" : interval + "m"}`;
+      }
 
       tvWidgetInstance = new TradingView.widget({
         autosize: true,
+        height: chartHeight,
         symbol: `BINANCE:${symbol}`,
         interval: interval,
         timezone: "America/Sao_Paulo",

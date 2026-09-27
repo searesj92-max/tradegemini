@@ -9,8 +9,8 @@ mkdir -p dashboard data/journal data/reports data/approvals data/parked data/rej
 # Inicia o Monitor de Trailing Stop e Sincronização em background
 python -u scripts/run_live_monitor.py &
 
-# Inicia o Sniper Autônomo em background (com auto trade $15.00 e max 3 posições)
-python -u scripts/auto_sniper.py --auto --margin 15.0 --max-positions 3 --interval 60 &
+# Inicia o Sniper Autônomo em background (com auto trade $20.00 e max 3 posições)
+python -u scripts/auto_sniper.py --auto --margin 20.0 --max-positions 3 --interval 60 &
 
 # O processo principal em primeiro plano é o Cockpit Web Server (escuta na porta $PORT do Render)
 echo "[*] Subindo Cockpit Web Server no processo principal..."

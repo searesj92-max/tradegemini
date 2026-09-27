@@ -12,7 +12,7 @@ services:
       - key: PORT
         value: "10000"
       - key: HYPERLIQUID_MAX_TRADE_USDC
-        value: "15.0"
+        value: "20.0"
       - key: HYPERLIQUID_MAX_LEVERAGE
         value: "10"
       - key: HYPERLIQUID_TRAILING_STEP_PCT

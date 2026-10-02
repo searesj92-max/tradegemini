@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """
-Botrade Autonomous Profit Harvester (Auto Take-Profit & Margin Unlocker)
-Watches all live positions every 5 seconds.
-When any position reaches ROE >= +10.0% (or profit >= +$2.50):
-1. Immediately executes a 50% partial market sell.
-2. Embezzles cash into free margin balance.
-3. Automatically sets the Stop Loss of the remaining 50% to Breakeven (0x0).
-4. Dispatches celebratory Telegram notification.
-5. Releases margin so the Auto Sniper can immediately take the next trade!
+Botrade Institutional High-Asymmetry Profit Harvester (80/20 Strategy + Early Risk-Free)
+Watches all live positions continuously.
+
+Dual-Stage Execution Engine:
+1. Stage 1 (Risco Zero Robusto @ +35.0% ROE):
+   - Raises Stop Loss to Breakeven (+0.6% cushion covering all exchange fees + real profit).
+   - Guarantees trade can NEVER become a loss or fee trap once it reached +35% ROE.
+
+2. Stage 2 (Realização Parcial 50/50 @ +45.0% ROE):
+   - Executes a 50% partial market sell (locks in +$4.50+ on $20 margin).
+   - Keeps remaining 50% safely above Hyperliquid's $10 minimum order requirement.
+   - Locks Stop Loss of the remaining 50% runner at Breakeven (+0.6%), letting it trail freely.
+   - Releases margin so the Auto Sniper can immediately take the next high-confluence trade!
 """
 
 from __future__ import annotations
@@ -45,8 +50,16 @@ def save_harvest_state(state: dict):
     HARVEST_STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def check_and_harvest(min_roe: float = 10.0, min_pnl_usd: float = 2.50, executor: HyperliquidExecutor = None) -> list[dict]:
-    """Inspects all open positions. If any meets profit threshold and hasn't been harvested yet, executes 50% partial close."""
+def check_and_harvest(
+    min_roe_risk_free: float = 35.0,
+    min_roe_harvest: float = 45.0,
+    min_pnl_usd: float = 8.00,
+    executor: HyperliquidExecutor = None
+) -> list[dict]:
+    """Inspects all open positions.
+    1. At +35% ROE -> moves SL to Breakeven (+0.6% cushion) for robust fee-free status.
+    2. At +45% ROE -> executes 50% partial close and protects remaining 50% runner.
+    """
     if executor is None:
         executor = HyperliquidExecutor()
 
@@ -60,7 +73,7 @@ def check_and_harvest(min_roe: float = 10.0, min_pnl_usd: float = 2.50, executor
     harvest_state = load_harvest_state()
     active_coins = {p["coin"] for p in open_pos}
 
-    # Clean up state for positions that are no longer open (closed by TP2 or SL)
+    # Clean up state for positions that are no longer open
     cleaned = False
     for saved_coin in list(harvest_state.keys()):
         if saved_coin not in active_coins:
@@ -76,45 +89,67 @@ def check_and_harvest(min_roe: float = 10.0, min_pnl_usd: float = 2.50, executor
         pnl = float(pos.get("unrealized_pnl", 0.0))
         size = float(pos.get("size", 0.0))
 
-        # Check if already harvested
-        if coin in harvest_state:
-            continue
+        coin_record = harvest_state.get(coin, {})
 
-        # Condition: ROE >= 10.0% OR PnL >= $2.50
-        if roe >= min_roe or pnl >= min_pnl_usd:
-            print(f"\n[💰 PROFIT HARVESTER] ALVO ATINGIDO PARA {coin}!")
+        # ----------------------------------------------------
+        # STAGE 1: RISCO ZERO ROBUSTO (+35% ROE)
+        # ----------------------------------------------------
+        if roe >= min_roe_risk_free and not coin_record.get("risk_free"):
+            print(f"\n[🛡️ RISCO ZERO ROBUSTO] {coin} atingiu +{roe:.2f}% ROE!")
+            print(f"    🚀 Elevando Stop Loss para Breakeven (+0.6% anti-taxas com lucro real)...")
+            be_res = executor.move_sl_to_breakeven(coin=coin, cushion_pct=0.6)
+            if be_res.get("status") == "ok":
+                coin_record["risk_free"] = True
+                coin_record["risk_free_at"] = datetime.now(timezone.utc).isoformat()
+                coin_record["risk_free_sl"] = be_res.get("new_sl")
+                harvest_state[coin] = coin_record
+                save_harvest_state(harvest_state)
+                print(f"    ✅ Sucesso: Stop Loss de {coin} travado no breakeven protetor (${be_res.get('new_sl')})!")
+            else:
+                print(f"    [-] Falha ao mover SL: {be_res.get('message')}")
+
+        # ----------------------------------------------------
+        # STAGE 2: REALIZAÇÃO PARCIAL 50/50 (+45% ROE)
+        # ----------------------------------------------------
+        if (roe >= min_roe_harvest or pnl >= min_pnl_usd) and not coin_record.get("harvested_50"):
+            print(f"\n[💰 50/50 PROFIT HARVESTER] ALVO DE +45% ATINGIDO PARA {coin}!")
             print(f"    ROE: +{roe:.2f}% | PnL: +${pnl:.4f} | Lote: {size} tokens")
-            print(f"    🚀 Disparando realização automática de 50% e movendo Stop Loss para Breakeven...")
+            print(f"    🚀 Disparando realização automática de 50% e protegendo 50% runner...")
 
-            res = executor.close_partial_position(coin=coin, pct=0.5, move_sl_to_be=True)
+            res = executor.close_partial_position(coin=coin, pct=0.50, move_sl_to_be=True)
             if res.get("status") == "partial_closed":
-                harvest_state[coin] = {
-                    "harvested_at": datetime.now(timezone.utc).isoformat(),
-                    "realized_pnl": res.get("realized_pnl"),
-                    "roe_at_harvest": roe,
-                    "remaining_size": res.get("remaining_size")
-                }
+                coin_record["harvested_50"] = True
+                coin_record["harvested_at"] = datetime.now(timezone.utc).isoformat()
+                coin_record["realized_pnl"] = res.get("realized_pnl")
+                coin_record["roe_at_harvest"] = roe
+                coin_record["remaining_size"] = res.get("remaining_size")
+                harvest_state[coin] = coin_record
                 save_harvest_state(harvest_state)
                 results.append(res)
-                print(f"    ✅ Sucesso: +${res.get('realized_pnl', 0):.2f} embolsados e margem liberada na Hyperliquid!")
+                print(f"    ✅ Sucesso: +${res.get('realized_pnl', 0):.2f} embolsados no bolso e margem liberada na Hyperliquid!")
             else:
                 print(f"    [-] Falha na realização parcial: {res.get('message')}")
 
     return results
 
 
-def run_harvester_loop(interval_sec: int = 5, min_roe: float = 10.0, min_pnl_usd: float = 2.50):
-    print("=" * 65)
-    print("💰 BOTRADE AUTONOMOUS PROFIT HARVESTER INICIADO")
-    print(f"[*] Meta de Realização Parcial: +{min_roe:.1f}% ROE ou +${min_pnl_usd:.2f} PnL")
-    print(f"[*] Ação: Venda a mercado de 50% + Trava de SL no 0x0 (Breakeven)")
+def run_harvester_loop(interval_sec: int = 5, min_roe_risk_free: float = 35.0, min_roe_harvest: float = 45.0):
+    print("=" * 70)
+    print("💰 BOTRADE INSTITUTIONAL PROFIT HARVESTER (50/50 STRATEGY)")
+    print(f"[*] Estágio 1 (Risco Zero Robusto):    +{min_roe_risk_free:.1f}% ROE -> SL no 0x0 (+0.6%)")
+    print(f"[*] Estágio 2 (Realização Parcial):     +{min_roe_harvest:.1f}% ROE -> Venda de 50%")
+    print(f"[*] Runner Residual: 50% surfando com Trailing Stop sem risco")
     print(f"[*] Intervalo de Monitoramento: {interval_sec}s")
-    print("=" * 65)
+    print("=" * 70)
 
     executor = HyperliquidExecutor()
     while True:
         try:
-            check_and_harvest(min_roe=min_roe, min_pnl_usd=min_pnl_usd, executor=executor)
+            check_and_harvest(
+                min_roe_risk_free=min_roe_risk_free,
+                min_roe_harvest=min_roe_harvest,
+                executor=executor
+            )
         except Exception as e:
             print(f"[Aviso Harvester] {e}")
         time.sleep(interval_sec)

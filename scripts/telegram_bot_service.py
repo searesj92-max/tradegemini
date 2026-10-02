@@ -44,6 +44,7 @@ DEFAULT_CHAT = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGR
 from hyperliquid_executor import HyperliquidExecutor
 from funding_radar import fetch_funding_radar
 from universe_scanner import scan_universe, LEADERBOARD_FILE
+from defi_treasury_tracker import format_defi_message
 
 
 def tg_api_call(method: str, data: dict = None) -> dict:
@@ -72,7 +73,12 @@ def send_message(chat_id: str | int, text: str, reply_markup: dict = None) -> di
     }
     if reply_markup:
         data["reply_markup"] = reply_markup
-    return tg_api_call("sendMessage", data)
+    res = tg_api_call("sendMessage", data)
+    if not res.get("ok") and ("parse" in str(res.get("error", "")).lower() or "400" in str(res.get("error", ""))):
+        # Fallback to plain text if Markdown parsing fails
+        data.pop("parse_mode", None)
+        res = tg_api_call("sendMessage", data)
+    return res
 
 
 def edit_message(chat_id: str | int, message_id: int, text: str, reply_markup: dict = None) -> dict:
@@ -85,7 +91,11 @@ def edit_message(chat_id: str | int, message_id: int, text: str, reply_markup: d
     }
     if reply_markup:
         data["reply_markup"] = reply_markup
-    return tg_api_call("editMessageText", data)
+    res = tg_api_call("editMessageText", data)
+    if not res.get("ok") and ("parse" in str(res.get("error", "")).lower() or "400" in str(res.get("error", ""))):
+        data.pop("parse_mode", None)
+        res = tg_api_call("editMessageText", data)
+    return res
 
 
 def answer_callback(callback_query_id: str, text: str = None) -> dict:
@@ -139,19 +149,23 @@ def format_status_payload() -> tuple[str, dict]:
     paused, sniper_label = get_sniper_state()
     macro_label = get_macro_status_summary()
 
-    equity = st.get("equity", 0.0)
-    used_margin = st.get("margin_used", 0.0)
-    margin_util = st.get("margin_utilization_pct", 0.0)
-    free_margin = max(0.0, equity - used_margin)
+    spot_val = float(st.get("spot_usdc_balance", 0.0))
+    perps_val = float(st.get("perps_account_value", 0.0))
+    equity = spot_val + perps_val
+    used_margin = float(st.get("total_margin_used", 0.0))
+    free_margin = float(st.get("free_margin", max(0.0, equity - used_margin)))
+    margin_util = (used_margin / equity * 100) if equity > 0 else 0.0
 
     open_pos = st.get("open_positions", [])
 
     lines = [
         "🏛️ *BOTRADE QUANTITATIVE DESK — HYPERLIQUID*",
         "━━━━━━━━━━━━━━━━━━━━━━",
-        f"💰 *Equity Total:* `${equity:.2f} USDC`",
+        f"💰 *Patrimônio Total:* `${equity:.2f} USDC`",
+        f"  • Spot USDC: `${spot_val:.2f}`",
+        f"  • Perps Garantia: `${perps_val:.2f}`",
         f"📊 *Margem em Uso:* `${used_margin:.2f}` ({margin_util:.1f}%)",
-        f"💵 *Margem Disponível:* `${free_margin:.2f} USDC`",
+        f"💵 *Margem Livre Disponível:* `${free_margin:.2f} USDC`",
         f"🎯 *Auto-Sniper:* `{sniper_label}`",
         f"🌐 *Macro BTC:* `{macro_label}`",
         "━━━━━━━━━━━━━━━━━━━━━━",
@@ -165,15 +179,18 @@ def format_status_payload() -> tuple[str, dict]:
             c = p["coin"]
             side = p["side"]
             sz = p["size"]
-            entry = p["entry_px"]
-            mark = p["mark_px"]
-            roe = p["roe_pct"]
-            pnl = p["unrealized_pnl"]
+            entry = float(p.get("entry_px", 0.0))
+            roe = float(p.get("roe_pct", 0.0))
+            pnl = float(p.get("unrealized_pnl", 0.0))
+            mark = float(p.get("mark_px", 0.0))
+            if mark <= 0:
+                mark = entry + (pnl / sz if sz else 0)
             sl = p.get("sl_price")
             pnl_emoji = "🟢" if pnl >= 0 else "🔴"
             sign = "+" if pnl >= 0 else ""
+            lev = float(p.get("leverage", 10))
 
-            lines.append(f"\n• *{c}/USDC* ({side})")
+            lines.append(f"\n• *{c}/USDC* ({side} {lev:.0f}x)")
             lines.append(f"  Lote: `{sz} {c}` | Entrada: `${entry:.4f}`")
             lines.append(f"  Preço Atual: `${mark:.4f}`")
             lines.append(f"  PnL: {pnl_emoji} *{sign}${pnl:.2f}* ({sign}{roe:.2f}% ROE)")
@@ -193,11 +210,86 @@ def format_status_payload() -> tuple[str, dict]:
     
     inline_kb.append([toggle_sniper_btn, {"text": "🔄 Atualizar", "callback_data": "refresh_status"}])
     inline_kb.append([
-        {"text": "⚡ Radar Funding", "callback_data": "funding_radar"},
-        {"text": "🏆 Top 5 Alphas", "callback_data": "top_alpha"}
+        {"text": "💰 Ver Lucro Realizado", "callback_data": "profit_summary"},
+        {"text": "⚡ Radar Funding", "callback_data": "funding_radar"}
     ])
 
     return "\n".join(lines), {"inline_keyboard": inline_kb}
+
+
+def format_profit_summary_message() -> tuple[str, dict]:
+    executor = HyperliquidExecutor()
+    st = executor.get_account_status()
+    open_pos = st.get("open_positions", [])
+
+    unrealized_total = sum(float(p.get("unrealized_pnl", 0.0)) for p in open_pos)
+
+    tot_closed_pnl = 0.0
+    tot_fees = 0.0
+    wins = 0
+    losses = 0
+    recent_winners = []
+
+    try:
+        fills = executor.info.user_fills(executor.main_address)
+        for f in fills:
+            cpnl = float(f.get("closedPnl", 0.0))
+            fee = float(f.get("fee", 0.0))
+            tot_closed_pnl += cpnl
+            tot_fees += fee
+            if cpnl != 0:
+                if cpnl > 0:
+                    wins += 1
+                else:
+                    losses += 1
+                if cpnl > 0 and len(recent_winners) < 6:
+                    coin = f.get("coin")
+                    recent_winners.append(f"• *{coin}*: `+${cpnl:.2f} USDC` (Taxa: `${fee:.3f}`)")
+    except Exception:
+        pass
+
+    net_closed = tot_closed_pnl - tot_fees
+    total_net = net_closed + unrealized_total
+    total_trades = wins + losses
+    win_rate = (wins / total_trades * 100) if total_trades > 0 else 0.0
+
+    pnl_emoji = "🟢" if total_net >= 0 else "🔴"
+    sign = "+" if total_net >= 0 else ""
+
+    lines = [
+        "🏆 *CONSOLIDAÇÃO DE LUCRO — BOTRADE HYPERLIQUID*",
+        f"Data: {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M UTC')}",
+        "━━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 *LUCRO TOTAL LÍQUIDO:* {pnl_emoji} *{sign}${total_net:.2f} USDC*",
+        "━━━━━━━━━━━━━━━━━━━━━━",
+        f"✅ *Lucro Fechado (No Bolso):* `+${net_closed:.2f} USDC`",
+        f"📈 *Lucro em Aberto (Posições Ativas):* `+${unrealized_total:.2f} USDC`",
+        f"💸 *Taxas Totais Descontadas:* `${tot_fees:.2f} USDC`",
+        f"🎯 *Taxa de Acerto Real:* *{win_rate:.1f}%* ({wins}V / {losses}D em {total_trades} parciais)",
+        "━━━━━━━━━━━━━━━━━━━━━━",
+        "📍 *Últimos Encerramentos com Lucro:*"
+    ]
+    if recent_winners:
+        lines.extend(recent_winners)
+    else:
+        lines.append("  _Nenhum trade encerrado ainda._")
+
+    if open_pos:
+        lines.append("\n🔥 *Posições em Andamento Gerando Lucro:*")
+        for p in open_pos:
+            c = p["coin"]
+            pnl = float(p.get("unrealized_pnl", 0.0))
+            roe = float(p.get("roe_pct", 0.0))
+            e_sign = "+" if pnl >= 0 else ""
+            lines.append(f"  • *{c}*: {e_sign}${pnl:.2f} USDC ({e_sign}{roe:.1f}% ROE)")
+
+    markup = {
+        "inline_keyboard": [
+            [{"text": "📊 Ver Saldo & Posições", "callback_data": "refresh_status"}],
+            [{"text": "🔄 Atualizar Lucro", "callback_data": "profit_summary"}]
+        ]
+    }
+    return "\n".join(lines), markup
 
 
 def format_funding_radar_message() -> tuple[str, dict]:
@@ -346,24 +438,27 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
     cmd = cmd_parts[0].lower()
     arg = cmd_parts[1].upper() if len(cmd_parts) > 1 else ""
 
-    if cmd in ("/start", "/help", "/ajuda"):
+    if cmd in ("/start", "/help", "/ajuda", "ajuda", "help", "menu"):
         msg = (
             "🏛️ *BEM-VINDO AO CONTROLE OPERACIONAL BOTRADE*\n\n"
-            "Comande a mesa de operações quantitativas na Hyperliquid diretamente pelo celular:\n\n"
-            "• `/status` - Posições, margem, equity e regime em tempo real\n"
-            "• `/relatorio` - Resumo executivo de fechamento das últimas 24h\n"
-            "• `/lucro <MOEDA>` - Realiza 50% de lucro no TP1 e trava Stop no 0x0\n"
+            "Comande a mesa de operações quantitativas na Hyperliquid e a Tesouraria DeFi diretamente pelo Telegram:\n\n"
+            "• `/defi` ou `/tesouraria` - 🏦 Raio-X completo das Pools DeFi na Base (WETH/USDC + VIRTUAL/WETH)\n"
+            "• `/lucro` ou `lucro` - 💰 Mostra o lucro total, trades fechados e taxas\n"
+            "• `/saldo` ou `saldo` - 💵 Saldo total, garantias e margem livre\n"
+            "• `/posicoes` ou `posicoes` - 📍 Posições abertas em tempo real e ROE%\n"
+            "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento das últimas 24h\n"
+            "• `/colher <MOEDA>` - Realiza 50% de lucro e trava Stop no 0x0\n"
             "• `/fechar <MOEDA>` - Encerra 100% da posição a mercado\n"
             "• `/fechar_todas` - 🚨 Emergência: encerra todas as posições imediatamente\n"
             "• `/funding` - Radar de Funding Rates e Short Squeezes\n"
-            "• `/top` - Top ativos aprovados no backtest de 720 dias\n"
             "• `/pausar` - Pausa o Auto-Sniper (congela novas ordens)\n"
             "• `/retomar` - Reativa o rastreio e disparos do Sniper\n\n"
-            "_Use os botões interativos abaixo para navegação rápida:_"
+            "_Dica: Você pode usar os botões interativos abaixo com 1 toque:_"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "📊 Ver Status da Conta", "callback_data": "refresh_status"}],
+                [{"text": "🏦 Tesouraria DeFi (Base)", "callback_data": "defi_treasury"}],
+                [{"text": "💰 Ver Lucro Realizado", "callback_data": "profit_summary"}, {"text": "📊 Ver Saldo & Posições", "callback_data": "refresh_status"}],
                 [{"text": "⚡ Radar de Funding", "callback_data": "funding_radar"}, {"text": "🏆 Top 5 Alphas", "callback_data": "top_alpha"}],
                 [{"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
             ]
@@ -371,41 +466,65 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, msg, markup)
         return
 
-    if cmd in ("/status", "/saldo"):
+    # 0. DEFI TREASURY / POOLS (BASE L2)
+    if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "/base", "defi", "tesouraria", "pools", "pool", "base") or "tesouraria" in text.lower() or "defi" in text.lower() or "yield" in text.lower():
+        text_out, markup = format_defi_message()
+        send_message(chat_id, text_out, markup)
+        return
+
+    # 1. LUCRO / PNL
+    if cmd in ("/lucro", "/lucros", "/pnl", "/ganhos", "lucro", "lucros", "pnl", "ganhos") and not arg:
+        text_out, markup = format_profit_summary_message()
+        send_message(chat_id, text_out, markup)
+        return
+
+    # 2. SALDO / EQUITY
+    if cmd in ("/saldo", "/balance", "saldo", "balance"):
         text_out, markup = format_status_payload()
         send_message(chat_id, text_out, markup)
         return
 
-    if cmd in ("/relatorio", "/report", "/resumo", "/fechamento"):
+    # 3. POSIÇÕES ABERTAS / STATUS
+    if cmd in ("/posicoes", "/posições", "posicoes", "posições", "/status", "status", "/operacoes", "operacoes"):
+        text_out, markup = format_status_payload()
+        send_message(chat_id, text_out, markup)
+        return
+
+    # 4. RELATÓRIO 24H
+    if cmd in ("/relatorio", "/report", "/resumo", "/fechamento", "relatorio", "resumo"):
         text_out, markup = format_daily_report_message()
         send_message(chat_id, text_out, markup)
         return
 
-    if cmd in ("/funding", "/radar"):
+    # 5. RADAR DE FUNDING
+    if cmd in ("/funding", "/radar", "funding", "radar"):
         text_out, markup = format_funding_radar_message()
         send_message(chat_id, text_out, markup)
         return
 
-    if cmd in ("/top", "/leaderboard", "/alpha"):
+    # 6. TOP ALPHAS
+    if cmd in ("/top", "/leaderboard", "/alpha", "top"):
         text_out, markup = format_top_alpha_message()
         send_message(chat_id, text_out, markup)
         return
 
-    if cmd in ("/pausar", "/pause"):
+    # 7. PAUSAR / RETOMAR
+    if cmd in ("/pausar", "/pause", "pausar"):
         set_sniper_state(True)
         send_message(chat_id, "⏸️ *AUTO-SNIPER PAUSADO COM SUCESSO!*\nNenhuma nova ordem será aberta até reativação.", {
             "inline_keyboard": [[{"text": "▶️ Retomar Sniper", "callback_data": "resume_sniper"}, {"text": "📊 Ver Status", "callback_data": "refresh_status"}]]
         })
         return
 
-    if cmd in ("/retomar", "/resume"):
+    if cmd in ("/retomar", "/resume", "retomar"):
         set_sniper_state(False)
         send_message(chat_id, "▶️ *AUTO-SNIPER RETOMADO COM SUCESSO!*\nMonitoramento dinâmico liberado para disparos.", {
             "inline_keyboard": [[{"text": "⏸️ Pausar Sniper", "callback_data": "pause_sniper"}, {"text": "📊 Ver Status", "callback_data": "refresh_status"}]]
         })
         return
 
-    if cmd in ("/lucro", "/harvest", "/parcial"):
+    # 8. COLHEITA PARCIAL / HARVEST
+    if cmd in ("/colher", "/harvest", "/parcial", "colher") or (cmd in ("/lucro", "lucro") and arg):
         coin = arg or "BTC"
         executor = HyperliquidExecutor()
         res = executor.close_partial_position(coin=coin, pct=0.5, move_sl_to_be=True)
@@ -414,7 +533,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, msg, {"inline_keyboard": [[{"text": "📊 Ver Status Atualizado", "callback_data": "refresh_status"}]]})
         return
 
-    if cmd in ("/fechar", "/close"):
+    # 9. ENCERRAMENTO TOTAL
+    if cmd in ("/fechar", "/close", "fechar"):
         coin = arg or "BTC"
         executor = HyperliquidExecutor()
         res = executor.close_full_position(coin=coin)
@@ -423,7 +543,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, msg, {"inline_keyboard": [[{"text": "📊 Ver Status Atualizado", "callback_data": "refresh_status"}]]})
         return
 
-    if cmd in ("/fechar_todas", "/panic", "/close_all", "/liquidar_todas"):
+    # 10. BOTÃO DE PÂNICO (FECHAR TODAS)
+    if cmd in ("/fechar_todas", "/panic", "/close_all", "/liquidar_todas", "fechar_todas"):
         executor = HyperliquidExecutor()
         status = executor.get_account_status()
         open_pos = status.get("open_positions", [])
@@ -446,7 +567,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, summary_msg, {"inline_keyboard": [[{"text": "📊 Ver Status Atualizado", "callback_data": "refresh_status"}]]})
         return
 
-    send_message(chat_id, f"❓ *Comando não reconhecido:* `{text}`\nDigite `/help` para visualizar o menu de comandos.")
+    send_message(chat_id, f"❓ *Comando não reconhecido:* `{text}`\nDigite `/help` ou `ajuda` para visualizar o menu de comandos.")
 
 
 def handle_callback_query(cq: dict):
@@ -458,6 +579,24 @@ def handle_callback_query(cq: dict):
 
     if not chat_id:
         answer_callback(cq_id)
+        return
+
+    if data == "defi_treasury":
+        answer_callback(cq_id, "Consultando Tesouraria DeFi...")
+        text_out, markup = format_defi_message()
+        if msg_id:
+            edit_message(chat_id, msg_id, text_out, markup)
+        else:
+            send_message(chat_id, text_out, markup)
+        return
+
+    if data == "profit_summary":
+        answer_callback(cq_id, "Calculando lucros acumulados...")
+        text_out, markup = format_profit_summary_message()
+        if msg_id:
+            edit_message(chat_id, msg_id, text_out, markup)
+        else:
+            send_message(chat_id, text_out, markup)
         return
 
     if data == "refresh_status":
@@ -537,12 +676,31 @@ def handle_callback_query(cq: dict):
     answer_callback(cq_id)
 
 
+def register_bot_commands():
+    commands = [
+        {"command": "defi", "description": "🏦 Tesouraria DeFi & Pools na Base"},
+        {"command": "tesouraria", "description": "🏦 Raio-X completo das Pools DeFi"},
+        {"command": "saldo", "description": "💵 Saldo e margem Hyperliquid"},
+        {"command": "posicoes", "description": "📍 Posições abertas ao vivo"},
+        {"command": "lucro", "description": "💰 Lucro realizado e trades"},
+        {"command": "relatorio", "description": "📑 Relatório diário 24h"},
+        {"command": "funding", "description": "⚡ Radar de funding rates"},
+        {"command": "help", "description": "❓ Menu e botões de comando"}
+    ]
+    res = tg_api_call("setMyCommands", {"commands": commands})
+    if res.get("ok"):
+        print("[*] Comandos registrados com sucesso no menu '/' do Telegram!")
+    else:
+        print(f"[-] Aviso ao registrar comandos: {res.get('error')}")
+
+
 def run_telegram_bot_daemon(poll_timeout: int = 25):
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or TOKEN
     if not bot_token:
         print("[Telegram Bot] AVISO: TELEGRAM_BOT_TOKEN não definido. Bot aguardando credenciais.")
         return
 
+    register_bot_commands()
     print(f"[*] Iniciando Botrade Interactive Telegram Bot (Polling Ativo)...")
     last_update_id = 0
     last_daily_report_day = ""

@@ -18,10 +18,28 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from hyperliquid_executor import HyperliquidExecutor, TRAILING_STATE, ORDERS_LOG
 from send_telegram import send
 
+import socket
+
 OUTPUT_JSON = ROOT / "dashboard" / "live_positions.json"
+
+_LOCK_SOCKET = None
+
+def acquire_process_lock(port: int = 49153) -> bool:
+    global _LOCK_SOCKET
+    _LOCK_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        _LOCK_SOCKET.bind(("127.0.0.1", port))
+        _LOCK_SOCKET.listen(1)
+        return True
+    except socket.error:
+        return False
 
 
 def run_monitor():
+    if not acquire_process_lock(49153):
+        print("[-] [TRAVA DE SEGURANÇA] Uma instância do Monitor Ao Vivo já está rodando. Abortando inicialização duplicada.")
+        return
+
     print("[*] Iniciando Motor de Monitoramento Ao Vivo Hyperliquid Mainnet...")
     executor = HyperliquidExecutor()
     TRAILING_STEP_PCT = 30.0
@@ -58,6 +76,17 @@ def run_monitor():
                 except Exception:
                     pass
 
+            # Query real resting Stop Loss orders directly from Hyperliquid orderbook
+            real_sl_by_coin: dict[str, float] = {}
+            try:
+                open_orders = executor.info.frontend_open_orders(executor.main_address)
+                for o in open_orders:
+                    if o.get("isTrigger") and o.get("triggerPx"):
+                        c = o.get("coin")
+                        real_sl_by_coin[c] = float(o["triggerPx"])
+            except Exception:
+                pass
+
             formatted_positions = []
 
             for pos in open_pos:
@@ -83,13 +112,15 @@ def run_monitor():
                     "is_buy": is_buy,
                     "entry_px": entry,
                     "size": size,
-                    "current_sl": entry * (0.976 if is_buy else 1.024),
+                    "current_sl": real_sl_by_coin.get(coin, entry * (0.976 if is_buy else 1.024)),
                     "leverage": lev,
                     "ratchet_stage": 0,
                     "highest_roe": roe
                 })
 
-                current_sl = coin_state.get("current_sl", entry * 0.976)
+                # Real on-chain trigger order has absolute priority
+                current_sl = real_sl_by_coin.get(coin) or coin_state.get("current_sl", entry * (0.976 if is_buy else 1.024))
+                coin_state["current_sl"] = current_sl
                 current_stage = coin_state.get("ratchet_stage", 0)
                 highest_roe = max(coin_state.get("highest_roe", 0.0), roe)
                 coin_state["highest_roe"] = highest_roe
@@ -124,8 +155,8 @@ def run_monitor():
                 if target_stage > current_stage and target_stage >= 1:
                     new_sl = 0.0
                     if target_stage == 1:
-                        new_sl = entry * 1.002 if is_buy else entry * 0.998
-                        print(f"\n🎯 [RATCHET ESTÁGIO 1] Lucro bateu {roe:+.2f}% (+30% atingido!). Elevando SL para Breakeven (${new_sl:.4f}) - RISCO ZERO!")
+                        new_sl = entry * 1.006 if is_buy else entry * 0.994
+                        print(f"\n🎯 [RATCHET ESTÁGIO 1] Lucro bateu {roe:+.2f}% (+30% atingido!). Elevando SL para Breakeven Robusto (${new_sl:.4f} com +0.6% anti-taxas) - RISCO ZERO!")
                     else:
                         locked_roe = (target_stage - 1) * TRAILING_STEP_PCT
                         price_gain = (locked_roe / lev) / 100.0
@@ -140,12 +171,25 @@ def run_monitor():
                             clean_size = math.floor(size * factor) / factor
                             clean_sl = round(float(f"{new_sl:.5g}"), 6 - sz_dec)
 
+                            # 1. Cancel previous resting trigger/SL orders for this coin
+                            try:
+                                orders = executor.info.frontend_open_orders(executor.main_address)
+                                for o in orders:
+                                    if o.get("coin") == coin:
+                                        oid = o.get("oid")
+                                        if oid:
+                                            executor.exchange.cancel(coin, oid)
+                            except Exception as ex_c:
+                                print(f"[Aviso] Falha ao cancelar ordens antigas de {coin}: {ex_c}")
+
+                            # 2. Place new SL trigger order strictly with reduce_only=True
                             executor.exchange.order(
                                 coin,
                                 not is_buy,
                                 clean_size,
                                 clean_sl,
-                                {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}}
+                                {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}},
+                                reduce_only=True
                             )
                             current_sl = clean_sl
                             current_stage = target_stage
@@ -239,10 +283,10 @@ def run_monitor():
             for c_name, p in current_coins.items():
                 active_snapshot[c_name] = p
 
-            # Run Profit Harvester (+10% ROE -> 50% partial harvest & move SL to BE)
+            # Run Institutional Profit Harvester (Stage 1: +35% Robust BE | Stage 2: +45% 50/50 Harvest)
             try:
                 from profit_harvester import check_and_harvest
-                check_and_harvest(min_roe=10.0, min_pnl_usd=2.50, executor=executor)
+                check_and_harvest(min_roe_risk_free=35.0, min_roe_harvest=45.0, min_pnl_usd=8.00, executor=executor)
             except Exception as h_err:
                 pass
 

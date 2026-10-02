@@ -32,8 +32,26 @@ def send(text: str, chat_id: str = None) -> dict:
         headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": "BotradeClient"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        # Fallback to plain text if Markdown format fails
+        try:
+            plain_payload = json.dumps(
+                {"chat_id": target_chat, "text": text, "disable_web_page_preview": True},
+                ensure_ascii=False,
+            ).encode("utf-8")
+            req_plain = urllib.request.Request(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                data=plain_payload,
+                headers={"Content-Type": "application/json; charset=utf-8", "User-Agent": "BotradeClient"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req_plain, timeout=30) as resp2:
+                return json.loads(resp2.read().decode("utf-8"))
+        except Exception as e2:
+            return {"ok": False, "error": str(e2)}
 
 def main() -> int:
     if len(sys.argv) > 1:

@@ -134,17 +134,24 @@ class HyperliquidExecutor:
                 pass
 
             perps_val = float(margin.get("accountValue", 0))
+            tot_margin = float(margin.get("totalMarginUsed", 0))
+            withdrawable = float(state.get("withdrawable", 0))
+
+            # Em Conta Unificada (Unified Account), o saldo Spot USDC atua diretamente como garantia para Perps
+            free_margin = max(0.0, round(max(withdrawable, perps_val) + spot_usdc - tot_margin, 2))
+
             notice = None
             if spot_usdc > 0 and perps_val == 0:
-                notice = f"Você tem ${spot_usdc:.2f} USDC em SPOT. Para operar futuros/perps, clique no botão 'Perps <=> Spot' na Hyperliquid para transferir (instantâneo e sem taxa)."
+                notice = f"Conta Unificada ativa: ${free_margin:.2f} USDC em saldo disponível para operações (Cross-margin)."
 
             return {
                 "address": self.main_address,
                 "network": "MAINNET (Dinheiro Real)",
                 "perps_account_value": perps_val,
                 "spot_usdc_balance": spot_usdc,
-                "withdrawable": float(state.get("withdrawable", 0)),
-                "total_margin_used": float(margin.get("totalMarginUsed", 0)),
+                "withdrawable": withdrawable,
+                "free_margin": free_margin,
+                "total_margin_used": tot_margin,
                 "open_positions": open_pos,
                 "notice": notice,
                 "guardrails": {
@@ -169,6 +176,14 @@ class HyperliquidExecutor:
         clean_sz = math.floor(raw_sz * factor) / factor
         return clean_sz
 
+    def normalize_coin(self, coin: str) -> str:
+        """Case-insensitive matching to handle assets like kPEPE, kBONK properly."""
+        clean = coin.replace("USDT", "").replace("USDC", "").strip()
+        for u_name in self.universe:
+            if u_name.lower() == clean.lower():
+                return u_name
+        return clean.upper()
+
     def execute_trade(
         self,
         coin: str,
@@ -184,7 +199,7 @@ class HyperliquidExecutor:
         if not is_valid and confirm:
             return {"status": "error", "message": msg}
 
-        coin = coin.upper().replace("USDT", "")
+        coin = self.normalize_coin(coin)
         if coin not in self.universe:
             return {"status": "error", "message": f"Criptoativo {coin} não listado na Hyperliquid"}
 
@@ -207,14 +222,16 @@ class HyperliquidExecutor:
                 "message": "VETO INSTITUCIONAL: Proibido abrir posição sem Stop Loss técnico definido."
             }
 
-        # Check free margin in perps account (Saldo Disponível)
+        # Check free margin in account (Saldo Disponível em Conta Unificada)
         try:
             account_status = self.get_account_status()
-            free_margin = float(account_status.get("withdrawable", 0.0))
+            free_margin = float(account_status.get("free_margin", 0.0))
             if free_margin <= 0:
+                withdrawable = float(account_status.get("withdrawable", 0.0))
                 perps_val = float(account_status.get("perps_account_value", 0.0))
+                spot_usdc = float(account_status.get("spot_usdc_balance", 0.0))
                 tot_margin = float(account_status.get("total_margin_used", 0.0))
-                free_margin = max(0.0, perps_val - tot_margin)
+                free_margin = max(0.0, max(withdrawable, perps_val) + spot_usdc - tot_margin)
 
             if free_margin < usdc_margin:
                 return {
@@ -320,7 +337,7 @@ class HyperliquidExecutor:
 
     def close_position(self, coin: str) -> dict:
         """Closes an open position at market and cancels any resting trigger/SL orders."""
-        coin = coin.upper().replace("USDT", "")
+        coin = self.normalize_coin(coin)
         status = self.get_account_status()
         open_pos = status.get("open_positions", [])
         target_pos = None
@@ -403,7 +420,7 @@ class HyperliquidExecutor:
 
     def close_partial_position(self, coin: str, pct: float = 0.5, move_sl_to_be: bool = True) -> dict:
         """Executes a partial close (e.g. 50%) at market, locks in profit, and moves SL of remainder to Breakeven."""
-        coin = coin.upper()
+        coin = self.normalize_coin(coin)
         account_status = self.get_account_status()
         open_pos = account_status.get("open_positions", [])
         target_pos = next((p for p in open_pos if p["coin"] == coin), None)
@@ -449,8 +466,8 @@ class HyperliquidExecutor:
         new_sl_res = None
         new_sl_px = None
         if remaining_size > 0 and move_sl_to_be:
-            # Entry + 0.2% cushion to cover round-trip exchange fees
-            new_sl_px = entry_px * (1.002 if is_buy else 0.998)
+            # Entry + 0.6% cushion to cover round-trip exchange fees and lock real net profit
+            new_sl_px = entry_px * (1.006 if is_buy else 0.994)
             clean_sl = round(float(f"{new_sl_px:.5g}"), 6 - sz_decimals)
             try:
                 new_sl_res = self.exchange.order(
@@ -523,6 +540,79 @@ class HyperliquidExecutor:
             "new_sl_px": new_sl_px,
             "message": f"Realizado {pct*100:.0f}% de {coin}. Lucro embolsado: +${realized_pnl:.2f}. Restante protegido no 0x0!"
         }
+
+    def move_sl_to_breakeven(self, coin: str, cushion_pct: float = 0.6) -> dict:
+        """Moves Stop Loss to Breakeven (+cushion_pct) to guarantee zero loss + fee coverage."""
+        coin = self.normalize_coin(coin)
+        account_status = self.get_account_status()
+        open_pos = account_status.get("open_positions", [])
+        target_pos = next((p for p in open_pos if p["coin"] == coin), None)
+
+        if not target_pos:
+            return {"status": "not_found", "message": f"Nenhuma posição ativa para {coin}."}
+
+        full_size = abs(target_pos["size"])
+        is_buy = target_pos["side"] == "LONG"
+        entry_px = target_pos["entry_px"]
+        roe = target_pos["roe_pct"]
+
+        coin_meta = self.universe.get(coin, {})
+        sz_decimals = int(coin_meta.get("szDecimals", 2))
+
+        # Cancel existing trigger/SL orders
+        cancelled_orders = []
+        try:
+            orders = self.info.frontend_open_orders(self.main_address)
+            for o in orders:
+                if o.get("coin") == coin and o.get("isTrigger"):
+                    oid = o.get("oid")
+                    if oid:
+                        self.exchange.cancel(coin, oid)
+                        cancelled_orders.append(oid)
+        except Exception as ex:
+            print(f"[Aviso] Falha ao cancelar SL antigo: {ex}")
+
+        # Place new Breakeven SL
+        factor = (1.0 + cushion_pct / 100.0) if is_buy else (1.0 - cushion_pct / 100.0)
+        new_sl_px = entry_px * factor
+        clean_sl = round(float(f"{new_sl_px:.5g}"), 6 - sz_decimals)
+
+        try:
+            sl_res = self.exchange.order(
+                coin,
+                not is_buy,
+                full_size,
+                clean_sl,
+                {"trigger": {"triggerPx": clean_sl, "isMarket": True, "tpsl": "sl"}},
+                reduce_only=True
+            )
+            # Update state
+            state = self._load_trailing_state()
+            if coin in state:
+                state[coin]["current_sl"] = clean_sl
+                state[coin]["ratchet_stage"] = max(1, state[coin].get("ratchet_stage", 0))
+                state[coin]["updated_at"] = datetime.now(timezone.utc).isoformat()
+                TRAILING_STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+
+            # Dispatch notification
+            try:
+                from send_telegram import send
+                msg = (
+                    f"🛡️ *RISCO ZERO ANTECIPADO ATIVADO (HYPERLIQUID)*\n\n"
+                    f"• *Ativo:* {coin}/USDC ({target_pos['side']})\n"
+                    f"• *ROE Atual:* +{roe:.1f}%\n"
+                    f"• *Novo Stop Loss:* ${clean_sl:.4f} (+{cushion_pct:.1f}% sobre entrada)\n"
+                    f"• *Proteção:* Taxas 100% cobertas. Daqui para frente é impossível perder!\n\n"
+                    f"🌐 *Painel:* http://192.168.18.12:8765/"
+                )
+                send(msg)
+            except Exception:
+                pass
+
+            return {"status": "ok", "coin": coin, "new_sl": clean_sl, "message": f"Stop Loss de {coin} movido para Breakeven (${clean_sl})"}
+        except Exception as e:
+            return {"status": "error", "message": f"Falha ao mover SL para BE: {e}"}
+
 
     def _init_trailing_state(self, coin: str, is_buy: bool, entry: float, size: float, initial_sl: float, lev: int):
         state = self._load_trailing_state()

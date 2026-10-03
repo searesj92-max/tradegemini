@@ -38,9 +38,9 @@ def load_treasury() -> dict:
 def format_defi_message() -> tuple[str, dict]:
     markup = {
         "inline_keyboard": [
-            [{"text": "🔄 Atualizar Radar & Lucros", "callback_data": "defi_treasury"}],
-            [{"text": "📊 Saldo Hyperliquid", "callback_data": "refresh_status"}, {"text": "💰 Lucro Acumulado", "callback_data": "profit_summary"}],
-            [{"text": "📑 Relatório Diário", "callback_data": "daily_report"}]
+            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
+            [{"text": "🔄 Atualizar Radar das 4 Pools", "callback_data": "defi_treasury"}],
+            [{"text": "💼 Alocação Patrimonial", "callback_data": "refresh_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
         ]
     }
 

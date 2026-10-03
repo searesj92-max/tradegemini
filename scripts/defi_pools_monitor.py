@@ -435,7 +435,7 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
     return "\n".join(lines)
 
 
-def send_telegram(text: str) -> bool:
+def send_telegram(text: str, reply_markup: dict = None) -> bool:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or TOKEN
     chat_id = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CHAT_ID", "")).strip() or CHAT_ID
     if not token or not chat_id:
@@ -449,6 +449,9 @@ def send_telegram(text: str) -> bool:
         "parse_mode": "Markdown",
         "disable_web_page_preview": True
     }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+
     try:
         req = urllib.request.Request(
             url,
@@ -476,6 +479,13 @@ def run_sentinel_loop():
     CHECK_INTERVAL_SEC = 300         # Check prices every 5 minutes
     ALERT_COOLDOWN_SEC = 7200        # Max 1 warning alert per position per 2 hours (unless out of range)
 
+    defi_buttons = {
+        "inline_keyboard": [
+            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
+            [{"text": "📡 Radar das 4 Pools & Faixas", "callback_data": "defi_treasury"}]
+        ]
+    }
+
     while True:
         try:
             market = fetch_live_market_data()
@@ -491,14 +501,14 @@ def run_sentinel_loop():
                     if now - last_alert_time > cooldown:
                         alert_msg = generate_urgent_alert_message(item, profits)
                         print(f"[!] Disparando alerta com lucros para {pos_id}...")
-                        send_telegram(alert_msg)
+                        send_telegram(alert_msg, reply_markup=defi_buttons)
                         alert_cooldowns[pos_id] = now
 
             # 2. Routine 4-hour consolidated report
             if now - last_routine_report >= ROUTINE_INTERVAL_SEC:
                 report = generate_consolidated_report(evaluated, profits)
                 print("[*] Enviando relatório consolidado periódico de 4h...")
-                send_telegram(report)
+                send_telegram(report, reply_markup=defi_buttons)
                 last_routine_report = now
 
         except Exception as e:

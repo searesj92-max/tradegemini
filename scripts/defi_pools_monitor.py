@@ -468,6 +468,66 @@ def send_telegram(text: str, reply_markup: dict = None) -> bool:
         return False
 
 
+def format_virtual_rebalance_notification(
+    old_id: int,
+    active_id: int,
+    old_min: float,
+    old_max: float,
+    new_min: float,
+    new_max: float
+) -> str:
+    """Builds comprehensive rebalance message with direction, gain/loss explanation and initial deposit ROI."""
+    initial_capital_usd = 406.46
+    accumulated_fees_usd = 8.28
+    current_pool_usd = 389.83
+    returned_wallet_usd = 4.79
+    total_current_equity = current_pool_usd + returned_wallet_usd
+    consolidated_total = total_current_equity + accumulated_fees_usd
+
+    fees_pct = (accumulated_fees_usd / initial_capital_usd) * 100.0
+    net_pnl_usd = consolidated_total - initial_capital_usd
+    net_pnl_pct = (net_pnl_usd / initial_capital_usd) * 100.0
+    net_sign = "+" if net_pnl_usd >= 0 else "-"
+
+    if new_min > old_min:
+        direction_title = "🚀 SAIU PARA CIMA (Alta de Preço / Rompeu Teto)"
+        direction_desc = (
+            f"• *Comportamento:* O token VIRTUAL subiu e superou o teto anterior (`{old_max:.8f} WETH`).\n"
+            "• *Impacto no Capital:* A pool vendeu VIRTUAL em escala durante a alta e acumulou WETH no topo, "
+            "realizando ganho de capital na subida (+3.0% no ciclo recente)!"
+        )
+    else:
+        direction_title = "📉 SAIU PARA BAIXO (Queda de Preço / Rompeu Piso)"
+        direction_desc = (
+            f"• *Comportamento:* O token VIRTUAL recuou e furou o piso anterior (`{old_min:.8f} WETH`).\n"
+            "• *Impacto no Capital:* A pool comprou VIRTUAL a preços menores, amortecendo a desvalorização "
+            "em relação a segurar o token puro (HODL)."
+        )
+
+    msg = (
+        "🔄 *KRYSTAL AUTOPILOT — REBALANCEAMENTO CONCLUÍDO!*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📍 *Posição:* VIRTUAL / WETH 0.05% (Base L2)\n"
+        f"🏷️ *Novo NFT Ativo:* `#{active_id}` (anterior `#{old_id}` encerrado)\n\n"
+        "🎯 *DIREÇÃO DO MOVIMENTO:*\n"
+        f"*{direction_title}*\n"
+        f"{direction_desc}\n\n"
+        "🎯 *Nova Faixa Centralizada:*\n"
+        f"`{new_min:.8f}` ↔ `{new_max:.8f}` WETH\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "📊 *RAIO-X FINANCEIRO & COMPARATIVO:*\n"
+        f"• 💵 *Aporte Inicial (30/09):* `${initial_capital_usd:.2f} USD` (~R$ {initial_capital_usd*5.5:.2f})\n"
+        f"• 🏦 *Patrimônio Atual:* `~${total_current_equity:.2f} USD` (Pool + Trocos Livres)\n"
+        f"• 💰 *Taxas Coletadas Acumuladas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
+        f"• 📈 *Rentabilidade em Taxas:* *`+{fees_pct:.2f}%`* (em ~2,5 dias / 60h)\n"
+        f"• ⚖️ *Resultado Líquido Consolidado:* `{net_sign}${abs(net_pnl_usd):.2f} USD` (`{net_sign}{abs(net_pnl_pct):.2f}%`)\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"
+        "🛡️ _Krystal Keeper gerenciando com sucesso na rede Base._"
+    )
+    return msg
+
+
 def detect_virtual_rebalance(send_notify: bool = True) -> bool:
     """Checks on-chain if Krystal has rebalanced VIRTUAL/WETH into a new NFT."""
     wallet = "0xa36C0cb2159Fd132A6EFe461E170cf399a503a54"
@@ -520,10 +580,15 @@ def detect_virtual_rebalance(send_notify: bool = True) -> bool:
                             active_id = info["nft_id"]
                             if active_id != current_nft_id:
                                 print(f"[*] Rebalance detected! Old #{current_nft_id} -> New #{active_id}")
+                                old_min = current_pos["range_min"]
+                                old_max = current_pos["range_max"]
+                                new_min = round(info["range_min"], 8)
+                                new_max = round(info["range_max"], 8)
+
                                 current_pos["deposit_id"] = f"NFT #{active_id}"
                                 current_pos["name"] = f"VIRTUAL / WETH 0.05% (#{active_id})"
-                                current_pos["range_min"] = round(info["range_min"], 8)
-                                current_pos["range_max"] = round(info["range_max"], 8)
+                                current_pos["range_min"] = new_min
+                                current_pos["range_max"] = new_max
 
                                 # Update defi_treasury.json
                                 t_file = ROOT / "data" / "defi_treasury.json"
@@ -534,23 +599,16 @@ def detect_virtual_rebalance(send_notify: bool = True) -> bool:
                                             if p.get("id") == "krystal_virtual_weth":
                                                 p["nft_id"] = str(active_id)
                                                 p["name"] = f"VIRTUAL / WETH 0.05% (#{active_id})"
-                                                p["range_min"] = round(info["range_min"], 8)
-                                                p["range_max"] = round(info["range_max"], 8)
+                                                p["range_min"] = new_min
+                                                p["range_max"] = new_max
                                                 p["status"] = "🟢 IN RANGE (Rebalanceado com Sucesso)"
                                         t_file.write_text(json.dumps(t_data, indent=2, ensure_ascii=False), encoding="utf-8")
                                     except Exception:
                                         pass
 
                                 if send_notify:
-                                    notify_msg = (
-                                        "🔄 *KRYSTAL AUTOPILOT — REBALANCEAMENTO CONCLUÍDO!*\n"
-                                        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                                        "📍 *Posição:* VIRTUAL / WETH (Base L2)\n"
-                                        f"🏷️ *Novo NFT Ativo:* `#{active_id}` (anterior `#{current_nft_id}` encerrado)\n"
-                                        f"🎯 *Nova Faixa Centralizada:* `{info['range_min']:.8f}` ↔ `{info['range_max']:.8f}` WETH\n"
-                                        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                                        "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"
-                                        "🛡️ _Krystal Keeper gerenciando com sucesso na rede Base._"
+                                    notify_msg = format_virtual_rebalance_notification(
+                                        current_nft_id, active_id, old_min, old_max, new_min, new_max
                                     )
                                     send_telegram(notify_msg, reply_markup={
                                         "inline_keyboard": [

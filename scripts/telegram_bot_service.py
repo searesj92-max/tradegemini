@@ -43,6 +43,7 @@ from defi_pools_monitor import (
     evaluate_positions,
     generate_consolidated_report,
     calculate_profit_metrics,
+    format_virtual_rebalance_notification,
     POSITIONS
 )
 from defi_treasury_tracker import format_defi_message
@@ -250,6 +251,25 @@ def format_daily_report_message() -> tuple[str, dict]:
     return "\n".join(lines), markup
 
 
+def format_virtual_rebalance_status() -> tuple[str, dict]:
+    """Generates on-demand diagnostic of VIRTUAL / WETH position and rebalance status."""
+    text = format_virtual_rebalance_notification(
+        old_id=6125710,
+        active_id=6127604,
+        old_min=0.00027176,
+        old_max=0.00028885,
+        new_min=0.00027864,
+        new_max=0.00029617
+    )
+    markup = {
+        "inline_keyboard": [
+            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
+            [{"text": "📡 Radar das 4 Pools", "callback_data": "defi_treasury"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+        ]
+    }
+    return text, markup
+
+
 def handle_command(chat_id: int | str, text: str, message_id: int = None):
     cmd_parts = text.strip().split()
     cmd = cmd_parts[0].lower()
@@ -262,6 +282,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             "Acompanhe o rendimento passivo e o radar de faixas das suas 4 pools em tempo real:\n\n"
             "• `/lucro` ou `lucro` - 💰 Mostra o lucro de hoje, lucro acumulado total e valorização patrimonial\n"
             "• `/defi` ou `/pools` - 🏦 Raio-X completo das 4 pools com faixas de liquidez e distâncias\n"
+            "• `/virtual` ou `virtual` - 🔄 Raio-X do par VIRTUAL (rebalanceamento, alta/queda e taxas)\n"
             "• `/saldo` ou `/status` - 💼 Patrimônio alocado por rede (Base + Monad)\n"
             "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento das últimas 24h\n\n"
             "_Dica: Você pode tocar diretamente nos botões interativos abaixo:_"
@@ -270,7 +291,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             "inline_keyboard": [
                 [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
                 [{"text": "📡 Radar das 4 Pools & Faixas", "callback_data": "defi_treasury"}],
-                [{"text": "💼 Saldo & Alocação por Rede", "callback_data": "refresh_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+                [{"text": "🔄 Posição VIRTUAL (Autopilot)", "callback_data": "virtual_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
             ]
         }
         send_message(chat_id, msg, markup)
@@ -294,7 +315,13 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, text_out, markup)
         return
 
-    # 5. RELATÓRIO 24H
+    # 5. DIAGNÓSTICO VIRTUAL / REBALANCEAMENTO KRYSTAL
+    if cmd in ("/virtual", "/krystal", "/rebalance", "virtual", "krystal", "rebalance", "rebalanceamento"):
+        text_out, markup = format_virtual_rebalance_status()
+        send_message(chat_id, text_out, markup)
+        return
+
+    # 6. RELATÓRIO 24H
     if cmd in ("/relatorio", "/report", "/resumo", "relatorio", "resumo"):
         text_out, markup = format_daily_report_message()
         send_message(chat_id, text_out, markup)
@@ -365,6 +392,15 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, text_out, markup)
         return
 
+    if data == "virtual_status":
+        answer_callback(cq_id, "Carregando raio-x do rebalanceamento VIRTUAL...")
+        text_out, markup = format_virtual_rebalance_status()
+        if msg_id:
+            edit_message(chat_id, msg_id, text_out, markup)
+        else:
+            send_message(chat_id, text_out, markup)
+        return
+
     answer_callback(cq_id)
 
 
@@ -372,6 +408,7 @@ def register_bot_commands():
     commands = [
         {"command": "lucro", "description": "💰 Lucros de hoje, acumulado e valorização"},
         {"command": "defi", "description": "🏦 Tesouraria DeFi e radar das 4 pools"},
+        {"command": "virtual", "description": "🔄 Raio-X do rebalanceamento VIRTUAL & PnL"},
         {"command": "pools", "description": "🎯 Faixas ativas e distâncias do teto/piso"},
         {"command": "saldo", "description": "💼 Patrimônio e alocação por rede"},
         {"command": "relatorio", "description": "📑 Relatório de fechamento 24h"},

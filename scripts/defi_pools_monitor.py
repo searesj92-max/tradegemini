@@ -85,15 +85,15 @@ POSITIONS = [
     },
     {
         "id": "virtual_weth",
-        "name": "VIRTUAL / WETH 0.05% (#6125710)",
+        "name": "VIRTUAL / WETH 0.05% (#6127604)",
         "chain": "Base (Layer 2)",
         "protocol": "Uniswap V3 (Krystal Autopilot)",
         "type": "Narrativa IA (Auto-Rebalance)",
         "capital_usd": 406.80,
-        "range_min": 0.00027176,
-        "range_max": 0.00028885,
+        "range_min": 0.00027864,
+        "range_max": 0.00029617,
         "unit": "WETH/VIRTUAL",
-        "deposit_id": "NFT #6125710",
+        "deposit_id": "NFT #6127604",
         "pair_address": "0x9c087Eb773291e50CF6c6a90ef0F4500e349B903",
         "price_key": "virtual",
         "price_field": "price_native",
@@ -468,6 +468,103 @@ def send_telegram(text: str, reply_markup: dict = None) -> bool:
         return False
 
 
+def detect_virtual_rebalance(send_notify: bool = True) -> bool:
+    """Checks on-chain if Krystal has rebalanced VIRTUAL/WETH into a new NFT."""
+    wallet = "0xa36C0cb2159Fd132A6EFe461E170cf399a503a54"
+    current_pos = POSITIONS[2]
+    current_nft_str = current_pos["deposit_id"]
+    try:
+        current_nft_id = int("".join(c for c in current_nft_str if c.isdigit()))
+    except Exception:
+        current_nft_id = 6127604
+
+    def inspect_token(tid):
+        rpc_urls = ["https://base-rpc.publicnode.com", "https://1rpc.io/base", "https://mainnet.base.org"]
+        token_id_hex = hex(tid)[2:].zfill(64)
+        data_call = "0x99fbab88" + token_id_hex
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "eth_call", "params": [{"to": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "data": data_call}, "latest"]}
+        for rpc in rpc_urls:
+            try:
+                req = urllib.request.Request(rpc, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    raw = json.loads(resp.read().decode()).get("result", "")
+                    if raw and len(raw) >= 66:
+                        words = [raw[2+i*64:2+(i+1)*64] for i in range(len(raw[2:])//64)]
+                        liq = int(words[7], 16)
+                        def to_signed(h):
+                            v = int(h, 16)
+                            return v - 2**256 if v >= 2**255 else v
+                        tl = to_signed(words[5])
+                        tu = to_signed(words[6])
+                        p_min = 1.0001**tl
+                        p_max = 1.0001**tu
+                        return {"nft_id": tid, "range_min": p_min, "range_max": p_max, "liquidity": liq}
+            except Exception:
+                pass
+        return None
+
+    try:
+        url = f"https://base.blockscout.com/api/v2/addresses/{wallet}/token-transfers"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.loads(r.read().decode())
+            seen_ids = set()
+            for it in data.get("items", []):
+                tok = it.get("token", {})
+                if tok.get("symbol") == "UNI-V3-POS":
+                    tid = int(it.get("total", {}).get("token_id", 0))
+                    if tid > 6100000 and tid not in seen_ids:
+                        seen_ids.add(tid)
+                        info = inspect_token(tid)
+                        if info and info["liquidity"] > 0:
+                            active_id = info["nft_id"]
+                            if active_id != current_nft_id:
+                                print(f"[*] Rebalance detected! Old #{current_nft_id} -> New #{active_id}")
+                                current_pos["deposit_id"] = f"NFT #{active_id}"
+                                current_pos["name"] = f"VIRTUAL / WETH 0.05% (#{active_id})"
+                                current_pos["range_min"] = round(info["range_min"], 8)
+                                current_pos["range_max"] = round(info["range_max"], 8)
+
+                                # Update defi_treasury.json
+                                t_file = ROOT / "data" / "defi_treasury.json"
+                                if t_file.exists():
+                                    try:
+                                        t_data = json.loads(t_file.read_text(encoding="utf-8"))
+                                        for p in t_data.get("positions", []):
+                                            if p.get("id") == "krystal_virtual_weth":
+                                                p["nft_id"] = str(active_id)
+                                                p["name"] = f"VIRTUAL / WETH 0.05% (#{active_id})"
+                                                p["range_min"] = round(info["range_min"], 8)
+                                                p["range_max"] = round(info["range_max"], 8)
+                                                p["status"] = "🟢 IN RANGE (Rebalanceado com Sucesso)"
+                                        t_file.write_text(json.dumps(t_data, indent=2, ensure_ascii=False), encoding="utf-8")
+                                    except Exception:
+                                        pass
+
+                                if send_notify:
+                                    notify_msg = (
+                                        "🔄 *KRYSTAL AUTOPILOT — REBALANCEAMENTO CONCLUÍDO!*\n"
+                                        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                                        "📍 *Posição:* VIRTUAL / WETH (Base L2)\n"
+                                        f"🏷️ *Novo NFT Ativo:* `#{active_id}` (anterior `#{current_nft_id}` encerrado)\n"
+                                        f"🎯 *Nova Faixa Centralizada:* `{info['range_min']:.8f}` ↔ `{info['range_max']:.8f}` WETH\n"
+                                        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                                        "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"
+                                        "🛡️ _Krystal Keeper gerenciando com sucesso na rede Base._"
+                                    )
+                                    send_telegram(notify_msg, reply_markup={
+                                        "inline_keyboard": [
+                                            [{"text": "💰 Ver Lucros Atualizados", "callback_data": "defi_profit"}],
+                                            [{"text": "📡 Radar das 4 Pools", "callback_data": "defi_treasury"}]
+                                        ]
+                                    })
+                                return True
+                            break
+    except Exception as e:
+        print(f"[-] Rebalance check error: {e}")
+    return False
+
+
 def run_sentinel_loop():
     """Runs 24/7 background sentinel loop with routine reports & urgent alerts."""
     print("[*] Iniciando Sentinela DeFi 24/7 com Módulo de Lucro em modo contínuo...")
@@ -488,6 +585,9 @@ def run_sentinel_loop():
 
     while True:
         try:
+            # Check for automatic on-chain rebalances (e.g. Krystal)
+            detect_virtual_rebalance(send_notify=True)
+
             market = fetch_live_market_data()
             evaluated, has_urgent, profits = evaluate_positions(market)
             now = time.time()

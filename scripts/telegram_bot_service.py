@@ -254,12 +254,12 @@ def format_daily_report_message() -> tuple[str, dict]:
 def format_virtual_rebalance_status() -> tuple[str, dict]:
     """Generates on-demand diagnostic of VIRTUAL / WETH position and rebalance status."""
     text = format_virtual_rebalance_notification(
-        old_id=6125710,
-        active_id=6127604,
-        old_min=0.00027176,
-        old_max=0.00028885,
-        new_min=0.00027864,
-        new_max=0.00029617
+        old_id=6127604,
+        active_id=6131939,
+        old_min=0.00027864,
+        old_max=0.00029617,
+        new_min=0.00028885,
+        new_max=0.00030702
     )
     markup = {
         "inline_keyboard": [

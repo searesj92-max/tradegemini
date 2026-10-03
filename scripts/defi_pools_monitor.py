@@ -85,15 +85,16 @@ POSITIONS = [
     },
     {
         "id": "virtual_weth",
-        "name": "VIRTUAL / WETH 0.05% (#6127604)",
+        "name": "VIRTUAL / WETH 0.05% (#6131939)",
         "chain": "Base (Layer 2)",
         "protocol": "Uniswap V3 (Krystal Autopilot)",
         "type": "Narrativa IA (Auto-Rebalance)",
-        "capital_usd": 406.80,
-        "range_min": 0.00027864,
-        "range_max": 0.00029617,
+        "capital_usd": 389.35,
+        "initial_capital_usd": 406.46,
+        "range_min": 0.00028885,
+        "range_max": 0.00030702,
         "unit": "WETH/VIRTUAL",
-        "deposit_id": "NFT #6127604",
+        "deposit_id": "NFT #6131939",
         "pair_address": "0x9c087Eb773291e50CF6c6a90ef0F4500e349B903",
         "price_key": "virtual",
         "price_field": "price_native",
@@ -101,7 +102,10 @@ POSITIONS = [
         "apr": "~118.7% a.a.",
         "start_iso": "2026-09-30T21:45:00+00:00",
         "profit_type": "fees_collected",
-        "base_fees_collected": 7.31
+        "base_fees_collected": 9.42,
+        "last_cycle_fees": 1.30,
+        "wallet_returned_usd": 5.17,
+        "liquidity": 278820534392291859569
     },
     {
         "id": "mon_usdc",
@@ -219,9 +223,9 @@ def calculate_profit_metrics(market: dict) -> dict:
     googl_usd_accrued = hours_googl * (10.0 / 24.0)
 
     # 3. VIRTUAL / WETH
-    t_virt_latest = datetime.fromisoformat("2026-10-02T19:30:00+00:00")
+    t_virt_latest = datetime.fromisoformat("2026-10-03T15:29:00+00:00")
     hours_virt = max((now - t_virt_latest).total_seconds() / 3600.0, 0)
-    virt_usd_accrued = 7.31 + (hours_virt * (1.32 / 24.0))
+    virt_usd_accrued = 9.42 + (hours_virt * (1.32 / 24.0))
 
     # 4. MON / USDC
     t_mon = datetime.fromisoformat("2026-10-02T18:00:00+00:00")
@@ -255,7 +259,10 @@ def calculate_profit_metrics(market: dict) -> dict:
             "accrued_usd": virt_usd_accrued,
             "accrued_brl": virt_usd_accrued * 5.50,
             "accrued_text": f"+${virt_usd_accrued:.2f} USD (~R$ {virt_usd_accrued*5.5:.2f}) (Taxas Puras)",
-            "apr": "~118.7% a.a."
+            "apr": "~118.7% a.a.",
+            "last_cycle_usd": 1.30,
+            "wallet_returned_usd": 5.17,
+            "initial_capital_usd": 406.46
         },
         "mon_usdc": {
             "daily_usd": 1.90,
@@ -277,11 +284,45 @@ def calculate_profit_metrics(market: dict) -> dict:
     }
 
 
+def calculate_virtual_pool_value(px_native: float, eth_usd: float, range_min: float, range_max: float, liquidity: float = 278820534392291859569) -> tuple[float, float, float, str]:
+    """Calculates the exact token amounts and USD value of the VIRTUAL / WETH pool."""
+    import math
+    if px_native <= 0 or range_min <= 0 or range_max <= 0:
+        return 0.0, 0.0, 389.35, "320.9 VIRTUAL + 0.0502 WETH"
+    
+    sqrt_min = math.sqrt(range_min)
+    sqrt_max = math.sqrt(range_max)
+    px_usd = px_native * eth_usd
+    
+    amount0_max = liquidity * (sqrt_max - sqrt_min) / (sqrt_min * sqrt_max) / 1e18
+    amount1_max = (liquidity * (sqrt_max - sqrt_min)) / 1e18
+    
+    if px_native < range_min:
+        amt_virt = amount0_max
+        amt_weth = 0.0
+        val_usd = amt_virt * px_usd
+        composition_desc = f"{amt_virt:.1f} VIRTUAL (100% VIRTUAL por rompimento de piso)"
+    elif px_native > range_max:
+        amt_virt = 0.0
+        amt_weth = amount1_max
+        val_usd = amt_weth * eth_usd
+        composition_desc = f"{amt_weth:.4f} WETH (100% WETH por rompimento de teto)"
+    else:
+        sqrt_p = math.sqrt(px_native)
+        amt_virt = (liquidity * (sqrt_max - sqrt_p) / (sqrt_p * sqrt_max)) / 1e18
+        amt_weth = (liquidity * (sqrt_p - sqrt_min)) / 1e18
+        val_usd = (amt_virt * px_usd) + (amt_weth * eth_usd)
+        composition_desc = f"{amt_virt:.1f} VIRTUAL + {amt_weth:.4f} WETH"
+        
+    return amt_virt, amt_weth, val_usd, composition_desc
+
+
 def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
     """Analyzes each position, calculates distances, profit metrics and checks alert thresholds."""
     evaluated = []
     has_urgent_alert = False
     profits = calculate_profit_metrics(market)
+    eth_usd = market.get("eth", {}).get("price", 2688.0)
 
     for pos in POSITIONS:
         m_info = market.get(pos["price_key"], {})
@@ -291,6 +332,14 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
 
         if px <= 0:
             continue
+
+        dynamic_val_usd = pos.get("capital_usd", 0.0)
+        composition_desc = ""
+        if pos["id"] == "virtual_weth":
+            _, _, dynamic_val_usd, composition_desc = calculate_virtual_pool_value(
+                px, eth_usd, p_min, p_max, pos.get("liquidity", 278820534392291859569)
+            )
+            pos["capital_usd"] = round(dynamic_val_usd, 2)
 
         dist_ceiling_pct = ((p_max - px) / px) * 100.0
         dist_floor_pct = ((px - p_min) / px) * 100.0
@@ -329,7 +378,9 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
             "is_warning": is_warning,
             "status_text": status_text,
             "change_24h": m_info.get("change_24h", 0.0),
-            "profit": pos_profit
+            "profit": pos_profit,
+            "dynamic_val_usd": dynamic_val_usd,
+            "composition_desc": composition_desc
         })
 
     return evaluated, has_urgent_alert, profits
@@ -371,11 +422,11 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
         lines.append(f"📍 *{idx}. {pos['name']}* ({pos['chain']})")
         lines.append(f"  • *Preço Atual:* `{px_fmt} {unit}` ({item['change_24h']:+.2f}% 24h)")
         lines.append(f"  • *Sua Faixa:* `{min_fmt}` ↔ `{max_fmt}`")
-        lines.append(f"  • *Dist. Teto:* `+{item['dist_ceiling']:.2f}%` | *Piso:* `-{item['dist_floor']:.2f}%`")
+        lines.append(f"  • *Dist. Teto:* `+{item['dist_ceiling']:.2f}%` | *Piso:* `-{abs(item['dist_floor']):.2f}%`")
         lines.append(f"  • *Status:* {item['status_text']}")
         lines.append(f"  • *Lucro Acumulado:* `{prof.get('accrued_text')}`")
         lines.append(f"  • *Renda Estimada:* `~${prof.get('daily_usd'):.2f}/dia` (APR: *{prof.get('apr')}*)")
-        lines.append(f"  • *Capital Alocado:* `${pos['capital_usd']:,.2f} USD` ({pos['deposit_id']})")
+        lines.append(f"  • *Capital Alocado (MtM):* `${pos['capital_usd']:,.2f} USD` ({pos['deposit_id']})")
         lines.append("")
 
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -418,20 +469,49 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"⚠️ *Situação:* {item['status_text']}",
         f"• *Distância do Teto:* `+{item['dist_ceiling']:.2f}%`",
-        f"• *Distância do Piso:* `-{item['dist_floor']:.2f}%`",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💰 *LUCRO & RENDIMENTOS DESSA POSIÇÃO:*",
-        f"• *Renda Gerada:* `~${prof.get('daily_usd'):.2f} / dia` (~R$ {prof.get('daily_brl'):.2f}/dia)",
-        f"• *Lucro Acumulado Est.:* `{prof.get('accrued_text')}`",
-        f"• *APR Real da Pool:* *{prof.get('apr')}*",
-        f"• *Capital Alocado:* `${pos['capital_usd']:,.2f} USD`",
+        f"• *Distância do Piso:* `-{abs(item['dist_floor']):.2f}%`",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    ]
+
+    if pos["id"] == "virtual_weth":
+        pos_val_usd = item.get("dynamic_val_usd", pos["capital_usd"])
+        comp_desc = item.get("composition_desc", "")
+        last_cycle_usd = prof.get("last_cycle_usd", 1.30)
+        wallet_ret_usd = prof.get("wallet_returned_usd", 5.17)
+        acc_fees_usd = prof.get("accrued_usd", 9.42)
+        init_cap_usd = prof.get("initial_capital_usd", 406.46)
+        total_consolidated = pos_val_usd + wallet_ret_usd + acc_fees_usd
+        net_diff = total_consolidated - init_cap_usd
+        net_diff_sign = "+" if net_diff >= 0 else "-"
+
+        lines.extend([
+            "💰 *LUCRO & CAPITAL DESSA POSIÇÃO (ATUALIZADO):*",
+            f"• *Capital Atual na Pool (MtM):* `~${pos_val_usd:.2f} USD`",
+            f"  └ _Composição:_ `{comp_desc}`",
+            f"• *Trocos Livres em Carteira:* `+${wallet_ret_usd:.2f} USD` (WETH + VIRTUAL)",
+            f"• *Rendimento Ciclo Anterior:* `+${last_cycle_usd:.2f} USD` (NFT #6127604 antes do rebalance)",
+            f"• *Taxas Acumuladas Totais:* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
+            f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD`",
+            f"• *Patrimônio Consolidado (Pool + Trocos + Taxas):* `~${total_consolidated:.2f} USD`",
+            f"• *Variação Líquida Global:* `{net_diff_sign}${abs(net_diff):.2f} USD` (`{net_diff_sign}{abs(net_diff/init_cap_usd)*100:.2f}%`)"
+        ])
+    else:
+        lines.extend([
+            "💰 *LUCRO & RENDIMENTOS DESSA POSIÇÃO:*",
+            f"• *Renda Gerada:* `~${prof.get('daily_usd'):.2f} / dia` (~R$ {prof.get('daily_brl'):.2f}/dia)",
+            f"• *Lucro Acumulado Est.:* `{prof.get('accrued_text')}`",
+            f"• *APR Real da Pool:* *{prof.get('apr')}*",
+            f"• *Capital Alocado:* `${pos['capital_usd']:,.2f} USD`"
+        ])
+
+    lines.extend([
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "📊 *LUCRO TOTAL DA SUA CARTEIRA (4 POOLS):*",
         f"💵 *Renda Diária Total:* `~${p_info.get('total_daily_usd'):.2f} / dia` (~R$ {p_info.get('total_daily_brl'):.2f}/dia)",
         f"📈 *Lucro Total Acumulado:* `{p_info.get('accrued_text')}`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💡 *Ação Sugerida:* Avalie se é necessário rebalancear manualmente a faixa ou aguardar o recuo para o centro do range."
-    ]
+    ])
     return "\n".join(lines)
 
 
@@ -478,9 +558,10 @@ def format_virtual_rebalance_notification(
 ) -> str:
     """Builds comprehensive rebalance message with direction, gain/loss explanation and initial deposit ROI."""
     initial_capital_usd = 406.46
-    accumulated_fees_usd = 8.28
-    current_pool_usd = 389.83
-    returned_wallet_usd = 4.79
+    accumulated_fees_usd = 9.42
+    last_cycle_fees_usd = 1.30
+    current_pool_usd = 389.35
+    returned_wallet_usd = 5.17
     total_current_equity = current_pool_usd + returned_wallet_usd
     consolidated_total = total_current_equity + accumulated_fees_usd
 
@@ -518,8 +599,9 @@ def format_virtual_rebalance_notification(
         "📊 *RAIO-X FINANCEIRO & COMPARATIVO:*\n"
         f"• 💵 *Aporte Inicial (30/09):* `${initial_capital_usd:.2f} USD` (~R$ {initial_capital_usd*5.5:.2f})\n"
         f"• 🏦 *Patrimônio Atual:* `~${total_current_equity:.2f} USD` (Pool + Trocos Livres)\n"
-        f"• 💰 *Taxas Coletadas Acumuladas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
-        f"• 📈 *Rentabilidade em Taxas:* *`+{fees_pct:.2f}%`* (em ~2,5 dias / 60h)\n"
+        f"• 💰 *Rendimento Ciclo Anterior:* `+${last_cycle_fees_usd:.2f} USD` (NFT #{old_id} antes do rebalance)\n"
+        f"• 💵 *Taxas Coletadas Acumuladas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
+        f"• 📈 *Rentabilidade em Taxas:* *`+{fees_pct:.2f}%`* (em ~2,8 dias / 66h)\n"
         f"• ⚖️ *Resultado Líquido Consolidado:* `{net_sign}${abs(net_pnl_usd):.2f} USD` (`{net_sign}{abs(net_pnl_pct):.2f}%`)\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"

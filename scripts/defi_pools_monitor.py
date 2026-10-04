@@ -26,6 +26,9 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from virtual_audit import audit_virtual, INITIAL_USD as VIRT_INITIAL_USD  # noqa: E402
+
 # Fix Windows console encoding
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -89,7 +92,7 @@ POSITIONS = [
         "chain": "Base (Layer 2)",
         "protocol": "Uniswap V3 (Krystal Autopilot)",
         "type": "Narrativa IA (Auto-Rebalance)",
-        "capital_usd": 389.35,
+        "capital_usd": 388.76,
         "initial_capital_usd": 406.46,
         "range_min": 0.00028885,
         "range_max": 0.00030702,
@@ -98,13 +101,10 @@ POSITIONS = [
         "pair_address": "0x9c087Eb773291e50CF6c6a90ef0F4500e349B903",
         "price_key": "virtual",
         "price_field": "price_native",
-        "daily_usd": 1.32,
-        "apr": "~118.7% a.a.",
+        "daily_usd": 3.03,
+        "apr": "~272% a.a.",
         "start_iso": "2026-09-30T21:45:00+00:00",
         "profit_type": "fees_collected",
-        "base_fees_collected": 9.42,
-        "last_cycle_fees": 1.30,
-        "wallet_returned_usd": 5.17,
         "liquidity": 278820534392291859569
     },
     {
@@ -222,10 +222,14 @@ def calculate_profit_metrics(market: dict) -> dict:
     hours_googl = max((now - t_googl).total_seconds() / 3600.0, 0)
     googl_usd_accrued = hours_googl * (10.0 / 24.0)
 
-    # 3. VIRTUAL / WETH
-    t_virt_latest = datetime.fromisoformat("2026-10-03T15:29:00+00:00")
-    hours_virt = max((now - t_virt_latest).total_seconds() / 3600.0, 0)
-    virt_usd_accrued = 9.42 + (hours_virt * (1.32 / 24.0))
+    # 3. VIRTUAL / WETH — real on-chain numbers (collected fees per cycle + pending fees)
+    virt_audit = audit_virtual(eth_usd=market.get("eth", {}).get("price"))
+    if virt_audit:
+        virt_usd_accrued = virt_audit["total_fees_usd"]
+        virt_daily = virt_audit["fees_per_day_avg"]
+        virt_apr = f"~{virt_audit['apr_avg_pct']:.0f}% a.a. (média real on-chain)"
+    else:
+        virt_usd_accrued, virt_daily, virt_apr = 0.0, 0.0, "indisponível"
 
     # 4. MON / USDC
     t_mon = datetime.fromisoformat("2026-10-02T18:00:00+00:00")
@@ -233,7 +237,7 @@ def calculate_profit_metrics(market: dict) -> dict:
     mon_usd_accrued = hours_mon * (1.90 / 24.0)
 
     total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 42.95 + 10.00 + 1.32 + 1.90
+    total_daily_usd = 42.95 + 10.00 + virt_daily + 1.90
 
     return {
         "weth_usdc": {
@@ -254,15 +258,13 @@ def calculate_profit_metrics(market: dict) -> dict:
             "apr": "3,754.0% a.a. (Staked)"
         },
         "virtual_weth": {
-            "daily_usd": 1.32,
-            "daily_brl": 1.32 * 5.50,
+            "daily_usd": virt_daily,
+            "daily_brl": virt_daily * 5.50,
             "accrued_usd": virt_usd_accrued,
             "accrued_brl": virt_usd_accrued * 5.50,
-            "accrued_text": f"+${virt_usd_accrued:.2f} USD (~R$ {virt_usd_accrued*5.5:.2f}) (Taxas Puras)",
-            "apr": "~118.7% a.a.",
-            "last_cycle_usd": 1.30,
-            "wallet_returned_usd": 5.17,
-            "initial_capital_usd": 406.46
+            "accrued_text": f"+${virt_usd_accrued:.2f} USD (~R$ {virt_usd_accrued*5.5:.2f}) (taxas brutas on-chain)",
+            "apr": virt_apr,
+            "audit": virt_audit
         },
         "mon_usdc": {
             "daily_usd": 1.90,
@@ -336,9 +338,14 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
         dynamic_val_usd = pos.get("capital_usd", 0.0)
         composition_desc = ""
         if pos["id"] == "virtual_weth":
-            _, _, dynamic_val_usd, composition_desc = calculate_virtual_pool_value(
-                px, eth_usd, p_min, p_max, pos.get("liquidity", 278820534392291859569)
-            )
+            virt_audit = profits.get("virtual_weth", {}).get("audit")
+            if virt_audit:
+                dynamic_val_usd = virt_audit["pool_usd"]
+                composition_desc = f"{virt_audit['pool_virtual']:.1f} VIRTUAL + {virt_audit['pool_weth']:.4f} WETH"
+            else:
+                _, _, dynamic_val_usd, composition_desc = calculate_virtual_pool_value(
+                    px, eth_usd, p_min, p_max, pos.get("liquidity", 278820534392291859569)
+                )
             pos["capital_usd"] = round(dynamic_val_usd, 2)
 
         dist_ceiling_pct = ((p_max - px) / px) * 100.0
@@ -474,26 +481,33 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
     ]
 
     if pos["id"] == "virtual_weth":
-        pos_val_usd = item.get("dynamic_val_usd", pos["capital_usd"])
-        comp_desc = item.get("composition_desc", "")
-        last_cycle_usd = prof.get("last_cycle_usd", 1.30)
-        wallet_ret_usd = prof.get("wallet_returned_usd", 5.17)
-        acc_fees_usd = prof.get("accrued_usd", 9.42)
-        init_cap_usd = prof.get("initial_capital_usd", 406.46)
-        total_consolidated = pos_val_usd + wallet_ret_usd + acc_fees_usd
-        net_diff = total_consolidated - init_cap_usd
+        audit = prof.get("audit") or {}
+        pos_val_usd = audit.get("pool_usd", item.get("dynamic_val_usd", pos["capital_usd"]))
+        comp_desc = item.get("composition_desc", f"{audit.get('pool_virtual', 0):.1f} VIRTUAL + {audit.get('pool_weth', 0):.4f} WETH")
+        pending_usd = audit.get("pending_usd", 0.0)
+        wallet_ret_usd = audit.get("dust_usd", 7.34)
+        acc_fees_usd = audit.get("total_fees_usd", prof.get("accrued_usd", 10.81))
+        last_cycle = audit.get("last_cycle")
+        last_cycle_usd = last_cycle["fees_usd"] if last_cycle else 1.30
+        last_cycle_nft = last_cycle["token_id"] if last_cycle else 6127604
+        init_cap_usd = VIRT_INITIAL_USD
+        # True equity: Pool MtM + Pending Fees + Wallet Dust (historical collected fees are already compounded in pool)
+        total_current_equity = audit.get("equity_usd", pos_val_usd + pending_usd + wallet_ret_usd)
+        net_diff = audit.get("net_usd", total_current_equity - init_cap_usd)
+        net_pct = audit.get("net_pct", (net_diff / init_cap_usd) * 100.0)
         net_diff_sign = "+" if net_diff >= 0 else "-"
 
         lines.extend([
-            "💰 *LUCRO & CAPITAL DESSA POSIÇÃO (ATUALIZADO):*",
+            "💰 *LUCRO & CAPITAL DESSA POSIÇÃO (AUDITORIA ON-CHAIN):*",
             f"• *Capital Atual na Pool (MtM):* `~${pos_val_usd:.2f} USD`",
             f"  └ _Composição:_ `{comp_desc}`",
+            f"• *Taxas Pendentes (NFT Ativo):* `+${pending_usd:.2f} USD`",
             f"• *Trocos Livres em Carteira:* `+${wallet_ret_usd:.2f} USD` (WETH + VIRTUAL)",
-            f"• *Rendimento Ciclo Anterior:* `+${last_cycle_usd:.2f} USD` (NFT #6127604 antes do rebalance)",
-            f"• *Taxas Acumuladas Totais:* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
+            f"• *Taxas do Último Ciclo:* `+${last_cycle_usd:.2f} USD` (NFT #{last_cycle_nft} encerrado)",
+            f"• *Taxas Totais Geradas (5 ciclos + atual):* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
             f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD`",
-            f"• *Patrimônio Consolidado (Pool + Trocos + Taxas):* `~${total_consolidated:.2f} USD`",
-            f"• *Variação Líquida Global:* `{net_diff_sign}${abs(net_diff):.2f} USD` (`{net_diff_sign}{abs(net_diff/init_cap_usd)*100:.2f}%`)"
+            f"• *Patrimônio Real Consolidado:* `~${total_current_equity:.2f} USD`",
+            f"• *Resultado Líquido Global:* `{net_diff_sign}${abs(net_diff):.2f} USD` (`{net_diff_sign}{abs(net_pct):.2f}%`)"
         ])
     else:
         lines.extend([
@@ -554,20 +568,30 @@ def format_virtual_rebalance_notification(
     old_min: float,
     old_max: float,
     new_min: float,
-    new_max: float
+    new_max: float,
+    audit_data: dict | None = None
 ) -> str:
     """Builds comprehensive rebalance message with direction, gain/loss explanation and initial deposit ROI."""
-    initial_capital_usd = 406.46
-    accumulated_fees_usd = 9.42
-    last_cycle_fees_usd = 1.30
-    current_pool_usd = 389.35
-    returned_wallet_usd = 5.17
-    total_current_equity = current_pool_usd + returned_wallet_usd
-    consolidated_total = total_current_equity + accumulated_fees_usd
+    audit = audit_data or audit_virtual() or {}
+    initial_capital_usd = VIRT_INITIAL_USD  # 406.46
+    accumulated_fees_usd = audit.get("total_fees_usd", 10.81)
+
+    last_cycle = audit.get("last_cycle")
+    if last_cycle:
+        last_cycle_fees_usd = last_cycle.get("fees_usd", 1.30)
+        closed_nft_id = last_cycle.get("token_id", old_id)
+    else:
+        last_cycle_fees_usd = 1.30
+        closed_nft_id = old_id
+
+    current_pool_usd = audit.get("pool_usd", 388.76)
+    pending_fees_usd = audit.get("pending_usd", 1.15)
+    returned_wallet_usd = audit.get("dust_usd", 7.34)
+    total_current_equity = audit.get("equity_usd", current_pool_usd + pending_fees_usd + returned_wallet_usd)
 
     fees_pct = (accumulated_fees_usd / initial_capital_usd) * 100.0
-    net_pnl_usd = consolidated_total - initial_capital_usd
-    net_pnl_pct = (net_pnl_usd / initial_capital_usd) * 100.0
+    net_pnl_usd = audit.get("net_usd", total_current_equity - initial_capital_usd)
+    net_pnl_pct = audit.get("net_pct", (net_pnl_usd / initial_capital_usd) * 100.0)
     net_sign = "+" if net_pnl_usd >= 0 else "-"
 
     if new_min > old_min:
@@ -575,33 +599,33 @@ def format_virtual_rebalance_notification(
         direction_desc = (
             f"• *Comportamento:* O token VIRTUAL subiu e superou o teto anterior (`{old_max:.8f} WETH`).\n"
             "• *Impacto no Capital:* A pool vendeu VIRTUAL em escala durante a alta e acumulou WETH no topo, "
-            "realizando ganho de capital na subida (+3.0% no ciclo recente)!"
+            "realizando ganho de capital na subida!"
         )
     else:
         direction_title = "📉 SAIU PARA BAIXO (Queda de Preço / Rompeu Piso)"
         direction_desc = (
             f"• *Comportamento:* O token VIRTUAL recuou e furou o piso anterior (`{old_min:.8f} WETH`).\n"
-            "• *Impacto no Capital:* A pool comprou VIRTUAL a preços menores, amortecendo a desvalorização "
-            "em relação a segurar o token puro (HODL)."
+            "• *Impacto no Capital:* A pool comprou VIRTUAL a preços menores, acumulando tokens mais baratos. "
+            "As taxas acumuladas amortecem a desvalorização em relação a segurar o token puro (HODL)."
         )
 
     msg = (
         "🔄 *KRYSTAL AUTOPILOT — REBALANCEAMENTO CONCLUÍDO!*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "📍 *Posição:* VIRTUAL / WETH 0.05% (Base L2)\n"
-        f"🏷️ *Novo NFT Ativo:* `#{active_id}` (anterior `#{old_id}` encerrado)\n\n"
+        f"🏷️ *Novo NFT Ativo:* `#{active_id}` (anterior `#{closed_nft_id}` encerrado)\n\n"
         "🎯 *DIREÇÃO DO MOVIMENTO:*\n"
         f"*{direction_title}*\n"
         f"{direction_desc}\n\n"
         "🎯 *Nova Faixa Centralizada:*\n"
         f"`{new_min:.8f}` ↔ `{new_max:.8f}` WETH\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📊 *RAIO-X FINANCEIRO & COMPARATIVO:*\n"
+        "📊 *RAIO-X FINANCEIRO (AUDITORIA ON-CHAIN):*\n"
         f"• 💵 *Aporte Inicial (30/09):* `${initial_capital_usd:.2f} USD` (~R$ {initial_capital_usd*5.5:.2f})\n"
-        f"• 🏦 *Patrimônio Atual:* `~${total_current_equity:.2f} USD` (Pool + Trocos Livres)\n"
-        f"• 💰 *Rendimento Ciclo Anterior:* `+${last_cycle_fees_usd:.2f} USD` (NFT #{old_id} antes do rebalance)\n"
-        f"• 💵 *Taxas Coletadas Acumuladas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
-        f"• 📈 *Rentabilidade em Taxas:* *`+{fees_pct:.2f}%`* (em ~2,8 dias / 66h)\n"
+        f"• 🏦 *Patrimônio Real Atual:* `~${total_current_equity:.2f} USD` (Pool + Taxas Pendentes + Trocos)\n"
+        f"• 💰 *Rendimento do Ciclo Encerrado:* `+${last_cycle_fees_usd:.2f} USD` (NFT #{closed_nft_id})\n"
+        f"• 💵 *Taxas Totais Geradas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
+        f"• 📈 *Rentabilidade Bruta em Taxas:* *`+{fees_pct:.2f}%`* sobre o aporte\n"
         f"• ⚖️ *Resultado Líquido Consolidado:* `{net_sign}${abs(net_pnl_usd):.2f} USD` (`{net_sign}{abs(net_pnl_pct):.2f}%`)\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"
@@ -690,7 +714,8 @@ def detect_virtual_rebalance(send_notify: bool = True) -> bool:
 
                                 if send_notify:
                                     notify_msg = format_virtual_rebalance_notification(
-                                        current_nft_id, active_id, old_min, old_max, new_min, new_max
+                                        current_nft_id, active_id, old_min, old_max, new_min, new_max,
+                                        audit_data=audit_virtual(force=True)
                                     )
                                     send_telegram(notify_msg, reply_markup={
                                         "inline_keyboard": [

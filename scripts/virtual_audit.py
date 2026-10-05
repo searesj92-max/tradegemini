@@ -188,6 +188,14 @@ def audit_virtual(eth_usd: float | None = None, force: bool = False) -> dict | N
                 elif to == WALLET.lower() and sym == "WETH":
                     dust_w += val
 
+        # Live wallet token balances (free dust from initial deposit + keeper returns)
+        live_v_raw = _rpc_call(VIRTUAL_TOKEN, "0x70a08231" + WALLET[2:].lower().zfill(64))
+        live_w_raw = _rpc_call(WETH_TOKEN, "0x70a08231" + WALLET[2:].lower().zfill(64))
+        if live_v_raw:
+            dust_v = max(dust_v, int(live_v_raw, 16) / 1e18)
+        if live_w_raw:
+            dust_w = max(dust_w, int(live_w_raw, 16) / 1e18)
+
         # 3) closed cycles
         cycles = []
         for h, ts in sorted(nft_txs.items(), key=lambda x: x[1]):

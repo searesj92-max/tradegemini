@@ -88,24 +88,24 @@ POSITIONS = [
     },
     {
         "id": "virtual_weth",
-        "name": "VIRTUAL / WETH 0.05% (#6131939)",
+        "name": "VIRTUAL / WETH 0.05% (#6146971)",
         "chain": "Base (Layer 2)",
         "protocol": "Uniswap V3 (Krystal Autopilot)",
         "type": "Narrativa IA (Auto-Rebalance)",
-        "capital_usd": 388.76,
+        "capital_usd": 397.30,
         "initial_capital_usd": 406.46,
-        "range_min": 0.00028885,
-        "range_max": 0.00030702,
+        "range_min": 0.00029914,
+        "range_max": 0.00031796,
         "unit": "WETH/VIRTUAL",
-        "deposit_id": "NFT #6131939",
+        "deposit_id": "NFT #6146971",
         "pair_address": "0x9c087Eb773291e50CF6c6a90ef0F4500e349B903",
         "price_key": "virtual",
         "price_field": "price_native",
-        "daily_usd": 3.03,
-        "apr": "~272% a.a.",
+        "daily_usd": 3.29,
+        "apr": "~295% a.a.",
         "start_iso": "2026-09-30T21:45:00+00:00",
         "profit_type": "fees_collected",
-        "liquidity": 278820534392291859569
+        "liquidity": 272091669926172610358
     },
     {
         "id": "mon_usdc",
@@ -497,6 +497,7 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
         net_pct = audit.get("net_pct", (net_diff / init_cap_usd) * 100.0)
         net_diff_sign = "+" if net_diff >= 0 else "-"
 
+        num_c = len(audit.get("cycles", []))
         lines.extend([
             "💰 *LUCRO & CAPITAL DESSA POSIÇÃO (AUDITORIA ON-CHAIN):*",
             f"• *Capital Atual na Pool (MtM):* `~${pos_val_usd:.2f} USD`",
@@ -504,7 +505,7 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
             f"• *Taxas Pendentes (NFT Ativo):* `+${pending_usd:.2f} USD`",
             f"• *Trocos Livres em Carteira:* `+${wallet_ret_usd:.2f} USD` (WETH + VIRTUAL)",
             f"• *Taxas do Último Ciclo:* `+${last_cycle_usd:.2f} USD` (NFT #{last_cycle_nft} encerrado)",
-            f"• *Taxas Totais Geradas (5 ciclos + atual):* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
+            f"• *Taxas Totais Geradas ({num_c} ciclos + atual):* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
             f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD`",
             f"• *Patrimônio Real Consolidado:* `~${total_current_equity:.2f} USD`",
             f"• *Resultado Líquido Global:* `{net_diff_sign}${abs(net_diff):.2f} USD` (`{net_diff_sign}{abs(net_pct):.2f}%`)"
@@ -762,7 +763,8 @@ def run_sentinel_loop():
                 pos_id = item["pos"]["id"]
                 if item["is_out"] or item["is_warning"]:
                     last_alert_time = alert_cooldowns.get(pos_id, 0.0)
-                    cooldown = 1800 if item["is_out"] else ALERT_COOLDOWN_SEC
+                    # Cooldown: 2h for virtual_weth (managed by autopilot keeper), 1h for out-of-range manual, 2h for proximity warning
+                    cooldown = 7200 if pos_id == "virtual_weth" else (3600 if item["is_out"] else ALERT_COOLDOWN_SEC)
                     if now - last_alert_time > cooldown:
                         alert_msg = generate_urgent_alert_message(item, profits)
                         print(f"[!] Disparando alerta com lucros para {pos_id}...")

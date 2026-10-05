@@ -49,23 +49,44 @@ CHAT_ID = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CH
 POSITIONS = [
     {
         "id": "weth_usdc",
-        "name": "WETH / USDC (Slipstream 100)",
+        "name": "WETH / USDC (Slipstream 50 - 2 Posições)",
         "chain": "Base (Layer 2)",
-        "protocol": "Aerodrome Finance (Mellow)",
-        "type": "Cofre Conservador (Âncora)",
-        "capital_usd": 10209.27,
-        "range_min": 2596.73,
-        "range_max": 2785.00,
+        "protocol": "Aerodrome Finance",
+        "type": "Cofre Conservador (Âncora Principal)",
+        "capital_usd": 10378.16,
+        "range_min": 2622.82,
+        "range_max": 2827.09,
         "unit": "USDC/ETH",
-        "deposit_id": "#76829985",
-        "pair_address": "0xcd975e6a5f55137755487f0918b8ca74acce7925",
+        "deposit_id": "Principal #7669576 + Secundária #7670917",
+        "sub_positions": [
+            {
+                "id": "#7669576",
+                "label": "Depósito Principal",
+                "capital_usd": 10181.75,
+                "composition": "1.9580 WETH + 4,886.36 USDC",
+                "range_min": 2622.82,
+                "range_max": 2827.09,
+                "apr": "22.97% Fee + Emissões",
+                "daily_usd": 55.00
+            },
+            {
+                "id": "#7670917",
+                "label": "Depósito Secundário",
+                "capital_usd": 196.41,
+                "composition": "0.0439 WETH + 77.07 USDC",
+                "range_min": 2702.70,
+                "range_max": 2743.54,
+                "apr": "114.85% Fee APR",
+                "daily_usd": 0.60
+            }
+        ],
+        "pair_address": "0x4200000000000000000000000000000000000006",
         "price_key": "eth",
         "price_field": "price",
-        "daily_usd": 42.95,
-        "apr": "~148.0% a.a.",
-        "start_iso": "2026-09-30T12:00:00+00:00",
-        "profit_type": "emissions",
-        "emissions_per_hour": 2.25
+        "daily_usd": 55.60,
+        "apr": "~200.0% a.a. (Consolidado)",
+        "start_iso": "2026-10-05T18:00:00+00:00",
+        "profit_type": "gauge"
     },
     {
         "id": "usdc_googlc",
@@ -211,11 +232,12 @@ def calculate_profit_metrics(market: dict) -> dict:
     now = datetime.now(timezone.utc)
     aero_px = market.get("aero", {}).get("price", 0.795)
     
-    # 1. WETH / USDC
-    t_weth = datetime.fromisoformat("2026-09-30T12:00:00+00:00")
+    # 1. WETH / USDC (Slipstream 50 - Somando as duas posições #7669576 + #7670917)
+    t_weth = datetime.fromisoformat("2026-10-05T18:00:00+00:00")
     hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0)
-    weth_aero_accrued = hours_weth * 2.25
-    weth_usd_accrued = weth_aero_accrued * aero_px
+    weth_hourly_usd = 55.60 / 24.0
+    weth_usd_accrued = hours_weth * weth_hourly_usd
+    weth_aero_accrued = (weth_usd_accrued / aero_px) if aero_px > 0 else 0.0
 
     # 2. GOOGLc
     t_googl = datetime.fromisoformat("2026-10-02T17:20:00+00:00")
@@ -239,17 +261,21 @@ def calculate_profit_metrics(market: dict) -> dict:
     mon_usd_accrued = hours_mon * (1.90 / 24.0)
 
     total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 42.95 + 10.00 + virt_daily + 1.90
+    total_daily_usd = 55.60 + 10.00 + virt_daily + 1.90
 
     return {
         "weth_usdc": {
-            "daily_usd": 42.95,
-            "daily_brl": 42.95 * 5.50,
+            "daily_usd": 55.60,
+            "daily_brl": 55.60 * 5.50,
             "accrued_usd": weth_usd_accrued,
             "accrued_brl": weth_usd_accrued * 5.50,
             "accrued_aero": weth_aero_accrued,
-            "accrued_text": f"~{weth_aero_accrued:.1f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*5.5:.2f})",
-            "apr": "~148.0% a.a."
+            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*5.5:.2f})",
+            "apr": "~200.0% a.a. (Consolidado)",
+            "sub_daily": {
+                "principal_usd": 55.00,
+                "secundaria_usd": 0.60
+            }
         },
         "usdc_googlc": {
             "daily_usd": 10.00,
@@ -377,6 +403,34 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
         else:
             status_text = "🟢 *100% IN RANGE (RENDENDO FORTE)*"
 
+        sub_eval = []
+        if pos.get("sub_positions"):
+            for sub in pos["sub_positions"]:
+                s_min = sub["range_min"]
+                s_max = sub["range_max"]
+                s_dist_ceil = ((s_max - px) / px) * 100.0
+                s_dist_floor = ((px - s_min) / px) * 100.0
+                if px > s_max:
+                    s_status = f"🔴 FORA (Teto +{abs(s_dist_ceil):.2f}%)"
+                elif px < s_min:
+                    s_status = f"🔴 FORA (Piso -{abs(s_dist_floor):.2f}%)"
+                elif s_dist_ceil < 2.0 or s_dist_floor < 2.0:
+                    s_status = f"🟡 ATENÇÃO ({min(abs(s_dist_ceil), abs(s_dist_floor)):.2f}% da borda)"
+                else:
+                    s_status = "🟢 100% IN RANGE"
+                sub_eval.append({
+                    "id": sub["id"],
+                    "label": sub["label"],
+                    "capital_usd": sub["capital_usd"],
+                    "range_min": s_min,
+                    "range_max": s_max,
+                    "status": s_status,
+                    "daily_usd": sub["daily_usd"],
+                    "apr": sub.get("apr", ""),
+                    "dist_ceiling": s_dist_ceil,
+                    "dist_floor": s_dist_floor
+                })
+
         pos_profit = profits.get(pos["id"], {})
 
         evaluated.append({
@@ -390,7 +444,8 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
             "change_24h": m_info.get("change_24h", 0.0),
             "profit": pos_profit,
             "dynamic_val_usd": dynamic_val_usd,
-            "composition_desc": composition_desc
+            "composition_desc": composition_desc,
+            "sub_eval": sub_eval
         })
 
     return evaluated, has_urgent_alert, profits
@@ -431,12 +486,18 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
 
         lines.append(f"📍 *{idx}. {pos['name']}* ({pos['chain']})")
         lines.append(f"  • *Preço Atual:* `{px_fmt} {unit}` ({item['change_24h']:+.2f}% 24h)")
-        lines.append(f"  • *Sua Faixa:* `{min_fmt}` ↔ `{max_fmt}`")
-        lines.append(f"  • *Dist. Teto:* `+{item['dist_ceiling']:.2f}%` | *Piso:* `-{abs(item['dist_floor']):.2f}%`")
-        lines.append(f"  • *Status:* {item['status_text']}")
+        lines.append(f"  • *Capital Total Somado:* `${pos['capital_usd']:,.2f} USD` (~R$ {pos['capital_usd']*5.50:,.2f})")
+        lines.append(f"  • *Renda Diária Somada:* `~${prof.get('daily_usd'):.2f}/dia` (~R$ {prof.get('daily_usd')*5.50:.2f}/dia)")
+        lines.append(f"  • *Status Consolidado:* {item['status_text']}")
+        if item.get("sub_eval"):
+            lines.append("  *Detalhamento das 2 Posições:*")
+            for sub in item["sub_eval"]:
+                lines.append(f"    ├ *{sub['label']} ({sub['id']}):* `${sub['capital_usd']:,.2f}` | Faixa: `${sub['range_min']:,.2f}` ↔ `${sub['range_max']:,.2f}` | {sub['status']}")
+        else:
+            lines.append(f"  • *Sua Faixa:* `{min_fmt}` ↔ `{max_fmt}`")
+            lines.append(f"  • *Dist. Teto:* `+{item['dist_ceiling']:.2f}%` | *Piso:* `-{abs(item['dist_floor']):.2f}%`")
         lines.append(f"  • *Lucro Acumulado:* `{prof.get('accrued_text')}`")
-        lines.append(f"  • *Renda Estimada:* `~${prof.get('daily_usd'):.2f}/dia` (APR: *{prof.get('apr')}*)")
-        lines.append(f"  • *Capital Alocado (MtM):* `${pos['capital_usd']:,.2f} USD` ({pos['deposit_id']})")
+        lines.append(f"  • *Identificação:* `{pos['deposit_id']}`")
         lines.append("")
 
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")

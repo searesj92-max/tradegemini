@@ -128,7 +128,7 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
     tot_accrued_usd = p_info.get("total_accrued_usd", 125.50)
     tot_accrued_brl = p_info.get("total_accrued_brl", tot_accrued_usd * 5.50)
 
-    base_capital = 11925.44
+    base_capital = 12094.33
     est_current_equity = base_capital + tot_accrued_usd
     val_diff_usd = tot_accrued_usd
     val_diff_pct = (val_diff_usd / base_capital) * 100.0
@@ -152,7 +152,9 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
         f"• *Total de Renda Passiva:* *`~${tot_accrued_usd:.2f} USD`* (**`~R$ {tot_accrued_brl:.2f}`**)",
         "• *Tempo Médio Ativo:* `~2,6 dias` (63 horas)\n",
         "*Desdobramento por Pool:*",
-        f"  🔹 *WETH / USDC* (Base): `{weth_prof.get('accrued_text')}` (APR: {weth_prof.get('apr')})",
+        f"  🔹 *WETH / USDC* (Base - 2 Posições Somadas): `{weth_prof.get('accrued_text')}` | Renda: `~${weth_prof.get('daily_usd'):.2f}/dia` (~R$ {weth_prof.get('daily_usd')*5.5:.2f}/dia)",
+        f"     ├ *Principal (#7669576):* `$10,181.75` (Faixa $2,622 ↔ $2,827) → `~$55.00/dia`",
+        f"     └ *Secundária (#7670917):* `$196.41` (Faixa $2,702 ↔ $2,743) → `~$0.60/dia`",
         f"  🔹 *VIRTUAL / WETH* (Base): `{virt_prof.get('accrued_text')}` (APR: {virt_prof.get('apr')})",
         f"  🔹 *USDC / GOOGLc* (Base): `{googl_prof.get('accrued_text')}` (APR: {googl_prof.get('apr')})",
         f"  🔹 *MON / USDC* (Monad): `{mon_prof.get('accrued_text')}` (APR: {mon_prof.get('apr')})\n",
@@ -192,20 +194,22 @@ def format_defi_status_summary() -> tuple[str, dict]:
         "🏛️ *TESOURARIA DEFI & ALOCAÇÃO PATRIMONIAL*",
         f"⏱️ _Atualizado em {now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💼 *Patrimônio Total Alocado:* `$11,925.44 USD` (~R$ 65.589)",
+        "💼 *Patrimônio Total Alocado:* `$12,094.33 USD` (~R$ 66.518)",
         f"📈 *Lucro Total Acumulado:* `{p_info.get('accrued_text')}`",
         f"💵 *Renda Diária Passiva:* `~${p_info.get('total_daily_usd'):.2f}/dia` (~R$ {p_info.get('total_daily_brl'):.2f}/dia)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "📍 *DISTRIBUIÇÃO POR REDE & ATIVO:*",
-        "• *Base Network (Layer 2):* `$11,593.46 USD` (97.2%)",
-        "  ├ WETH / USDC: `$10,209.27` (Âncora Mellow)",
+        "• *Base Network (Layer 2):* `$11,762.35 USD` (97.3%)",
+        "  ├ WETH / USDC: `$10,378.16` (2 Posições Somadas #7669576 + #7670917)",
+        "  │  ├ Principal (#7669576): `$10,181.75` (Faixa $2,622 ↔ $2,827 | ±3.5%)",
+        "  │  └ Secundária (#7670917): `$196.41` (Faixa $2,702 ↔ $2,743 | ±0.5%)",
         "  ├ USDC / GOOGLc: `$977.39` (RWA Staked no Gauge)",
         "  └ VIRTUAL / WETH: `$406.80` (Krystal Autopilot)",
         "",
-        "• *Monad Network (Layer 1):* `$331.98 USD` (2.8%)",
+        "• *Monad Network (Layer 1):* `$331.98 USD` (2.7%)",
         "  └ MON / USDC: `$331.98` (Uniswap v4 Concentrado)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🛡️ *Status Operacional:* 🟢 100% das 4 pools em faixa e ativas.",
+        "🛡️ *Status Operacional:* 🟢 100% das posições em faixa e ativas.",
         "_Operações de perpétuos desativadas; capital 100% focado em rendimento passivo._"
     ]
 
@@ -229,7 +233,7 @@ def format_daily_report_message() -> tuple[str, dict]:
         "📑 *RELATÓRIO DIÁRIO DE FECHAMENTO — TESOURARIA DEFI*",
         f"⏱️ _Fechamento em {now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"💰 *Capital Alocado em Custódia:* `$11,925.44 USD`",
+        f"💰 *Capital Alocado em Custódia:* `$12,094.33 USD` (~R$ 66.518)",
         f"💵 *Rendimento Gerado nas Últimas 24h:* `~${p_info.get('total_daily_usd'):.2f} USD` (~R$ {p_info.get('total_daily_brl'):.2f})",
         f"📈 *Lucro Total Acumulado:* `{p_info.get('accrued_text')}`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",

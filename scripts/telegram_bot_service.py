@@ -274,37 +274,23 @@ def format_virtual_rebalance_status() -> tuple[str, dict]:
         in_range = audit["in_range"]
         status_sym = "🟢 100% IN RANGE (Gerando Taxas)" if in_range else "🔴 FORA DA FAIXA"
 
-        cycles_lines = []
-        for c in audit.get("cycles", []):
-            dt_str = c["closed_at"][:16].replace("T", " ") if c.get("closed_at") else ""
-            cycles_lines.append(f"  • NFT #{c['token_id']} ({dt_str} UTC): `+${c['fees_usd']:.2f} USD` ({c['fees_virtual']:.2f} V + {c['fees_weth']:.6f} W)")
-
         lines = [
-            "🔄 *RAIO-X VIRTUAL / WETH — AUDITORIA ON-CHAIN KRYSTAL*",
+            "🔄 *RAIO-X VIRTUAL / WETH — RESULTADO LÍQUIDO NO BOLSO*",
             f"⏱️ _{now_utc}_",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "📍 *Posição:* VIRTUAL / WETH 0.05% (Uniswap V3 via Krystal Autopilot)",
             f"🏷️ *NFT Ativo:* `#{active_id}` | *Status:* {status_sym}",
             f"💵 *Preço Atual:* `{px:.8f} WETH` (${audit['virtual_usd']:.4f})",
-            f"🎯 *Faixa Centralizada:* `{p_min:.8f}` ↔ `{p_max:.8f}` WETH",
-            f"📦 *Composição na Pool:* `{audit['pool_virtual']:.1f} VIRTUAL + {audit['pool_weth']:.4f} WETH` (`${audit['pool_usd']:.2f}`)",
-            f"⏳ *Taxas Pendentes Atuais:* `+${audit['pending_usd']:.2f} USD`",
-            f"🪙 *Trocos Livres em Carteira:* `+${audit['dust_usd']:.2f} USD`",
+            f"🎯 *Faixa Ativa:* `{p_min:.8f}` ↔ `{p_max:.8f}` WETH",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-            "📜 *HISTÓRICO DE CICLOS REBALANCEADOS:*",
-            "\n".join(cycles_lines) if cycles_lines else "  • Nenhum ciclo anterior registrado.",
-            f"\n💰 *Total Coletado em 5 Rebalances:* `+${audit['collected_fees_usd']:.2f} USD`",
-            f"📈 *TOTAL DE TAXAS GERADAS:* `+${audit['total_fees_usd']:.2f} USD` (**~R$ {audit['total_fees_usd']*5.5:.2f}**)",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-            "⚖️ *BALANÇO FINANCEIRO REAL:*",
-            f"• *Aporte Inicial (30/09):* `${audit.get('initial_usd', 406.46):.2f} USD`",
-            f"• *Patrimônio Real Consolidado:* `~${audit['equity_usd']:.2f} USD` (Pool + Pendentes + Trocos)",
-            f"• *Resultado Líquido:* `{audit['net_usd']:+.2f} USD` (`{audit['net_pct']:+.2f}%` | em WETH `{audit['net_weth_pct']:+.2f}%`)",
-            f"• *Efeito Preço / IL Mercado:* `${audit['price_effect_usd']:.2f} USD`",
-            f"• *Amortecimento pelas Taxas:* `+${audit['total_fees_usd']:.2f} USD` (amortizou mais de 50% da queda!)",
-            f"• *Rendimento Médio:* `~${audit['fees_per_day_avg']:.2f} / dia` (APR: `~{audit['apr_avg_pct']:.0f}% a.a.`)",
+            "💰 *CAPITAL & LUCRO LÍQUIDO REAL:*",
+            f"• 💵 *Aporte Inicial (30/09):* `${audit.get('initial_usd', 406.46):.2f} USD` (~R$ {audit.get('initial_usd', 406.46)*5.5:.2f})",
+            f"• 🏦 *Patrimônio Líquido Atual:* *`~${audit['equity_usd']:.2f} USD`* (**`~R$ {audit['equity_usd']*5.5:.2f}`**)",
+            f"  └ _(Pool + Trocos livres na carteira já somados)_",
+            f"• 🟢 *LUCRO LÍQUIDO REAL:* *`{audit['net_usd']:+.2f} USD ({audit['net_pct']:+.2f}%)`* (**`~R$ {audit['net_usd']*5.5:+.2f}`**)",
+            f"• 📈 *Ritmo Médio:* `~${audit['fees_per_day_avg']:.2f} / dia` (~R$ {audit['fees_per_day_avg']*5.5:.2f}/dia)",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "🛡️ _Krystal Autopilot rebalanceia automaticamente a cada rompimento._"
+            "✅ _Valor 100% líquido: todas as taxas de protocolo, swaps e oscilações já foram descontadas._"
         ]
         text = "\n".join(lines)
 

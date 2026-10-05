@@ -222,14 +222,16 @@ def calculate_profit_metrics(market: dict) -> dict:
     hours_googl = max((now - t_googl).total_seconds() / 3600.0, 0)
     googl_usd_accrued = hours_googl * (10.0 / 24.0)
 
-    # 3. VIRTUAL / WETH — real on-chain numbers (collected fees per cycle + pending fees)
+    # 3. VIRTUAL / WETH — Lucro Líquido Real (Patrimônio Consolidado vs Aporte Inicial)
     virt_audit = audit_virtual(eth_usd=market.get("eth", {}).get("price"))
     if virt_audit:
-        virt_usd_accrued = virt_audit["total_fees_usd"]
+        virt_net_usd = virt_audit["net_usd"]
+        virt_net_pct = virt_audit["net_pct"]
+        virt_usd_accrued = virt_net_usd
         virt_daily = virt_audit["fees_per_day_avg"]
-        virt_apr = f"~{virt_audit['apr_avg_pct']:.0f}% a.a. (média real on-chain)"
+        virt_apr = f"~{virt_audit['apr_avg_pct']:.0f}% a.a."
     else:
-        virt_usd_accrued, virt_daily, virt_apr = 0.0, 0.0, "indisponível"
+        virt_net_usd, virt_net_pct, virt_usd_accrued, virt_daily, virt_apr = 0.0, 0.0, 0.0, 0.0, "indisponível"
 
     # 4. MON / USDC
     t_mon = datetime.fromisoformat("2026-10-02T18:00:00+00:00")
@@ -260,9 +262,10 @@ def calculate_profit_metrics(market: dict) -> dict:
         "virtual_weth": {
             "daily_usd": virt_daily,
             "daily_brl": virt_daily * 5.50,
-            "accrued_usd": virt_usd_accrued,
-            "accrued_brl": virt_usd_accrued * 5.50,
-            "accrued_text": f"+${virt_usd_accrued:.2f} USD (~R$ {virt_usd_accrued*5.5:.2f}) (taxas brutas on-chain)",
+            "accrued_usd": virt_net_usd,
+            "accrued_brl": virt_net_usd * 5.50,
+            "net_pct": virt_net_pct,
+            "accrued_text": f"{'+' if virt_net_usd >= 0 else ''}${virt_net_usd:.2f} USD ({'+' if virt_net_pct >= 0 else ''}{virt_net_pct:.2f}%) (~R$ {virt_net_usd*5.5:.2f}) [Líquido]",
             "apr": virt_apr,
             "audit": virt_audit
         },
@@ -499,16 +502,12 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
 
         num_c = len(audit.get("cycles", []))
         lines.extend([
-            "💰 *LUCRO & CAPITAL DESSA POSIÇÃO (AUDITORIA ON-CHAIN):*",
-            f"• *Capital Atual na Pool (MtM):* `~${pos_val_usd:.2f} USD`",
-            f"  └ _Composição:_ `{comp_desc}`",
-            f"• *Taxas Pendentes (NFT Ativo):* `+${pending_usd:.2f} USD`",
-            f"• *Trocos Livres em Carteira:* `+${wallet_ret_usd:.2f} USD` (WETH + VIRTUAL)",
-            f"• *Taxas do Último Ciclo:* `+${last_cycle_usd:.2f} USD` (NFT #{last_cycle_nft} encerrado)",
-            f"• *Taxas Totais Geradas ({num_c} ciclos + atual):* `+${acc_fees_usd:.2f} USD` (**~R$ {acc_fees_usd*5.5:.2f}**)",
-            f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD`",
-            f"• *Patrimônio Real Consolidado:* `~${total_current_equity:.2f} USD`",
-            f"• *Resultado Líquido Global:* `{net_diff_sign}${abs(net_diff):.2f} USD` (`{net_diff_sign}{abs(net_pct):.2f}%`)"
+            "💰 *CAPITAL & LUCRO LÍQUIDO REAL (NO BOLSO):*",
+            f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD` (~R$ {init_cap_usd*5.5:.2f})",
+            f"• *Patrimônio Atual Total:* `~${total_current_equity:.2f} USD` (~R$ {total_current_equity*5.5:.2f})",
+            f"  └ _(Pool + Trocos livres na carteira já somados)_",
+            f"• 🟢 *LUCRO LÍQUIDO REAL:* *`{net_diff_sign}${abs(net_diff):.2f} USD ({net_diff_sign}{abs(net_pct):.2f}%)`* (**~R$ {abs(net_diff)*5.5:.2f}**)",
+            "  └ _(Valor 100% líquido: taxas de protocolo, swaps e oscilações já descontadas)_"
         ])
     else:
         lines.extend([
@@ -621,13 +620,11 @@ def format_virtual_rebalance_notification(
         "🎯 *Nova Faixa Centralizada:*\n"
         f"`{new_min:.8f}` ↔ `{new_max:.8f}` WETH\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "📊 *RAIO-X FINANCEIRO (AUDITORIA ON-CHAIN):*\n"
+        "📊 *RESULTADO LÍQUIDO REAL NO BOLSO:*\n"
         f"• 💵 *Aporte Inicial (30/09):* `${initial_capital_usd:.2f} USD` (~R$ {initial_capital_usd*5.5:.2f})\n"
-        f"• 🏦 *Patrimônio Real Atual:* `~${total_current_equity:.2f} USD` (Pool + Taxas Pendentes + Trocos)\n"
-        f"• 💰 *Rendimento do Ciclo Encerrado:* `+${last_cycle_fees_usd:.2f} USD` (NFT #{closed_nft_id})\n"
-        f"• 💵 *Taxas Totais Geradas:* `+${accumulated_fees_usd:.2f} USD` (**~R$ {accumulated_fees_usd*5.5:.2f}**)\n"
-        f"• 📈 *Rentabilidade Bruta em Taxas:* *`+{fees_pct:.2f}%`* sobre o aporte\n"
-        f"• ⚖️ *Resultado Líquido Consolidado:* `{net_sign}${abs(net_pnl_usd):.2f} USD` (`{net_sign}{abs(net_pnl_pct):.2f}%`)\n"
+        f"• 🏦 *Patrimônio Líquido Atual:* `~${total_current_equity:.2f} USD` (~R$ {total_current_equity*5.5:.2f})\n"
+        f"• 🟢 *LUCRO LÍQUIDO NO BOLSO:* *`{net_sign}${abs(net_pnl_usd):.2f} USD ({net_sign}{abs(net_pnl_pct):.2f}%)`* (**~R$ {abs(net_pnl_usd)*5.5:.2f}**)\n"
+        "  └ _(Valor 100% livre: taxas de protocolo, swaps e oscilações já descontadas)_\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         "🟢 *Status:* 100% IN RANGE (Re-centralizado e gerando taxas na nova faixa!)\n"
         "🛡️ _Krystal Keeper gerenciando com sucesso na rede Base._"

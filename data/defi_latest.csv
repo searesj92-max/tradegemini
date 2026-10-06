@@ -1,16 +1,16 @@
 ﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,,,,
-Atualizado em: 2026-10-06 03:06:31 UTC,,,,,,
+Atualizado em: 2026-10-06 03:10:38 UTC,,,,,,
 ,,,,,,
 RESUMO CONSOLIDADO DA CARTEIRA,,,,,,
-Patrimonio Total (USD),"$12,081.21",Rendimento Diario Total (USD),$67.50/dia,Variacao Total (USD),-12.78,-0.11%
-Patrimonio Total (BRL),"R$ 66,446.65",Rendimento Diario Total (BRL),R$ 371.25/dia,Cotacao Dolar Base,R$ 5.50,
+Patrimonio Total (USD),"$12,072.50",Rendimento Diario Total (USD),$70.77/dia,Variacao Total (USD),-21.49,-0.18%
+Patrimonio Total (BRL),"R$ 66,398.75",Rendimento Diario Total (BRL),R$ 389.24/dia,Cotacao Dolar Base,R$ 5.50,
 ,,,,,,
 DETALHAMENTO POR POOL,,,,,,
 Pool / Ativo,Rede / Protocolo,Saldo Alocado (USD),Saldo Alocado (BRL),Renda Diaria Est. (USD),Renda Diaria Est. (BRL),Valorizacao / PnL ($),Status Faixa,Identificacao
 WETH / USDC (Slipstream 50),Base (Aerodrome),10378.16,57079.88,55.60,305.80,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Principal #7669576 + Secundária #7670917
 USDC / GOOGLc (Google RWA),Base (Aerodrome),977.39,5375.64,10.00,55.00,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),NFT #7508296
-VIRTUAL / WETH 0.05%,Base (Krystal Autopilot),393.68,2165.23,0.00,0.00,-12.78,🟡 ATENÇÃO: Apenas +0.91% do teto!,NFT #6155510
+VIRTUAL / WETH 0.05%,Base (Krystal Autopilot),384.97,2117.33,3.27,17.99,-9.53,🟡 ATENÇÃO: Apenas +1.07% do teto!,NFT #6159670
 MON / USDC (Concentrated),Monad (Uniswap v4),331.98,1825.89,1.90,10.45,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Pool 0x659b
 ,,,,,,
 COTACAO DOS ATIVOS,,,,,,
-Ethereum (WETH),"$2,702.36",Aerodrome (AERO),$0.8418,Google (GOOGLc),$345.00,Virtual (VIRTUAL),$0.8600,Monad (MON),$0.03016
+Ethereum (WETH),"$2,701.26",Aerodrome (AERO),$0.8407,Google (GOOGLc),$345.00,Virtual (VIRTUAL),$0.8501,Monad (MON),$0.03009

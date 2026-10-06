@@ -356,6 +356,36 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # MOBILE SPREADSHEET DASHBOARD (100% Mobile Responsive for Smartphone)
+        if parsed.path in ("/planilha", "/planilha.html", "/sheets", "/mobile"):
+            planilha_path = DASHBOARD_DIR / "planilha.html"
+            if planilha_path.exists():
+                content = planilha_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        if parsed.path == "/api/defi/data.json":
+            try:
+                from defi_sheet_recorder import get_sheet_json
+                data = get_sheet_json()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
+                return
+
         # DEFI SPREADSHEET LIVE CSV ENDPOINTS (Google Sheets =IMPORTDATA & Excel)
         if parsed.path in ("/api/defi/sheet.csv", "/api/defi/live.csv"):
             csv_path = ROOT / "data" / "defi_latest.csv"

@@ -266,6 +266,43 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
     }
 
 
+def get_sheet_json() -> dict:
+    """Returns structured JSON of the latest snapshot and recent history for the web dashboard."""
+    history = []
+    if HISTORY_CSV.exists() and HISTORY_CSV.stat().st_size > 0:
+        try:
+            with open(HISTORY_CSV, "r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                history = list(reader)[-50:]
+        except Exception:
+            pass
+
+    daily = []
+    if DAILY_CSV.exists() and DAILY_CSV.stat().st_size > 0:
+        try:
+            with open(DAILY_CSV, "r", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                daily = list(reader)
+        except Exception:
+            pass
+
+    treasury_path = ROOT / "data" / "defi_treasury.json"
+    treasury = {}
+    if treasury_path.exists():
+        try:
+            treasury = json.loads(treasury_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    return {
+        "status": "ok",
+        "updated_at": datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+        "treasury": treasury,
+        "recent_history": history,
+        "daily_summary": daily
+    }
+
+
 if __name__ == "__main__":
     from defi_pools_monitor import fetch_live_market_data, evaluate_positions
     m = fetch_live_market_data()

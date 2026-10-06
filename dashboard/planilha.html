@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Planilha DeFi Ao Vivo — Botrade</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131a29;
+      --card-border: #1f2a3f;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      padding: 16px;
+      padding-bottom: 90px;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .header-title h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--success-bg);
+      color: var(--success);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 640px) {
+      .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), #6366f1);
+    }
+    .kpi-card.yield-card::before {
+      background: linear-gradient(90deg, var(--success), #10b981);
+    }
+    .kpi-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .kpi-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .kpi-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tag-green { color: var(--success); font-weight: 600; }
+    .tag-yellow { color: var(--warning); font-weight: 600; }
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .tab-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #090d16;
+      border-color: var(--primary);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .pool-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: transform 0.15s;
+    }
+    .pool-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .pool-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .pool-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .status-in-range { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+    .status-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+    .pool-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(0,0,0,0.2);
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+    }
+    .pool-stat-item p:first-child {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .pool-stat-item p:last-child {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .pool-subdetails {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      border-top: 1px dashed var(--card-border);
+      padding-top: 8px;
+    }
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      text-align: left;
+    }
+    th {
+      background: rgba(0,0,0,0.3);
+      color: var(--text-muted);
+      font-weight: 600;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--card-border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      white-space: nowrap;
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    .footer-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(19, 26, 41, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-around;
+      z-index: 99;
+    }
+    .btn-action {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #1e293b;
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+    }
+    .btn-action.btn-primary {
+      background: var(--primary);
+      color: #090d16;
+      border-color: var(--primary);
+    }
+    .timer-text {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-title">
+      <h1>📊 Tesouraria DeFi</h1>
+      <p id="last-update-text">Atualizado em tempo real</p>
+    </div>
+    <div class="badge-live">
+      <span class="badge-pulse"></span>
+      <span>10 MIN LIVE</span>
+    </div>
+  </header>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Patrimônio Total Alocado</div>
+      <div class="kpi-value" id="kpi-total-usd">$12,081.21</div>
+      <div class="kpi-sub">
+        <span id="kpi-total-brl">~R$ 66.446,65</span>
+        <span class="tag-green">4 Pools Ativas</span>
+      </div>
+    </div>
+
+    <div class="kpi-card yield-card">
+      <div class="kpi-label">Rendimento Passivo Diário</div>
+      <div class="kpi-value tag-green" id="kpi-daily-usd">+$67.50 / dia</div>
+      <div class="kpi-sub">
+        <span id="kpi-daily-brl">~R$ 371,25 / dia</span>
+        <span id="kpi-monthly-brl" class="tag-green">~R$ 11.137 / mês</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">Variação / PnL Global</div>
+      <div class="kpi-value" id="kpi-pnl-usd">-$12.78</div>
+      <div class="kpi-sub">
+        <span id="kpi-pnl-pct">-0.11% vs Aporte</span>
+        <span style="font-size: 0.72rem; color: #64748b;">(Amortecido por taxas)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('pools')">🏦 As 4 Pools</button>
+    <button class="tab-btn" onclick="switchTab('history')">⏱️ Histórico 10min</button>
+    <button class="tab-btn" onclick="switchTab('daily')">📅 Fechamento Diário</button>
+    <button class="tab-btn" onclick="switchTab('prices')">🪙 Cotações</button>
+  </div>
+
+  <!-- TAB 1: AS 4 POOLS -->
+  <div id="tab-pools" class="tab-content active">
+    
+    <!-- POOL 1: WETH / USDC -->
+    <div class="pool-card">
+      <div class="pool-header">
+        <div>
+          <div class="pool-name">1. WETH / USDC (Slipstream 50)</div>
+          <div class="pool-meta">Base (Layer 2) • Aerodrome Finance • 2 Posições Somadas</div>
+        </div>
+        <span class="status-badge status-in-range">🟢 No Range</span>
+      </div>
+      <div class="pool-stats-grid">
+        <div class="pool-stat-item">
+          <p>SALDO ALOCADO</p>
+          <p id="pool-weth-cap">$10,378.16 USD</p>
+        </div>
+        <div class="pool-stat-item">
+          <p>RENDA PASSIVA</p>
+          <p class="tag-green">~$55.60 / dia (~R$ 305,80)</p>
+        </div>
+      </div>
+      <div class="pool-subdetails">
+        • <b>Principal (#7669576):</b> $10,181.75 | Faixa $2,622 ↔ $2,827 | Staked no Gauge<br>
+        • <b>Secundária (#7670917):</b> $196.41 | Faixa $2,702 ↔ $2,743 | Pool Ativa
+      </div>
+    </div>
+
+    <!-- POOL 2: USDC / GOOGLc -->
+    <div class="pool-card">
+      <div class="pool-header">
+        <div>
+          <div class="pool-name">2. USDC / GOOGLc (Ações Google RWA)</div>
+          <div class="pool-meta">Base (Layer 2) • Aerodrome Finance • Slipstream 10</div>
+        </div>
+        <span class="status-badge status-in-range">🟢 No Range</span>
+      </div>
+      <div class="pool-stats-grid">
+        <div class="pool-stat-item">
+          <p>SALDO ALOCADO</p>
+          <p>$977.39 USD (~R$ 5.375)</p>
+        </div>
+        <div class="pool-stat-item">
+          <p>RENDA PASSIVA</p>
+          <p class="tag-green">~$10.00 / dia (~R$ 55,00)</p>
+        </div>
+      </div>
+      <div class="pool-subdetails">
+        • <b>Faixa:</b> $327.05 ↔ $361.09 | Staked no Gauge (#7508296)
+      </div>
+    </div>
+
+    <!-- POOL 3: VIRTUAL / WETH -->
+    <div class="pool-card">
+      <div class="pool-header">
+        <div>
+          <div class="pool-name">3. VIRTUAL / WETH 0.05%</div>
+          <div class="pool-meta">Base (Layer 2) • Krystal Autopilot • Rebalance Automático</div>
+        </div>
+        <span class="status-badge status-warning">🔄 Autopilot</span>
+      </div>
+      <div class="pool-stats-grid">
+        <div class="pool-stat-item">
+          <p>PATRIMÔNIO CONSOLIDADO</p>
+          <p id="pool-virt-cap">~$393.68 USD (~R$ 2.165)</p>
+        </div>
+        <div class="pool-stat-item">
+          <p>RITMO MÉDIO</p>
+          <p class="tag-green">~$3.32 / dia (~R$ 18,27)</p>
+        </div>
+      </div>
+      <div class="pool-subdetails">
+        • <b>NFT Ativo:</b> #6155510 | 100% gerenciado pelo keeper sem risco de liquidação
+      </div>
+    </div>
+
+    <!-- POOL 4: MON / USDC -->
+    <div class="pool-card">
+      <div class="pool-header">
+        <div>
+          <div class="pool-name">4. MON / USDC (Concentrada)</div>
+          <div class="pool-meta">Monad (Layer 1) • Uniswap v4 Concentrado</div>
+        </div>
+        <span class="status-badge status-in-range">🟢 No Range</span>
+      </div>
+      <div class="pool-stats-grid">
+        <div class="pool-stat-item">
+          <p>SALDO ALOCADO</p>
+          <p>$331.98 USD (~R$ 1.825)</p>
+        </div>
+        <div class="pool-stat-item">
+          <p>RENDA PASSIVA</p>
+          <p class="tag-green">~$1.90 / dia (~R$ 10,45)</p>
+        </div>
+      </div>
+      <div class="pool-subdetails">
+        • <b>Faixa:</b> $0.02539 ↔ $0.03716 | Posição Ativa
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TAB 2: HISTÓRICO 10 MINUTOS -->
+  <div id="tab-history" class="tab-content">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Data/Hora (UTC)</th>
+            <th>Patrimônio ($)</th>
+            <th>Patrimônio (R$)</th>
+            <th>Renda/Dia ($)</th>
+            <th>PnL Total ($)</th>
+            <th>ETH ($)</th>
+            <th>AERO ($)</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Carregando histórico...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: FECHAMENTO DIÁRIO -->
+  <div id="tab-daily" class="tab-content">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Patrimônio Fechamento</th>
+            <th>Rendimento do Dia ($)</th>
+            <th>Rendimento do Dia (R$)</th>
+            <th>Variação</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="daily-tbody">
+          <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Carregando fechamentos diários...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: COTAÇÕES -->
+  <div id="tab-prices" class="tab-content">
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Ativo</th>
+            <th>Preço Atual</th>
+            <th>Rede</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><b>Ethereum (ETH)</b></td><td id="px-eth">$2,702.36</td><td>Base / Ethereum</td></tr>
+          <tr><td><b>Aerodrome (AERO)</b></td><td id="px-aero">$0.8418</td><td>Base L2</td></tr>
+          <tr><td><b>Google Stock (GOOGLc)</b></td><td id="px-googl">$345.00</td><td>Base L2 (RWA)</td></tr>
+          <tr><td><b>Virtuals Protocol (VIRTUAL)</b></td><td id="px-virt">$0.8600</td><td>Base L2 (IA)</td></tr>
+          <tr><td><b>Monad (MON)</b></td><td id="px-mon">$0.03016</td><td>Monad L1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="timer-text" id="refresh-countdown">Próxima medição em 10 minutos • Atualização 100% automática</p>
+
+  <!-- BARRA DE AÇÕES FIXA NO RODAPÉ -->
+  <div class="footer-bar">
+    <button class="btn-action" onclick="fetchLiveData()">
+      <span>🔄</span> Atualizar
+    </button>
+    <a href="/api/defi/sheet.csv" class="btn-action" download="defi_latest.csv">
+      <span>📥</span> Baixar CSV
+    </a>
+    <a href="/api/defi/history.csv" class="btn-action btn-primary" download="defi_history.csv">
+      <span>📈</span> Histórico
+    </a>
+  </div>
+
+  <script>
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    async function fetchLiveData() {
+      try {
+        const res = await fetch('/api/defi/data.json');
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.updated_at) {
+          document.getElementById('last-update-text').innerText = 'Atualizado em ' + data.updated_at;
+        }
+
+        // Render History Rows
+        if (data.recent_history && data.recent_history.length > 0) {
+          const tbody = document.getElementById('history-tbody');
+          tbody.innerHTML = '';
+          const rev = [...data.recent_history].reverse();
+          rev.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${r.Data_Hora_UTC || '—'}</td>
+              <td><b>$${r.Total_Capital_USD || '—'}</b></td>
+              <td>R$ ${r.Total_Capital_BRL || '—'}</td>
+              <td class="tag-green">+$${r.Rendimento_Diario_Total_USD || '—'}</td>
+              <td class="${parseFloat(r.Variacao_Total_USD) >= 0 ? 'tag-green' : ''}">$${r.Variacao_Total_USD || '—'}</td>
+              <td>$${r.Preco_ETH_USD || '—'}</td>
+              <td>$${r.Preco_AERO_USD || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // Render Daily Rows
+        if (data.daily_summary && data.daily_summary.length > 0) {
+          const dtbody = document.getElementById('daily-tbody');
+          dtbody.innerHTML = '';
+          data.daily_summary.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><b>${d.Data || '—'}</b></td>
+              <td>$${d.Fechamento_Patrimonio_USD || '—'} (~R$ ${d.Fechamento_Patrimonio_BRL || '—'})</td>
+              <td class="tag-green">+$${d.Rendimento_Total_Gerado_Dia_USD || '—'}</td>
+              <td class="tag-green">R$ ${d.Rendimento_Total_Gerado_Dia_BRL || '—'}</td>
+              <td>${d.Variacao_Dia_USD || '0'} (${d.Variacao_Dia_Pct || '0'}%)</td>
+              <td><span class="status-badge status-in-range">${d.Status_Geral || 'OK'}</span></td>
+            `;
+            dtbody.appendChild(tr);
+          });
+        }
+
+      } catch (e) {
+        console.error('Erro ao buscar dados:', e);
+      }
+    }
+
+    // Auto-fetch on load and repeat every 60s
+    fetchLiveData();
+    setInterval(fetchLiveData, 60000);
+  </script>
+
+</body>
+</html>

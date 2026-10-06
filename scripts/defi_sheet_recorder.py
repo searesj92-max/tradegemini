@@ -104,8 +104,8 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
             "Base (Aerodrome)",
             f"{weth_cap:.2f}",
             f"{weth_cap * usd_brl:.2f}",
-            f"{weth_prof.get('daily_usd', 55.60):.2f}",
-            f"{weth_prof.get('daily_brl', 55.60 * usd_brl):.2f}",
+            f"{weth_prof.get('daily_usd', 7.02):.2f}",
+            f"{weth_prof.get('daily_brl', 7.02 * usd_brl):.2f}",
             f"{weth_diff_usd:+.2f}",
             weth_item["status_text"].replace("*", "") if weth_item else "🟢 In Range",
             "Principal #7669576 + Secundária #7670917"

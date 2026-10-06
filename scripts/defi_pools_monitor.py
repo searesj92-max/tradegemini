@@ -67,7 +67,7 @@ POSITIONS = [
                 "range_min": 2622.82,
                 "range_max": 2827.09,
                 "apr": "22.97% Fee + Emissões",
-                "daily_usd": 55.00
+                "daily_usd": 6.41
             },
             {
                 "id": "#7670917",
@@ -77,14 +77,14 @@ POSITIONS = [
                 "range_min": 2702.70,
                 "range_max": 2743.54,
                 "apr": "114.85% Fee APR",
-                "daily_usd": 0.60
+                "daily_usd": 0.61
             }
         ],
         "pair_address": "0x4200000000000000000000000000000000000006",
         "price_key": "eth",
         "price_field": "price",
-        "daily_usd": 55.60,
-        "apr": "~200.0% a.a. (Consolidado)",
+        "daily_usd": 7.02,
+        "apr": "22.97% a.a. (Slipstream 50)",
         "start_iso": "2026-10-05T18:00:00+00:00",
         "profit_type": "gauge"
     },
@@ -261,7 +261,7 @@ def calculate_profit_metrics(market: dict) -> dict:
     # 1. WETH / USDC (Slipstream 50 - Somando as duas posições #7669576 + #7670917)
     t_weth = datetime.fromisoformat("2026-10-05T18:00:00+00:00")
     hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0)
-    weth_hourly_usd = 55.60 / 24.0
+    weth_hourly_usd = 7.02 / 24.0
     weth_usd_accrued = hours_weth * weth_hourly_usd
     weth_aero_accrued = (weth_usd_accrued / aero_px) if aero_px > 0 else 0.0
 
@@ -287,22 +287,22 @@ def calculate_profit_metrics(market: dict) -> dict:
     mon_usd_accrued = hours_mon * (1.90 / 24.0)
 
     total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 55.60 + 10.00 + virt_daily + 1.90
+    total_daily_usd = 7.02 + 10.00 + virt_daily + 1.90
 
     usd_brl = market.get("usd_brl") or fetch_usd_brl()
 
     return {
         "weth_usdc": {
-            "daily_usd": 55.60,
-            "daily_brl": 55.60 * usd_brl,
+            "daily_usd": 7.02,
+            "daily_brl": 7.02 * usd_brl,
             "accrued_usd": weth_usd_accrued,
             "accrued_brl": weth_usd_accrued * usd_brl,
             "accrued_aero": weth_aero_accrued,
             "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
-            "apr": "~200.0% a.a. (Consolidado)",
+            "apr": "22.97% a.a. (Slipstream 50)",
             "sub_daily": {
-                "principal_usd": 55.00,
-                "secundaria_usd": 0.60
+                "principal_usd": 6.41,
+                "secundaria_usd": 0.61
             }
         },
         "usdc_googlc": {

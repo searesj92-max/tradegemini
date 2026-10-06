@@ -17,7 +17,7 @@
       "accrued_rewards": "AERO Staked no Gauge",
       "apr_display": "22.97% - 114.85% Fees + Emissões",
       "apr_real": "~200.0% a.a. (Consolidado)",
-      "daily_usd": 55.60,
+      "daily_usd": 55.6,
       "monthly_usd": 1668.0,
       "reward_token": "AERO + Taxas",
       "deposit_id": "Principal #7669576 + Secundária #7670917",
@@ -29,7 +29,7 @@
           "composition": "1.9580 WETH + 4,886.36 USDC",
           "range_min": 2622.82,
           "range_max": 2827.09,
-          "daily_usd": 55.00,
+          "daily_usd": 55.0,
           "status": "🟢 IN RANGE (±3.5%)"
         },
         {
@@ -37,9 +37,9 @@
           "label": "Depósito Secundário (Concentrada)",
           "capital_usd": 196.41,
           "composition": "0.0439 WETH + 77.07 USDC",
-          "range_min": 2702.70,
+          "range_min": 2702.7,
           "range_max": 2743.54,
-          "daily_usd": 0.60,
+          "daily_usd": 0.6,
           "status": "🟢 IN RANGE (±0.5%)"
         }
       ]
@@ -67,13 +67,13 @@
     },
     {
       "id": "krystal_virtual_weth",
-      "name": "VIRTUAL / WETH 0.05% (#6146971)",
+      "name": "VIRTUAL / WETH 0.05% (#6155510)",
       "chain": "Base (Layer 2)",
       "protocol": "Uniswap V3 (via Krystal Autopilot)",
       "type": "Posição Foguete (Narrativa IA)",
-      "nft_id": "6146971",
+      "nft_id": "6155510",
       "strategy_id": "103005758",
-      "capital_usd": 397.30,
+      "capital_usd": 397.3,
       "initial_capital_usd": 406.46,
       "wallet_returned_usd": 15.03,
       "total_fees_generated": 13.77,
@@ -84,11 +84,11 @@
       "range_max": 0.00031796,
       "range_unit": "WETH/VIRTUAL",
       "current_price_ref": 0.00031511,
-      "status": "🟢 IN RANGE (Centralizado na Faixa)",
+      "status": "🟢 IN RANGE (Rebalanceado com Sucesso)",
       "automation": "Auto-Rebalance Ativo (Krystal Keeper)",
       "apr_estimated": "295.0% a.a.",
       "daily_usd": 3.29,
-      "monthly_usd": 98.70,
+      "monthly_usd": 98.7,
       "reward_token": "Taxas Puras (WETH + VIRTUAL)"
     },
     {

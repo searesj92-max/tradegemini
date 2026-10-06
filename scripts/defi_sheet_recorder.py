@@ -40,12 +40,13 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
 
     eth_px = market.get("eth", {}).get("price", 2715.0)
     aero_px = market.get("aero", {}).get("price", 0.795)
-    googl_px = market.get("googl", {}).get("price", 345.0)
+    googl_px = market.get("googlc", {}).get("price", 345.0)
+    nvda_px = market.get("nvdac", {}).get("price", 240.73)
     mon_px = market.get("mon", {}).get("price", 0.032)
     usd_brl = float(market.get("usd_brl") or 5.04)
 
     p_info = profits.get("portfolio", {})
-    weth_prof = profits.get("weth_usdc", {})
+    nvda_prof = profits.get("usdc_nvdac", {})
     googl_prof = profits.get("usdc_googlc", {})
     virt_prof = profits.get("virtual_weth", {})
     mon_prof = profits.get("mon_usdc", {})
@@ -53,30 +54,30 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
     # Extract capital from evaluated items
     pos_map = {item["pos"]["id"]: item for item in evaluated_positions}
 
-    weth_item = pos_map.get("weth_usdc")
+    nvda_item = pos_map.get("usdc_nvdac")
     googl_item = pos_map.get("usdc_googlc")
     virt_item = pos_map.get("virtual_weth")
     mon_item = pos_map.get("mon_usdc")
 
-    weth_cap = weth_item["pos"]["capital_usd"] if weth_item else 10378.16
+    nvda_cap = nvda_item["pos"]["capital_usd"] if nvda_item else 10407.47
     googl_cap = googl_item["pos"]["capital_usd"] if googl_item else 977.39
     virt_cap = virt_item["dynamic_val_usd"] if virt_item else 389.15
     mon_cap = mon_item["pos"]["capital_usd"] if mon_item else 331.98
 
-    total_cap_usd = weth_cap + googl_cap + virt_cap + mon_cap
+    total_cap_usd = nvda_cap + googl_cap + virt_cap + mon_cap
     total_cap_brl = total_cap_usd * usd_brl
 
-    total_daily_usd = p_info.get("total_daily_usd", 70.82)
+    total_daily_usd = p_info.get("total_daily_usd", 26.81)
     total_daily_brl = total_daily_usd * usd_brl
 
     # Initial baselines for appreciation/depreciation calculation
-    weth_init_usd = 10378.16
+    nvda_init_usd = 10407.47
     googl_init_usd = 977.39
     virt_init_usd = 406.46
     mon_init_usd = 331.98
-    total_init_usd = weth_init_usd + googl_init_usd + virt_init_usd + mon_init_usd
+    total_init_usd = nvda_init_usd + googl_init_usd + virt_init_usd + mon_init_usd
 
-    weth_diff_usd = weth_cap - weth_init_usd
+    nvda_diff_usd = nvda_cap - nvda_init_usd
     googl_diff_usd = googl_cap - googl_init_usd
     
     # Virtual net includes audit equity if available
@@ -100,23 +101,23 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         ["DETALHAMENTO POR POOL", "", "", "", "", "", ""],
         ["Pool / Ativo", "Rede / Protocolo", "Saldo Alocado (USD)", "Saldo Alocado (BRL)", "Renda Diaria Est. (USD)", "Renda Diaria Est. (BRL)", "Valorizacao / PnL ($)", "Status Faixa", "Identificacao"],
         [
-            "WETH / USDC (Slipstream 50)",
+            "USDC / NVDAc (Slipstream 10)",
             "Base (Aerodrome)",
-            f"{weth_cap:.2f}",
-            f"{weth_cap * usd_brl:.2f}",
-            f"{weth_prof.get('daily_usd', 7.02):.2f}",
-            f"{weth_prof.get('daily_brl', 7.02 * usd_brl):.2f}",
-            f"{weth_diff_usd:+.2f}",
-            weth_item["status_text"].replace("*", "") if weth_item else "🟢 In Range",
-            "Principal #7669576 + Secundária #7670917"
+            f"{nvda_cap:.2f}",
+            f"{nvda_cap * usd_brl:.2f}",
+            f"{nvda_prof.get('daily_usd', 21.09):.2f}",
+            f"{nvda_prof.get('daily_brl', 21.09 * usd_brl):.2f}",
+            f"{nvda_diff_usd:+.2f}",
+            nvda_item["status_text"].replace("*", "") if nvda_item else "🟢 In Range",
+            "Deposit #7718530"
         ],
         [
             "USDC / GOOGLc (Google RWA)",
             "Base (Aerodrome)",
             f"{googl_cap:.2f}",
             f"{googl_cap * usd_brl:.2f}",
-            f"{googl_prof.get('daily_usd', 10.00):.2f}",
-            f"{googl_prof.get('daily_brl', 10.00 * usd_brl):.2f}",
+            f"{googl_prof.get('daily_usd', 0.50):.2f}",
+            f"{googl_prof.get('daily_brl', 0.50 * usd_brl):.2f}",
             f"{googl_diff_usd:+.2f}",
             googl_item["status_text"].replace("*", "") if googl_item else "🟢 In Range",
             "NFT #7508296"
@@ -145,7 +146,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         ],
         ["", "", "", "", "", "", ""],
         ["COTACAO DOS ATIVOS", "", "", "", "", "", ""],
-        ["Ethereum (WETH)", f"${eth_px:,.2f}", "Aerodrome (AERO)", f"${aero_px:.4f}", "Google (GOOGLc)", f"${googl_px:.2f}", "Virtual (VIRTUAL)", f"${virt_audit.get('virtual_usd', 0.86):.4f}", "Monad (MON)", f"${mon_px:.5f}"]
+        ["Nvidia (NVDAc)", f"${nvda_px:,.2f}", "Aerodrome (AERO)", f"${aero_px:.4f}", "Google (GOOGLc)", f"${googl_px:.2f}", "Virtual (VIRTUAL)", f"${virt_audit.get('virtual_usd', 0.86):.4f}", "Monad (MON)", f"${mon_px:.5f}"]
     ]
 
     with open(LATEST_CSV, "w", newline="", encoding="utf-8-sig") as f:
@@ -161,9 +162,9 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         "Rendimento_Diario_Total_BRL",
         "Variacao_Total_USD",
         "Variacao_Total_Pct",
-        "WETH_USDC_Capital_USD",
-        "WETH_USDC_Renda_Diaria_USD",
-        "WETH_USDC_PnL_USD",
+        "NVDA_USDC_Capital_USD",
+        "NVDA_USDC_Renda_Diaria_USD",
+        "NVDA_USDC_PnL_USD",
         "GOOGL_USDC_Capital_USD",
         "GOOGL_USDC_Renda_Diaria_USD",
         "GOOGL_USDC_PnL_USD",
@@ -175,6 +176,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         "MON_USDC_PnL_USD",
         "Preco_ETH_USD",
         "Preco_AERO_USD",
+        "Preco_NVDA_USD",
         "Preco_GOOGL_USD",
         "Preco_VIRTUAL_USD",
         "Preco_MON_USD"
@@ -190,11 +192,11 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         f"{total_daily_brl:.2f}",
         f"{total_diff_usd:.2f}",
         f"{total_diff_pct:.2f}",
-        f"{weth_cap:.2f}",
-        f"{weth_prof.get('daily_usd', 55.60):.2f}",
-        f"{weth_diff_usd:.2f}",
+        f"{nvda_cap:.2f}",
+        f"{nvda_prof.get('daily_usd', 21.09):.2f}",
+        f"{nvda_diff_usd:.2f}",
         f"{googl_cap:.2f}",
-        f"{googl_prof.get('daily_usd', 10.00):.2f}",
+        f"{googl_prof.get('daily_usd', 0.50):.2f}",
         f"{googl_diff_usd:.2f}",
         f"{virt_cap:.2f}",
         f"{virt_prof.get('daily_usd', 3.32):.2f}",
@@ -204,6 +206,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         f"{mon_diff_usd:.2f}",
         f"{eth_px:.2f}",
         f"{aero_px:.4f}",
+        f"{nvda_px:.2f}",
         f"{googl_px:.2f}",
         f"{virt_audit.get('virtual_usd', 0.86):.4f}",
         f"{mon_px:.5f}"

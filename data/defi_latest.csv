@@ -1,16 +1,16 @@
 ﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,,,,
-Atualizado em: 2026-10-06 11:56:09 UTC,,,,,,
+Atualizado em: 2026-10-06 18:59:05 UTC,,,,,,
 ,,,,,,
 RESUMO CONSOLIDADO DA CARTEIRA,,,,,,
-Patrimonio Total (USD),"$12,073.97",Rendimento Diario Total (USD),$19.09/dia,Variacao Total (USD),-20.02,-0.17%
-Patrimonio Total (BRL),"R$ 60,292.56",Rendimento Diario Total (BRL),R$ 95.35/dia,Cotacao Dolar Base,R$ 4.9936,
+Patrimonio Total (USD),"$12,089.07",Rendimento Diario Total (USD),$23.51/dia,Variacao Total (USD),-34.23,-0.28%
+Patrimonio Total (BRL),"R$ 60,155.20",Rendimento Diario Total (BRL),R$ 117.00/dia,Cotacao Dolar Base,R$ 4.9760,
 ,,,,,,
 DETALHAMENTO POR POOL,,,,,,
 Pool / Ativo,Rede / Protocolo,Saldo Alocado (USD),Saldo Alocado (BRL),Renda Diaria Est. (USD),Renda Diaria Est. (BRL),Valorizacao / PnL ($),Status Faixa,Identificacao
-WETH / USDC (Slipstream 50),Base (Aerodrome),10378.16,51824.38,7.02,35.06,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Principal #7669576 + Secundária #7670917
-USDC / GOOGLc (Google RWA),Base (Aerodrome),977.39,4880.69,10.00,49.94,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),NFT #7508296
-VIRTUAL / WETH 0.05%,Base (Krystal Autopilot),386.44,1929.71,0.17,0.87,-14.58,🟡 ATENÇÃO: Apenas +1.26% do teto!,NFT #6159670
-MON / USDC (Concentrated),Monad (Uniswap v4),331.98,1657.78,1.90,9.49,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Pool 0x659b
+USDC / NVDAc (Slipstream 10),Base (Aerodrome),10407.47,51787.57,21.09,104.94,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Deposit #7718530
+USDC / GOOGLc (Google RWA),Base (Aerodrome),977.39,4863.49,0.50,2.49,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),NFT #7508296
+VIRTUAL / WETH 0.05%,Base (Krystal Autopilot),372.23,1852.20,0.02,0.11,-30.09,🟡 ATENÇÃO: Apenas -0.91% do piso!,NFT #6166911
+MON / USDC (Concentrated),Monad (Uniswap v4),331.98,1651.93,1.90,9.45,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Pool 0x659b
 ,,,,,,
 COTACAO DOS ATIVOS,,,,,,
-Ethereum (WETH),"$2,715.40",Aerodrome (AERO),$0.8425,Google (GOOGLc),$345.00,Virtual (VIRTUAL),$0.8528,Monad (MON),$0.02882
+Nvidia (NVDAc),$240.56,Aerodrome (AERO),$0.8108,Google (GOOGLc),$348.52,Virtual (VIRTUAL),$0.8125,Monad (MON),$0.02886

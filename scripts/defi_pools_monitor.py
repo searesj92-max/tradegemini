@@ -48,44 +48,22 @@ CHAT_ID = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CH
 
 POSITIONS = [
     {
-        "id": "weth_usdc",
-        "name": "WETH / USDC (Slipstream 50 - 2 Posições)",
+        "id": "usdc_nvdac",
+        "name": "USDC / NVDAc (Slipstream 10)",
         "chain": "Base (Layer 2)",
         "protocol": "Aerodrome Finance",
-        "type": "Cofre Conservador (Âncora Principal)",
-        "capital_usd": 10378.16,
-        "range_min": 2622.82,
-        "range_max": 2827.09,
-        "unit": "USDC/ETH",
-        "deposit_id": "Principal #7669576 + Secundária #7670917",
-        "sub_positions": [
-            {
-                "id": "#7669576",
-                "label": "Depósito Principal",
-                "capital_usd": 10181.75,
-                "composition": "1.9580 WETH + 4,886.36 USDC",
-                "range_min": 2622.82,
-                "range_max": 2827.09,
-                "apr": "22.97% Fee + Emissões",
-                "daily_usd": 6.41
-            },
-            {
-                "id": "#7670917",
-                "label": "Depósito Secundário",
-                "capital_usd": 196.41,
-                "composition": "0.0439 WETH + 77.07 USDC",
-                "range_min": 2702.70,
-                "range_max": 2743.54,
-                "apr": "114.85% Fee APR",
-                "daily_usd": 0.61
-            }
-        ],
-        "pair_address": "0x4200000000000000000000000000000000000006",
-        "price_key": "eth",
+        "type": "Stocks RWA (Staked no Gauge)",
+        "capital_usd": 10407.47,
+        "range_min": 224.11,
+        "range_max": 260.11,
+        "unit": "USDC/NVDAc",
+        "deposit_id": "Deposit #7718530",
+        "pair_address": "0x853F5f1B92b16714Fe6CDA67CAad0856B83C7ab9",
+        "price_key": "nvdac",
         "price_field": "price",
-        "daily_usd": 7.02,
-        "apr": "22.97% a.a. (Slipstream 50)",
-        "start_iso": "2026-10-05T18:00:00+00:00",
+        "daily_usd": 21.09,
+        "apr": "74.08% a.a. (Medido)",
+        "start_iso": "2026-10-06T18:00:00+00:00",
         "profit_type": "gauge"
     },
     {
@@ -221,6 +199,20 @@ def fetch_live_market_data() -> dict:
     if "googlc" not in data:
         data["googlc"] = {"price": 344.43, "change_24h": 0.0, "tvl": 1700000.0, "vol24h": 11000000.0}
 
+    # NVDAc (Base DexScreener)
+    ds_nvda = fetch_json("https://api.dexscreener.com/latest/dex/pairs/base/0x853F5f1B92b16714Fe6CDA67CAad0856B83C7ab9")
+    if ds_nvda:
+        p = ds_nvda.get("pair") or (ds_nvda.get("pairs") and ds_nvda.get("pairs")[0])
+        if p:
+            data["nvdac"] = {
+                "price": float(p.get("priceUsd", 240.73)),
+                "change_24h": float(p.get("priceChange", {}).get("h24", 0.0)),
+                "tvl": float(p.get("liquidity", {}).get("usd", 0.0)),
+                "vol24h": float(p.get("volume", {}).get("h24", 0.0))
+            }
+    if "nvdac" not in data:
+        data["nvdac"] = {"price": 240.73, "change_24h": 0.0, "tvl": 1849367.0, "vol24h": 22360000.0}
+
     # 3. VIRTUAL / WETH (Base Uniswap V3 DexScreener)
     ds_virt = fetch_json("https://api.dexscreener.com/latest/dex/pairs/base/0x9c087Eb773291e50CF6c6a90ef0F4500e349B903")
     if ds_virt:
@@ -258,17 +250,18 @@ def calculate_profit_metrics(market: dict) -> dict:
     now = datetime.now(timezone.utc)
     aero_px = market.get("aero", {}).get("price", 0.795)
     
-    # 1. WETH / USDC (Slipstream 50 - Somando as duas posições #7669576 + #7670917)
-    t_weth = datetime.fromisoformat("2026-10-05T18:00:00+00:00")
-    hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0)
-    weth_hourly_usd = 7.02 / 24.0
-    weth_usd_accrued = hours_weth * weth_hourly_usd
-    weth_aero_accrued = (weth_usd_accrued / aero_px) if aero_px > 0 else 0.0
+    # 1. NVDAc (Slipstream 10 - Deposit #7718530)
+    t_nvda = datetime.fromisoformat("2026-10-06T18:00:00+00:00")
+    hours_nvda = max((now - t_nvda).total_seconds() / 3600.0, 0)
+    nvda_hourly_usd = 21.09 / 24.0
+    nvda_usd_accrued = hours_nvda * nvda_hourly_usd
+    nvda_aero_accrued = (nvda_usd_accrued * 0.72 / aero_px) if aero_px > 0 else 0.0
 
-    # 2. GOOGLc
+    # 2. GOOGLc (Medição real: ~0.17 AERO + $0.77 USDC acumulados)
     t_googl = datetime.fromisoformat("2026-10-02T17:20:00+00:00")
     hours_googl = max((now - t_googl).total_seconds() / 3600.0, 0)
-    googl_usd_accrued = hours_googl * (10.0 / 24.0)
+    googl_daily_usd = 0.50
+    googl_usd_accrued = hours_googl * (googl_daily_usd / 24.0)
 
     # 3. VIRTUAL / WETH — Lucro Líquido Real (Patrimônio Consolidado vs Aporte Inicial)
     virt_audit = audit_virtual(eth_usd=market.get("eth", {}).get("price"))
@@ -286,32 +279,31 @@ def calculate_profit_metrics(market: dict) -> dict:
     hours_mon = max((now - t_mon).total_seconds() / 3600.0, 0)
     mon_usd_accrued = hours_mon * (1.90 / 24.0)
 
-    total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 7.02 + 10.00 + virt_daily + 1.90
+    total_accrued_usd = nvda_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
+    total_daily_usd = 21.09 + googl_daily_usd + virt_daily + 1.90
 
     usd_brl = market.get("usd_brl") or fetch_usd_brl()
 
     return {
-        "weth_usdc": {
-            "daily_usd": 7.02,
-            "daily_brl": 7.02 * usd_brl,
-            "accrued_usd": weth_usd_accrued,
-            "accrued_brl": weth_usd_accrued * usd_brl,
-            "accrued_aero": weth_aero_accrued,
-            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
-            "apr": "22.97% a.a. (Slipstream 50)",
+        "usdc_nvdac": {
+            "daily_usd": 21.09,
+            "daily_brl": 21.09 * usd_brl,
+            "accrued_usd": nvda_usd_accrued,
+            "accrued_brl": nvda_usd_accrued * usd_brl,
+            "accrued_aero": nvda_aero_accrued,
+            "accrued_text": f"~{nvda_aero_accrued:.2f} AERO (~${nvda_usd_accrued:.2f} USD / R$ {nvda_usd_accrued*usd_brl:.2f})",
+            "apr": "74.08% a.a. (Medido)",
             "sub_daily": {
-                "principal_usd": 6.41,
-                "secundaria_usd": 0.61
+                "principal_usd": 21.09
             }
         },
         "usdc_googlc": {
-            "daily_usd": 10.00,
-            "daily_brl": 10.00 * usd_brl,
+            "daily_usd": googl_daily_usd,
+            "daily_brl": googl_daily_usd * usd_brl,
             "accrued_usd": googl_usd_accrued,
             "accrued_brl": googl_usd_accrued * usd_brl,
             "accrued_text": f"~${googl_usd_accrued:.2f} USD (~R$ {googl_usd_accrued*usd_brl:.2f})",
-            "apr": "3,754.0% a.a. (Staked)"
+            "apr": "63.2% a.a. (Staked)"
         },
         "virtual_weth": {
             "daily_usd": virt_daily,

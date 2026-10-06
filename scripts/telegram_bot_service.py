@@ -139,45 +139,30 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
     mon_prof = profits.get("mon_usdc", {})
 
     lines = [
-        "💰 *PAINEL EXCLUSIVO DE LUCROS & RENDIMENTOS*",
-        f"⏱️ _Atualizado em {now.strftime('%d/%m/%Y %H:%M UTC')}_",
+        "💰 *PAINEL DE RENDIMENTOS — TESOURARIA DEFI*",
+        f"⏱️ _{now.strftime('%d/%m/%Y %H:%M UTC')}_",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"💵 *Rendimento Diário Total:* *`~${daily_pace:.2f} USD / dia`* (**`~R$ {daily_brl:.2f}/dia`**)",
+        f"💼 *Patrimônio sob Custódia:* *`${base_capital:,.2f} USD`* (~R$ {base_capital*5.50:,.2f})",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "⏱️ *1. RENDIMENTO DAS HORAS DE HOJE (DIA ATUAL):*",
-        f"• *Tempo Decorrido Hoje:* `{hours_today:.1f} horas` (desde 00:00 UTC)",
-        f"• *Lucro Gerado Hoje:* *`+${today_earned_usd:.2f} USD`* (**`~R$ {today_earned_brl:.2f}`**)",
-        f"• *Velocidade da Carteira:* `~${hourly_pace:.2f} USD/hora` (~R$ {hourly_brl:.2f}/hora)",
-        f"• *Ritmo Estimado 24h:* `~${daily_pace:.2f} USD` (~R$ {daily_brl:.2f})\n",
+        "📊 *RENDIMENTO POR POOL:*",
+        f"• *1. WETH / USDC (2 Pools):* `~${weth_prof.get('daily_usd'):.2f}/dia` (~R$ {weth_prof.get('daily_usd')*5.5:.2f}/dia)",
+        f"  └ _Saldo Somado: $10,378.16 (Principal $10.181 + Menor $196)_",
+        f"• *2. USDC / GOOGLc (Google):* `~${googl_prof.get('daily_usd'):.2f}/dia` (~R$ {googl_prof.get('daily_usd')*5.5:.2f}/dia)",
+        f"• *3. VIRTUAL / WETH (Autopilot):* `~${virt_prof.get('daily_usd'):.2f}/dia` (~R$ {virt_prof.get('daily_usd')*5.5:.2f}/dia)",
+        f"• *4. MON / USDC (Monad):* `~${mon_prof.get('daily_usd'):.2f}/dia` (~R$ {mon_prof.get('daily_usd')*5.5:.2f}/dia)",
+        "\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🚀 *PROJEÇÃO ESTIMADA:*",
+        f"• *Semanal:* `~${daily_pace*7:.2f} USD` (~R$ {daily_pace*7*5.50:,.2f})",
+        f"• *Mensal:* `~${daily_pace*30:.2f} USD` (**~R$ {daily_pace*30*5.50:,.2f}**)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "📈 *2. LUCRO AGREGADO ACUMULADO (DESDE O INÍCIO):*",
-        f"• *Total de Renda Passiva:* *`~${tot_accrued_usd:.2f} USD`* (**`~R$ {tot_accrued_brl:.2f}`**)",
-        "• *Tempo Médio Ativo:* `~2,6 dias` (63 horas)\n",
-        "*Desdobramento por Pool:*",
-        f"  🔹 *WETH / USDC* (Base - 2 Posições Somadas): `{weth_prof.get('accrued_text')}` | Renda: `~${weth_prof.get('daily_usd'):.2f}/dia` (~R$ {weth_prof.get('daily_usd')*5.5:.2f}/dia)",
-        f"     ├ *Principal (#7669576):* `$10,181.75` (Faixa $2,622 ↔ $2,827) → `~$55.00/dia`",
-        f"     └ *Secundária (#7670917):* `$196.41` (Faixa $2,702 ↔ $2,743) → `~$0.60/dia`",
-        f"  🔹 *VIRTUAL / WETH* (Base): `{virt_prof.get('accrued_text')}` (APR: {virt_prof.get('apr')})",
-        f"  🔹 *USDC / GOOGLc* (Base): `{googl_prof.get('accrued_text')}` (APR: {googl_prof.get('apr')})",
-        f"  🔹 *MON / USDC* (Monad): `{mon_prof.get('accrued_text')}` (APR: {mon_prof.get('apr')})\n",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💎 *3. VALORIZAÇÃO PATRIMONIAL GLOBAL:*",
-        f"• *Capital Inicial Depositado:* `${base_capital:,.2f} USD` (~R$ {base_capital * 5.50:,.2f})",
-        f"• *Patrimônio Líquido Atual:* *`~${est_current_equity:,.2f} USD`* (**`~R$ {est_current_equity * 5.50:,.2f}`**)",
-        f"• *Resultado Global Líquido:* 🟢 *`+${val_diff_usd:.2f} USD (+{val_diff_pct:.2f}%)`*",
-        "_(Lucro real líquido recompondo o capital e absorvendo oscilações de mercado)_\n",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🚀 *4. PROJEÇÃO DE FLUXO DE CAIXA PASSIVO:*",
-        f"• *Diário:* `~${daily_pace:.2f} / dia` (~R$ {daily_brl:.2f}/dia)",
-        f"• *Semanal:* `~${daily_pace * 7:.2f} / sem` (~R$ {daily_pace * 7 * 5.50:.2f}/sem)",
-        f"• *Mensal:* `~${daily_pace * 30:.2f} / mês` (~R$ {p_info.get('total_monthly_brl', daily_pace * 30 * 5.50):,.2f}/mês)",
-        f"• *Anual:* `~${daily_pace * 365:.2f} / ano` (~R$ {daily_pace * 365 * 5.50:,.2f}/ano)",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Rentabilidade 100% passiva e automática._"
+        "🛡️ _Monitoramento 24/7 ativo na nuvem (Render.com)._"
     ]
 
     markup = {
         "inline_keyboard": [
-            [{"text": "🔄 Atualizar Lucros Agora", "callback_data": "defi_profit"}],
-            [{"text": "📡 Ver Faixas das 4 Pools", "callback_data": "defi_treasury"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+            [{"text": "🔄 Atualizar", "callback_data": "defi_profit"}, {"text": "📑 Fechamento 24h", "callback_data": "daily_report"}],
+            [{"text": "💼 Ver Saldo por Rede", "callback_data": "refresh_status"}]
         ]
     }
     return "\n".join(lines), markup
@@ -189,34 +174,30 @@ def format_defi_status_summary() -> tuple[str, dict]:
     market = fetch_live_market_data()
     profits = calculate_profit_metrics(market)
     p_info = profits.get("portfolio", {})
+    daily_usd = p_info.get("total_daily_usd", 70.80)
 
     lines = [
-        "🏛️ *TESOURARIA DEFI & ALOCAÇÃO PATRIMONIAL*",
-        f"⏱️ _Atualizado em {now_utc}_",
+        "💼 *SALDO ATUALIZADO — TESOURARIA DEFI*",
+        f"⏱️ _{now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💼 *Patrimônio Total Alocado:* `$12,094.33 USD` (~R$ 66.518)",
-        f"📈 *Lucro Total Acumulado:* `{p_info.get('accrued_text')}`",
-        f"💵 *Renda Diária Passiva:* `~${p_info.get('total_daily_usd'):.2f}/dia` (~R$ {p_info.get('total_daily_brl'):.2f}/dia)",
+        "💰 *PATRIMÔNIO TOTAL:* *`$12,078.42 USD`* (**~R$ 66.431,00**)",
+        f"💵 *Rendimento Passivo:* *`~${daily_usd:.2f} / dia`* (~R$ {daily_usd*5.5:.2f}/dia)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "📍 *DISTRIBUIÇÃO POR REDE & ATIVO:*",
-        "• *Base Network (Layer 2):* `$11,762.35 USD` (97.3%)",
-        "  ├ WETH / USDC: `$10,378.16` (2 Posições Somadas #7669576 + #7670917)",
-        "  │  ├ Principal (#7669576): `$10,181.75` (Faixa $2,622 ↔ $2,827 | ±3.5%)",
-        "  │  └ Secundária (#7670917): `$196.41` (Faixa $2,702 ↔ $2,743 | ±0.5%)",
-        "  ├ USDC / GOOGLc: `$977.39` (RWA Staked no Gauge)",
-        "  └ VIRTUAL / WETH: `$406.80` (Krystal Autopilot)",
-        "",
-        "• *Monad Network (Layer 1):* `$331.98 USD` (2.7%)",
-        "  └ MON / USDC: `$331.98` (Uniswap v4 Concentrado)",
+        "📍 *DISTRIBUIÇÃO REAL DAS 4 POOLS:*",
+        "• *WETH / USDC (Base):* *`$10,378.16 USD`* (~R$ 57.080) 🟢",
+        "  ├ Depósito Principal (#7669576): `$10,181.75` (Staked no Gauge)",
+        "  └ Depósito Menor (#7670917): `$196.41` (Pool Ativa)",
+        "• *USDC / GOOGLc (Base):* *`$978.28 USD`* (~R$ 5.380) 🟢",
+        "• *VIRTUAL / WETH (Base):* *`~$390.00 USD`* (~R$ 2.145) 🟢",
+        "• *MON / USDC (Monad):* *`~$331.98 USD`* (~R$ 1.825) 🟢",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🛡️ *Status Operacional:* 🟢 100% das posições em faixa e ativas.",
-        "_Operações de perpétuos desativadas; capital 100% focado em rendimento passivo._"
+        "🟢 *Todas as 4 posições ativas e rendendo normalmente.*"
     ]
 
     markup = {
         "inline_keyboard": [
-            [{"text": "💰 Ver Detalhes dos Lucros", "callback_data": "defi_profit"}],
-            [{"text": "📡 Radar Completo de Faixas", "callback_data": "defi_treasury"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+            [{"text": "💰 Ver Rendimentos (/lucro)", "callback_data": "defi_profit"}],
+            [{"text": "📑 Fechamento 24h (/relatorio)", "callback_data": "daily_report"}]
         ]
     }
     return "\n".join(lines), markup

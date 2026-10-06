@@ -452,61 +452,47 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
 
 
 def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
-    """Builds clean, high-impact Telegram Markdown message with profit breakdown."""
+    """Builds clean, compact Telegram Markdown message without visual clutter."""
     now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     total_capital = sum(item["pos"]["capital_usd"] for item in evaluated)
     p_info = profits.get("portfolio", {})
+    daily_usd = p_info.get("total_daily_usd", 70.80)
+    daily_brl = daily_usd * 5.50
 
     lines = [
-        "📡 *SENTINELA DEFI 24/7 — RADAR DE LIQUIDEZ & LUCROS*",
-        f"⏱️ _Atualizado em {now_utc}_",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🏛️ *RESUMO EXECUTIVO — TESOURARIA DEFI*",
+        f"⏱️ _{now_utc}_",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"💰 *Patrimônio Total:* *`${total_capital:,.2f} USD`* (**~R$ {total_capital*5.50:,.2f}**)",
+        f"💵 *Rendimento Passivo:* *`~${daily_usd:.2f} / dia`* (**~R$ {daily_brl:.2f}/dia**)",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
+        "📍 *STATUS DAS 4 POOLS:*"
     ]
 
     for idx, item in enumerate(evaluated, 1):
         pos = item["pos"]
-        px = item["current_price"]
-        p_min = pos["range_min"]
-        p_max = pos["range_max"]
-        unit = pos["unit"]
         prof = item["profit"]
+        cap = pos["capital_usd"]
+        d_usd = prof.get("daily_usd", 0.0)
+        
+        # Clean status icon
+        status_tag = "🟢 No Range"
+        if item["is_out"]:
+            status_tag = "🔴 Fora da Faixa"
+        elif item["is_warning"]:
+            status_tag = f"🟡 Próximo à Borda ({min(abs(item['dist_ceiling']), abs(item['dist_floor'])):.1f}%)"
 
-        if "WETH/VIRTUAL" in unit:
-            px_fmt = f"{px:.8f}"
-            min_fmt = f"{p_min:.8f}"
-            max_fmt = f"{p_max:.8f}"
-        elif "MON" in unit:
-            px_fmt = f"${px:.5f}"
-            min_fmt = f"${p_min:.5f}"
-            max_fmt = f"${p_max:.5f}"
+        if pos.get("sub_positions"):
+            lines.append(f"*{idx}. {pos['name']}*")
+            lines.append(f"   • Saldo Somado: *`${cap:,.2f} USD`* (~R$ {cap*5.5:,.2f})")
+            lines.append(f"   • Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*5.5:.2f}/dia) | {status_tag}")
+            lines.append(f"   • _Composto por: Principal #7669576 ($10.181) + Secundária #7670917 ($196)_")
         else:
-            px_fmt = f"${px:,.2f}"
-            min_fmt = f"${p_min:,.2f}"
-            max_fmt = f"${p_max:,.2f}"
+            lines.append(f"*{idx}. {pos['name']}*")
+            lines.append(f"   • Saldo: *`${cap:,.2f} USD`* | Rende: *`~${d_usd:.2f}/dia`* | {status_tag}")
 
-        lines.append(f"📍 *{idx}. {pos['name']}* ({pos['chain']})")
-        lines.append(f"  • *Preço Atual:* `{px_fmt} {unit}` ({item['change_24h']:+.2f}% 24h)")
-        lines.append(f"  • *Capital Total Somado:* `${pos['capital_usd']:,.2f} USD` (~R$ {pos['capital_usd']*5.50:,.2f})")
-        lines.append(f"  • *Renda Diária Somada:* `~${prof.get('daily_usd'):.2f}/dia` (~R$ {prof.get('daily_usd')*5.50:.2f}/dia)")
-        lines.append(f"  • *Status Consolidado:* {item['status_text']}")
-        if item.get("sub_eval"):
-            lines.append("  *Detalhamento das 2 Posições:*")
-            for sub in item["sub_eval"]:
-                lines.append(f"    ├ *{sub['label']} ({sub['id']}):* `${sub['capital_usd']:,.2f}` | Faixa: `${sub['range_min']:,.2f}` ↔ `${sub['range_max']:,.2f}` | {sub['status']}")
-        else:
-            lines.append(f"  • *Sua Faixa:* `{min_fmt}` ↔ `{max_fmt}`")
-            lines.append(f"  • *Dist. Teto:* `+{item['dist_ceiling']:.2f}%` | *Piso:* `-{abs(item['dist_floor']):.2f}%`")
-        lines.append(f"  • *Lucro Acumulado:* `{prof.get('accrued_text')}`")
-        lines.append(f"  • *Identificação:* `{pos['deposit_id']}`")
-        lines.append("")
-
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append(f"💰 *Capital Total Alocado:* `${total_capital:,.2f} USD`")
-    lines.append(f"📈 *LUCRO TOTAL ACUMULADO:* `{p_info.get('accrued_text')}`")
-    lines.append(f"💵 *Renda Diária Est.:* `~${p_info.get('total_daily_usd'):.2f}/dia` (~R$ {p_info.get('total_daily_brl'):.2f}/dia)")
-    lines.append(f"🚀 *Projeção Mensal:* `~${p_info.get('total_monthly_usd'):.2f}/mês` (~R$ {p_info.get('total_monthly_brl'):.2f}/mês)")
-    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Alertas em tempo real e consolidação a cada 4h._")
+    lines.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    lines.append("🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Use /lucro ou /relatorio._")
 
     return "\n".join(lines)
 

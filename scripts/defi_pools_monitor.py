@@ -160,9 +160,35 @@ def fetch_json(url: str, timeout: int = 8) -> dict | None:
         return None
 
 
+_USD_BRL_CACHE = {"rate": 5.04, "ts": 0.0}
+
+def fetch_usd_brl() -> float:
+    """Fetch live real-time USD/BRL exchange rate (AwesomeAPI with Binance fallback)."""
+    now = time.time()
+    if now - _USD_BRL_CACHE["ts"] < 60:
+        return _USD_BRL_CACHE["rate"]
+    try:
+        req = urllib.request.Request("https://economia.awesomeapi.com.br/last/USD-BRL", headers={"User-Agent": "Mozilla/5.0"})
+        res = json.loads(urllib.request.urlopen(req, timeout=5).read())
+        rate = float(res["USDBRL"]["bid"])
+        _USD_BRL_CACHE["rate"] = rate
+        _USD_BRL_CACHE["ts"] = now
+        return rate
+    except Exception:
+        try:
+            req = urllib.request.Request("https://api.binance.com/api/v3/ticker/price?symbol=USDTBRL", headers={"User-Agent": "Mozilla/5.0"})
+            res = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            rate = float(res["price"])
+            _USD_BRL_CACHE["rate"] = rate
+            _USD_BRL_CACHE["ts"] = now
+            return rate
+        except Exception:
+            return _USD_BRL_CACHE["rate"]
+
+
 def fetch_live_market_data() -> dict:
-    """Fetch live market data across CoinGecko and DexScreener."""
-    data = {}
+    """Fetch live market data across CoinGecko, DexScreener, and Real-Time FX."""
+    data = {"usd_brl": fetch_usd_brl()}
 
     # 1. ETH & AERO from CoinGecko
     cg = fetch_json("https://api.coingecko.com/api/v3/simple/price?ids=ethereum,aerodrome-finance&vs_currencies=usd&include_24hr_change=true")
@@ -263,14 +289,16 @@ def calculate_profit_metrics(market: dict) -> dict:
     total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
     total_daily_usd = 55.60 + 10.00 + virt_daily + 1.90
 
+    usd_brl = market.get("usd_brl") or fetch_usd_brl()
+
     return {
         "weth_usdc": {
             "daily_usd": 55.60,
-            "daily_brl": 55.60 * 5.50,
+            "daily_brl": 55.60 * usd_brl,
             "accrued_usd": weth_usd_accrued,
-            "accrued_brl": weth_usd_accrued * 5.50,
+            "accrued_brl": weth_usd_accrued * usd_brl,
             "accrued_aero": weth_aero_accrued,
-            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*5.5:.2f})",
+            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
             "apr": "~200.0% a.a. (Consolidado)",
             "sub_daily": {
                 "principal_usd": 55.00,
@@ -279,38 +307,38 @@ def calculate_profit_metrics(market: dict) -> dict:
         },
         "usdc_googlc": {
             "daily_usd": 10.00,
-            "daily_brl": 10.00 * 5.50,
+            "daily_brl": 10.00 * usd_brl,
             "accrued_usd": googl_usd_accrued,
-            "accrued_brl": googl_usd_accrued * 5.50,
-            "accrued_text": f"~${googl_usd_accrued:.2f} USD (~R$ {googl_usd_accrued*5.5:.2f})",
+            "accrued_brl": googl_usd_accrued * usd_brl,
+            "accrued_text": f"~${googl_usd_accrued:.2f} USD (~R$ {googl_usd_accrued*usd_brl:.2f})",
             "apr": "3,754.0% a.a. (Staked)"
         },
         "virtual_weth": {
             "daily_usd": virt_daily,
-            "daily_brl": virt_daily * 5.50,
+            "daily_brl": virt_daily * usd_brl,
             "accrued_usd": virt_net_usd,
-            "accrued_brl": virt_net_usd * 5.50,
+            "accrued_brl": virt_net_usd * usd_brl,
             "net_pct": virt_net_pct,
-            "accrued_text": f"{'+' if virt_net_usd >= 0 else ''}${virt_net_usd:.2f} USD ({'+' if virt_net_pct >= 0 else ''}{virt_net_pct:.2f}%) (~R$ {virt_net_usd*5.5:.2f}) [Líquido]",
+            "accrued_text": f"{'+' if virt_net_usd >= 0 else ''}${virt_net_usd:.2f} USD ({'+' if virt_net_pct >= 0 else ''}{virt_net_pct:.2f}%) (~R$ {virt_net_usd*usd_brl:.2f}) [Líquido]",
             "apr": virt_apr,
             "audit": virt_audit
         },
         "mon_usdc": {
             "daily_usd": 1.90,
-            "daily_brl": 1.90 * 5.50,
+            "daily_brl": 1.90 * usd_brl,
             "accrued_usd": mon_usd_accrued,
-            "accrued_brl": mon_usd_accrued * 5.50,
-            "accrued_text": f"~${mon_usd_accrued:.2f} USD (~R$ {mon_usd_accrued*5.5:.2f})",
+            "accrued_brl": mon_usd_accrued * usd_brl,
+            "accrued_text": f"~${mon_usd_accrued:.2f} USD (~R$ {mon_usd_accrued*usd_brl:.2f})",
             "apr": "208.81% a.a."
         },
         "portfolio": {
             "total_daily_usd": total_daily_usd,
-            "total_daily_brl": total_daily_usd * 5.50,
+            "total_daily_brl": total_daily_usd * usd_brl,
             "total_monthly_usd": total_daily_usd * 30,
-            "total_monthly_brl": total_daily_usd * 30 * 5.50,
+            "total_monthly_brl": total_daily_usd * 30 * usd_brl,
             "total_accrued_usd": total_accrued_usd,
-            "total_accrued_brl": total_accrued_usd * 5.50,
-            "accrued_text": f"~${total_accrued_usd:.2f} USD (~R$ {total_accrued_usd*5.5:.2f})"
+            "total_accrued_brl": total_accrued_usd * usd_brl,
+            "accrued_text": f"~${total_accrued_usd:.2f} USD (~R$ {total_accrued_usd*usd_brl:.2f})"
         }
     }
 
@@ -457,14 +485,16 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
     total_capital = sum(item["pos"]["capital_usd"] for item in evaluated)
     p_info = profits.get("portfolio", {})
     daily_usd = p_info.get("total_daily_usd", 70.80)
-    daily_brl = daily_usd * 5.50
+    usd_brl = fetch_usd_brl()
+    daily_brl = daily_usd * usd_brl
 
     lines = [
         "🏛️ *RESUMO EXECUTIVO — TESOURARIA DEFI*",
         f"⏱️ _{now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"💰 *Patrimônio Total:* *`${total_capital:,.2f} USD`* (**~R$ {total_capital*5.50:,.2f}**)",
+        f"💰 *Patrimônio Total:* *`${total_capital:,.2f} USD`* (**~R$ {total_capital*usd_brl:,.2f}**)",
         f"💵 *Rendimento Passivo:* *`~${daily_usd:.2f} / dia`* (**~R$ {daily_brl:.2f}/dia**)",
+        f"💵 *Dólar Referência:* `R$ {usd_brl:.4f}` (Tempo Real)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "📍 *STATUS DAS 4 POOLS:*"
     ]
@@ -484,12 +514,12 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
 
         if pos.get("sub_positions"):
             lines.append(f"*{idx}. {pos['name']}*")
-            lines.append(f"   • Saldo Somado: *`${cap:,.2f} USD`* (~R$ {cap*5.5:,.2f})")
-            lines.append(f"   • Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*5.5:.2f}/dia) | {status_tag}")
+            lines.append(f"   • Saldo Somado: *`${cap:,.2f} USD`* (~R$ {cap*usd_brl:,.2f})")
+            lines.append(f"   • Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*usd_brl:.2f}/dia) | {status_tag}")
             lines.append(f"   • _Composto por: Principal #7669576 ($10.181) + Secundária #7670917 ($196)_")
         else:
             lines.append(f"*{idx}. {pos['name']}*")
-            lines.append(f"   • Saldo: *`${cap:,.2f} USD`* | Rende: *`~${d_usd:.2f}/dia`* | {status_tag}")
+            lines.append(f"   • Saldo: *`${cap:,.2f} USD`* (~R$ {cap*usd_brl:,.2f}) | Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*usd_brl:.2f}/dia) | {status_tag}")
 
     lines.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
     lines.append("🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Use /lucro ou /relatorio._")

@@ -161,22 +161,38 @@ def audit_virtual(eth_usd: float | None = None, force: bool = False) -> dict | N
         px = sqrt_p ** 2  # WETH per VIRTUAL
 
         # 2) every tx touching the wallet with a Uniswap position NFT
-        items = _paginated(f"https://base.blockscout.com/api/v2/addresses/{WALLET}/token-transfers")
         nft_txs: dict[str, str] = {}
         token_ids: set[int] = set()
         dust_v = dust_w = 0.0
         tx_tokens: dict[str, list] = {}
-        for it in items:
-            sym = (it.get("token") or {}).get("symbol")
-            h = it.get("transaction_hash")
-            if not h:
-                continue
-            tx_tokens.setdefault(h, []).append(it)
-            if sym == "UNI-V3-POS":
-                tid = int((it.get("total") or {}).get("token_id") or 0)
-                if tid > MIN_TOKEN_ID:
-                    token_ids.add(tid)
-                    nft_txs[h] = it.get("timestamp") or ""
+        try:
+            items = _paginated(f"https://base.blockscout.com/api/v2/addresses/{WALLET}/token-transfers")
+            for it in items:
+                sym = (it.get("token") or {}).get("symbol")
+                h = it.get("transaction_hash")
+                if not h:
+                    continue
+                tx_tokens.setdefault(h, []).append(it)
+                if sym == "UNI-V3-POS":
+                    tid = int((it.get("total") or {}).get("token_id") or 0)
+                    if tid > MIN_TOKEN_ID:
+                        token_ids.add(tid)
+                        nft_txs[h] = it.get("timestamp") or ""
+        except Exception as e:
+            # Blockscout rate-limit or 403 fallback
+            pass
+
+        # If token_ids is empty, discover tokens directly on-chain via NPM RPC
+        if not token_ids:
+            bal_hex = _rpc_call(NPM, "0x70a08231" + WALLET[2:].lower().zfill(64))
+            if bal_hex:
+                bal = int(bal_hex, 16)
+                for i in range(bal):
+                    tid_hex = _rpc_call(NPM, "0x2f745c59" + WALLET[2:].lower().zfill(64) + hex(i)[2:].zfill(64))
+                    if tid_hex:
+                        tid = int(tid_hex, 16)
+                        if tid > MIN_TOKEN_ID:
+                            token_ids.add(tid)
         # dust returned by Krystal inside position txs
         for h in nft_txs:
             for it in tx_tokens.get(h, []):

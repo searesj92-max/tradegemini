@@ -42,7 +42,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
     aero_px = market.get("aero", {}).get("price", 0.795)
     googl_px = market.get("googl", {}).get("price", 345.0)
     mon_px = market.get("mon", {}).get("price", 0.032)
-    usd_brl = 5.50
+    usd_brl = float(market.get("usd_brl") or 5.04)
 
     p_info = profits.get("portfolio", {})
     weth_prof = profits.get("weth_usdc", {})
@@ -95,7 +95,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         ["", "", "", "", "", "", ""],
         ["RESUMO CONSOLIDADO DA CARTEIRA", "", "", "", "", "", ""],
         ["Patrimonio Total (USD)", f"${total_cap_usd:,.2f}", "Rendimento Diario Total (USD)", f"${total_daily_usd:,.2f}/dia", "Variacao Total (USD)", f"{total_diff_usd:+,.2f}", f"{total_diff_pct:+.2f}%"],
-        ["Patrimonio Total (BRL)", f"R$ {total_cap_brl:,.2f}", "Rendimento Diario Total (BRL)", f"R$ {total_daily_brl:,.2f}/dia", "Cotacao Dolar Base", f"R$ {usd_brl:.2f}", ""],
+        ["Patrimonio Total (BRL)", f"R$ {total_cap_brl:,.2f}", "Rendimento Diario Total (BRL)", f"R$ {total_daily_brl:,.2f}/dia", "Cotacao Dolar Base", f"R$ {usd_brl:.4f}", ""],
         ["", "", "", "", "", "", ""],
         ["DETALHAMENTO POR POOL", "", "", "", "", "", ""],
         ["Pool / Ativo", "Rede / Protocolo", "Saldo Alocado (USD)", "Saldo Alocado (BRL)", "Renda Diaria Est. (USD)", "Renda Diaria Est. (BRL)", "Valorizacao / PnL ($)", "Status Faixa", "Identificacao"],

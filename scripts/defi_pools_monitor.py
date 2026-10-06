@@ -780,6 +780,7 @@ def run_sentinel_loop():
     print("[*] Iniciando Sentinela DeFi 24/7 com Módulo de Lucro em modo contínuo...")
 
     last_routine_report = 0.0
+    last_sheet_snapshot = 0.0
     alert_cooldowns: dict[str, float] = {}  # pos_id -> timestamp of last urgent alert
 
     ROUTINE_INTERVAL_SEC = 4 * 3600  # Every 4 hours
@@ -801,6 +802,16 @@ def run_sentinel_loop():
             market = fetch_live_market_data()
             evaluated, has_urgent, profits = evaluate_positions(market)
             now = time.time()
+
+            # Record 10-minute snapshot for Google Sheets & Excel
+            if now - last_sheet_snapshot >= 600 or last_sheet_snapshot == 0.0:
+                try:
+                    from defi_sheet_recorder import record_snapshot
+                    record_snapshot(evaluated, profits, market)
+                    last_sheet_snapshot = now
+                    print("[*] Snapshot da planilha gravado com sucesso (10 min).")
+                except Exception as e:
+                    print(f"[-] Erro ao gravar snapshot da planilha: {e}")
 
             # 1. Check for urgent alerts on each position
             for item in evaluated:
@@ -833,6 +844,12 @@ if __name__ == "__main__":
     eval_list, urgent, prof_data = evaluate_positions(market_data)
     rep = generate_consolidated_report(eval_list, prof_data)
     print(rep)
+
+    try:
+        from defi_sheet_recorder import record_snapshot
+        record_snapshot(eval_list, prof_data, market_data)
+    except Exception:
+        pass
 
     if "--send" in sys.argv:
         send_telegram(rep)

@@ -356,6 +356,53 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # DEFI SPREADSHEET LIVE CSV ENDPOINTS (Google Sheets =IMPORTDATA & Excel)
+        if parsed.path in ("/api/defi/sheet.csv", "/api/defi/live.csv"):
+            csv_path = ROOT / "data" / "defi_latest.csv"
+            if not csv_path.exists():
+                try:
+                    from defi_sheet_recorder import record_snapshot
+                    from defi_pools_monitor import fetch_live_market_data, evaluate_positions
+                    m = fetch_live_market_data()
+                    e, _, p = evaluate_positions(m)
+                    record_snapshot(e, p, m)
+                except Exception:
+                    pass
+
+            content = csv_path.read_bytes() if csv_path.exists() else b""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'inline; filename="defi_latest.csv"')
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+            return
+
+        if parsed.path in ("/api/defi/history.csv", "/api/defi/historico.csv"):
+            csv_path = ROOT / "data" / "defi_history.csv"
+            content = csv_path.read_bytes() if csv_path.exists() else b""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="defi_history.csv"')
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+            return
+
+        if parsed.path in ("/api/defi/daily.csv", "/api/defi/diario.csv"):
+            csv_path = ROOT / "data" / "defi_daily_summary.csv"
+            content = csv_path.read_bytes() if csv_path.exists() else b""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="defi_daily.csv"')
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+            return
+
         if parsed.path == "/api/status":
             try:
                 executor = HyperliquidExecutor()

@@ -85,6 +85,49 @@ def send_message(chat_id: str | int, text: str, reply_markup: dict = None) -> di
     return res
 
 
+def send_document(chat_id: str | int, file_path: Path | str, caption: str = None) -> dict:
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or TOKEN
+    if not bot_token:
+        return {"ok": False, "error": "Token não configurado"}
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+    p = Path(file_path)
+    if not p.exists():
+        return {"ok": False, "error": f"Arquivo {file_path} não encontrado"}
+
+    file_bytes = p.read_bytes()
+    filename = p.name
+    boundary = "----WebKitFormBoundary" + os.urandom(16).hex()
+
+    body = bytearray()
+    body.extend(f"--{boundary}\r\n".encode("utf-8"))
+    body.extend(f'Content-Disposition: form-data; name="chat_id"\r\n\r\n{chat_id}\r\n'.encode("utf-8"))
+    if caption:
+        body.extend(f"--{boundary}\r\n".encode("utf-8"))
+        body.extend(f'Content-Disposition: form-data; name="caption"\r\n\r\n{caption}\r\n'.encode("utf-8"))
+    body.extend(f"--{boundary}\r\n".encode("utf-8"))
+    body.extend(f'Content-Disposition: form-data; name="document"; filename="{filename}"\r\n'.encode("utf-8"))
+    body.extend(b"Content-Type: text/csv; charset=utf-8\r\n\r\n")
+    body.extend(file_bytes)
+    body.extend(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+
+    req = urllib.request.Request(
+        url,
+        data=bytes(body),
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "User-Agent": "BotradeDesk/2.0"
+        },
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=35) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        print(f"[-] Erro ao enviar documento Telegram: {e}")
+        return {"ok": False, "error": str(e)}
+
+
 def edit_message(chat_id: str | int, message_id: int, text: str, reply_markup: dict = None) -> dict:
     data = {
         "chat_id": chat_id,
@@ -315,6 +358,57 @@ def format_virtual_rebalance_status() -> tuple[str, dict]:
     return text, markup
 
 
+def handle_planilha_command(chat_id: int | str):
+    """Generates on-demand spreadsheet and provides Google Sheets live link + Excel files."""
+    try:
+        from defi_sheet_recorder import record_snapshot
+        m = fetch_live_market_data()
+        e, _, p = evaluate_positions(m)
+        record_snapshot(e, p, m)
+    except Exception as e:
+        print(f"[-] Erro ao atualizar snapshot para /planilha: {e}")
+
+    sheet_url = "https://botrade-hyperliquid.onrender.com/api/defi/sheet.csv"
+    history_url = "https://botrade-hyperliquid.onrender.com/api/defi/history.csv"
+
+    msg = (
+        "📊 *PLANILHA AO VIVO DE RENDIMENTOS & PNL*\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "Sua planilha é atualizada automaticamente **a cada 10 minutos** com:\n"
+        "• Saldo e capital de cada uma das 4 pools\n"
+        "• Rendimento passivo acumulado e diário\n"
+        "• Valorização ou desvalorização (PnL patrimonial)\n"
+        "• Cotações em tempo real de ETH, AERO, GOOGL, VIRTUAL e MON\n\n"
+        "🟢 *OPÇÃO 1: GOOGLE PLANILHAS (AO VIVO NO NAVEGADOR/CELULAR)*\n"
+        "1. Abra uma nova planilha no Google Sheets (`sheets.new`)\n"
+        "2. Na célula **A1**, cole a fórmula abaixo:\n\n"
+        f"`=IMPORTDATA(\"{sheet_url}\")`\n\n"
+        "_Pronto! O Google Sheets atualizará sozinho a cada ciclo sem precisar de nenhum conector externo pago!_\n\n"
+        "📁 *OPÇÃO 2: ARQUIVOS EXCEL / CSV EM ANEXO*\n"
+        "Estou enviando abaixo os 2 arquivos para você abrir direto no Excel:\n"
+        "• `defi_latest.csv`: Painel com resumo atual das 4 pools\n"
+        "• `defi_history.csv`: Histórico completo minuto a minuto"
+    )
+
+    markup = {
+        "inline_keyboard": [
+            [{"text": "🌐 Abrir Planilha Online (Web)", "url": sheet_url}],
+            [{"text": "📈 Baixar Histórico Completo", "url": history_url}],
+            [{"text": "💰 Ver Lucros de Hoje", "callback_data": "defi_profit"}]
+        ]
+    }
+    send_message(chat_id, msg, markup)
+
+    # Send document files directly
+    latest_file = ROOT / "data" / "defi_latest.csv"
+    history_file = ROOT / "data" / "defi_history.csv"
+
+    if latest_file.exists():
+        send_document(chat_id, latest_file, caption="📊 Painel Atualizado das 4 Pools (defi_latest.csv)")
+    if history_file.exists():
+        send_document(chat_id, history_file, caption="📈 Histórico 10min de Rendimentos & PnL (defi_history.csv)")
+
+
 def handle_command(chat_id: int | str, text: str, message_id: int = None):
     cmd_parts = text.strip().split()
     cmd = cmd_parts[0].lower()
@@ -325,6 +419,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         msg = (
             "🏛️ *SENTINELA & TESOURARIA DEFI BOTRADE*\n\n"
             "Acompanhe o rendimento passivo e o radar de faixas das suas 4 pools em tempo real:\n\n"
+            "• `/planilha` ou `planilha` - 📊 Planilha ao vivo (Google Sheets automático e arquivos Excel)\n"
             "• `/lucro` ou `lucro` - 💰 Mostra o lucro de hoje, lucro acumulado total e valorização patrimonial\n"
             "• `/defi` ou `/pools` - 🏦 Raio-X completo das 4 pools com faixas de liquidez e distâncias\n"
             "• `/virtual` ou `virtual` - 🔄 Raio-X do par VIRTUAL (rebalanceamento, alta/queda e taxas)\n"
@@ -334,6 +429,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         )
         markup = {
             "inline_keyboard": [
+                [{"text": "📊 Planilha ao Vivo (Sheets/Excel)", "callback_data": "defi_sheet"}],
                 [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
                 [{"text": "📡 Radar das 4 Pools & Faixas", "callback_data": "defi_treasury"}],
                 [{"text": "🔄 Posição VIRTUAL (Autopilot)", "callback_data": "virtual_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
@@ -342,37 +438,42 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, msg, markup)
         return
 
-    # 2. LUCRO DEDICADO (HOJE + ACUMULADO + VALORIZAÇÃO)
+    # 2. PLANILHA AO VIVO (GOOGLE SHEETS & EXCEL)
+    if cmd in ("/planilha", "/excel", "/csv", "/sheets", "/sheet", "planilha", "excel", "csv", "sheets", "sheet") or "planilha" in text.lower():
+        handle_planilha_command(chat_id)
+        return
+
+    # 3. LUCRO DEDICADO (HOJE + ACUMULADO + VALORIZAÇÃO)
     if cmd in ("/lucro", "/lucros", "/rendimento", "/rendimentos", "/ganhos", "lucro", "lucros", "rendimento", "rendimentos", "ganhos", "quanto rendeu", "lucro de hoje") or "lucro" in text.lower() or "rendeu" in text.lower():
         text_out, markup = format_defi_profit_dashboard()
         send_message(chat_id, text_out, markup)
         return
 
-    # 3. DEFI TREASURY / POOLS RADAR
+    # 4. DEFI TREASURY / POOLS RADAR
     if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "defi", "tesouraria", "pools", "pool") or "pool" in text.lower():
         text_out, markup = format_defi_message()
         send_message(chat_id, text_out, markup)
         return
 
-    # 4. SALDO & STATUS DE ALOCAÇÃO
+    # 5. SALDO & STATUS DE ALOCAÇÃO
     if cmd in ("/saldo", "/status", "/posicoes", "/posições", "saldo", "status", "posicoes", "posições"):
         text_out, markup = format_defi_status_summary()
         send_message(chat_id, text_out, markup)
         return
 
-    # 5. DIAGNÓSTICO VIRTUAL / REBALANCEAMENTO KRYSTAL
+    # 6. DIAGNÓSTICO VIRTUAL / REBALANCEAMENTO KRYSTAL
     if cmd in ("/virtual", "/krystal", "/rebalance", "virtual", "krystal", "rebalance", "rebalanceamento"):
         text_out, markup = format_virtual_rebalance_status()
         send_message(chat_id, text_out, markup)
         return
 
-    # 6. RELATÓRIO 24H
+    # 7. RELATÓRIO 24H
     if cmd in ("/relatorio", "/report", "/resumo", "relatorio", "resumo"):
         text_out, markup = format_daily_report_message()
         send_message(chat_id, text_out, markup)
         return
 
-    # 6. COMANDOS DESATIVADOS (HYPERLIQUID PERPS)
+    # 8. COMANDOS DESATIVADOS (HYPERLIQUID PERPS)
     if cmd in ("/funding", "/pausar", "/retomar", "/colher", "/fechar", "/fechar_todas", "/panic", "/sniper"):
         msg = (
             "ℹ️ *Operações de Trading Perpétuo Desativadas*\n\n"
@@ -446,11 +547,17 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, text_out, markup)
         return
 
+    if data == "defi_sheet":
+        answer_callback(cq_id, "Gerando links e arquivos da planilha...")
+        handle_planilha_command(chat_id)
+        return
+
     answer_callback(cq_id)
 
 
 def register_bot_commands():
     commands = [
+        {"command": "planilha", "description": "📊 Planilha ao vivo (Google Sheets & Excel)"},
         {"command": "lucro", "description": "💰 Lucros de hoje, acumulado e valorização"},
         {"command": "defi", "description": "🏦 Tesouraria DeFi e radar das 4 pools"},
         {"command": "virtual", "description": "🔄 Raio-X do rebalanceamento VIRTUAL & PnL"},

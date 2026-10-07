@@ -369,6 +369,42 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # REAL-TIME 3-EXCHANGE ARBITRAGE DASHBOARD (Aerodrome vs Uniswap v3 vs PancakeSwap)
+        if parsed.path in ("/arbitragem", "/arbitragem.html", "/arb", "/radar", "/arbitrage"):
+            arb_path = DASHBOARD_DIR / "arbitragem.html"
+            if arb_path.exists():
+                content = arb_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        # ULTRA-FAST ARBITRAGE LIVE API ENDPOINT (Zero blocking, served from RAM)
+        if parsed.path in ("/api/arbitrage/live", "/api/defi/arbitrage.json", "/api/arb/live"):
+            try:
+                from defi_arbitrage_engine import get_arbitrage_live_snapshot
+                query = parse_qs(parsed.query)
+                force = query.get("force", ["false"])[0].lower() in ("true", "1", "yes")
+                data = get_arbitrage_live_snapshot(force=force)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}).encode("utf-8"))
+                return
+
         if parsed.path == "/api/defi/data.json":
             try:
                 from defi_sheet_recorder import record_snapshot, get_sheet_json
@@ -672,6 +708,26 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
 def main():
     port = int(os.environ.get("PORT", 8765))
     server_address = ("0.0.0.0", port)
+
+    # Start background cache refresher for lowest latency arbitrage (< 5ms response from RAM)
+    try:
+        import threading
+        def _bg_arbitrage_worker():
+            time.sleep(3)
+            while True:
+                try:
+                    from defi_arbitrage_engine import get_arbitrage_live_snapshot
+                    get_arbitrage_live_snapshot(force=True)
+                except Exception:
+                    pass
+                time.sleep(5)
+
+        t = threading.Thread(target=_bg_arbitrage_worker, daemon=True, name="ArbCacheWorker")
+        t.start()
+        print("[*] Worker de Cache de Arbitragem em RAM iniciado (Baixa Latência Ativa).")
+    except Exception as e:
+        print(f"[!] Erro ao iniciar ArbCacheWorker: {e}")
+
     httpd = HTTPServer(server_address, BotradeDashboardHandler)
     print(f"[*] Botrade Cockpit Server rodando em http://localhost:{port}/ (e na rede local)")
     httpd.serve_forever()

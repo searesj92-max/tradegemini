@@ -524,8 +524,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         rep = format_radar_report(opps)
         markup = {
             "inline_keyboard": [
-                [{"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}],
-                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}]
+                [{"text": "🌐 Abrir Cockpit em Tela", "url": "https://botrade-hyperliquid.onrender.com/arbitragem"}, {"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}],
+                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}]
             ]
         }
         send_message(chat_id, rep, markup)
@@ -553,8 +553,8 @@ def handle_callback_query(cq: dict):
         rep = format_radar_report(opps)
         markup = {
             "inline_keyboard": [
-                [{"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}],
-                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}]
+                [{"text": "🌐 Abrir Cockpit em Tela", "url": "https://botrade-hyperliquid.onrender.com/arbitragem"}, {"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}],
+                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}]
             ]
         }
         if msg_id:

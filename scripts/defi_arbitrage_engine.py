@@ -478,9 +478,200 @@ def run_daemon_loop(interval_sec: int = 15):
             time.sleep(interval_sec)
 
 
+def fetch_all_dex_candidates() -> list[dict]:
+    """Fetches and normalizes active liquidity pools across all 3 DEXes for monitored tokens."""
+    all_candidates = []
+    for sym, addr in TARGET_TOKENS.items():
+        if sym == "USDC":
+            continue
+        pools = fetch_pools_for_token(addr)
+        for p in pools:
+            attr = p.get("attributes", {})
+            dex_id = p.get("relationships", {}).get("dex", {}).get("data", {}).get("id", "unknown")
+            pool_name = attr.get("name", "")
+            price_str = attr.get("base_token_price_usd")
+            reserve_str = attr.get("reserve_in_usd")
+            vol_str = attr.get("volume_usd", {}).get("h24")
+            pool_addr = attr.get("address", "")
+            try:
+                px = float(price_str or 0)
+                reserve = float(reserve_str or 0)
+                vol = float(vol_str or 0)
+            except (ValueError, TypeError):
+                continue
+
+            if px > 0 and reserve >= 35000:
+                clean_dex = "Aerodrome" if "aerodrome" in dex_id.lower() else (
+                    "Uniswap v3" if "uniswap" in dex_id.lower() else (
+                        "PancakeSwap" if "pancake" in dex_id.lower() else dex_id
+                    )
+                )
+                if clean_dex not in ("Aerodrome", "Uniswap v3", "PancakeSwap"):
+                    continue
+
+                fee_pct = 0.05
+                if "0.3%" in pool_name:
+                    fee_pct = 0.30
+                elif "0.01%" in pool_name:
+                    fee_pct = 0.01
+                elif "1%" in pool_name:
+                    fee_pct = 1.00
+
+                if "/" not in pool_name:
+                    continue
+                parts = pool_name.split("/")
+                base_s = parts[0].strip().split()[0]
+                quote_s = parts[1].strip().split()[0]
+                norm_pair = f"{base_s}/{quote_s}"
+
+                all_candidates.append({
+                    "dex": clean_dex,
+                    "pair": norm_pair,
+                    "base": base_s,
+                    "quote": quote_s,
+                    "pool_name": pool_name,
+                    "pool_addr": pool_addr,
+                    "price": px,
+                    "liquidity_usd": reserve,
+                    "volume_24h": vol,
+                    "fee_pct": fee_pct
+                })
+        time.sleep(0.1)
+    return all_candidates
+
+
+def build_exchange_matrix(candidates: list[dict], usd_brl: float = 5.02) -> list[dict]:
+    """Constructs side-by-side comparison matrix for Aerodrome, Uniswap v3, and PancakeSwap."""
+    by_pair: dict[str, dict] = {}
+    for c in candidates:
+        pair = c["pair"]
+        dex = c["dex"]
+        if pair not in by_pair:
+            by_pair[pair] = {
+                "pair": pair,
+                "base": c["base"],
+                "quote": c["quote"],
+                "exchanges": {}
+            }
+        existing = by_pair[pair]["exchanges"].get(dex)
+        if not existing or c["liquidity_usd"] > existing["liquidity_usd"]:
+            by_pair[pair]["exchanges"][dex] = {
+                "price": c["price"],
+                "fee_pct": c["fee_pct"],
+                "liquidity_usd": c["liquidity_usd"],
+                "volume_24h": c["volume_24h"],
+                "pool_name": c["pool_name"],
+                "pool_addr": c["pool_addr"]
+            }
+
+    matrix_rows = []
+    for pair, data in by_pair.items():
+        exchs = data["exchanges"]
+        if len(exchs) < 2:
+            continue
+
+        sorted_dexes = sorted(exchs.items(), key=lambda x: x[1]["price"])
+        best_buy_dex, best_buy_info = sorted_dexes[0]
+        best_sell_dex, best_sell_info = sorted_dexes[-1]
+
+        p_buy = best_buy_info["price"]
+        p_sell = best_sell_info["price"]
+
+        gross_spread_pct = ((p_sell - p_buy) / p_buy) * 100.0 if p_buy > 0 else 0.0
+        total_fees_pct = best_buy_info["fee_pct"] + best_sell_info["fee_pct"]
+        net_spread_pct = gross_spread_pct - total_fees_pct
+
+        is_profitable = (net_spread_pct > 0.05) and (gross_spread_pct < 15.0)
+
+        lots = [1000.0, 5000.0, 10000.0, 50000.0, 100000.0]
+        returns = {}
+        for lot in lots:
+            profit_usd = (lot * (net_spread_pct / 100.0)) - 0.03
+            returns[f"lot_{int(lot)}"] = round(profit_usd, 2)
+            returns[f"lot_{int(lot)}_brl"] = round(profit_usd * usd_brl, 2)
+
+        matrix_rows.append({
+            "pair": pair,
+            "base": data["base"],
+            "quote": data["quote"],
+            "exchanges": {
+                "Aerodrome": exchs.get("Aerodrome"),
+                "Uniswap v3": exchs.get("Uniswap v3"),
+                "PancakeSwap": exchs.get("PancakeSwap")
+            },
+            "best_buy_dex": best_buy_dex,
+            "best_buy_price": p_buy,
+            "best_sell_dex": best_sell_dex,
+            "best_sell_price": p_sell,
+            "route_text": f"{best_buy_dex} ➔ {best_sell_dex}",
+            "gross_spread_pct": round(gross_spread_pct, 3),
+            "total_fees_pct": round(total_fees_pct, 3),
+            "net_spread_pct": round(net_spread_pct, 3),
+            "is_profitable": is_profitable,
+            "lot_returns": returns
+        })
+
+    matrix_rows.sort(key=lambda x: x["net_spread_pct"], reverse=True)
+    return matrix_rows
+
+
+_LIVE_DASHBOARD_CACHE: dict = {"ts": 0, "data": None}
+
+
+def get_arbitrage_live_snapshot(force: bool = False) -> dict:
+    """Returns ultra-fast snapshot for the web cockpit dashboard."""
+    global _LIVE_DASHBOARD_CACHE
+    now = time.time()
+    if not force and _LIVE_DASHBOARD_CACHE["data"] and (now - _LIVE_DASHBOARD_CACHE["ts"] < 2.5):
+        return _LIVE_DASHBOARD_CACHE["data"]
+
+    usd_brl = fetch_usd_brl()
+    candidates = fetch_all_dex_candidates()
+    matrix = build_exchange_matrix(candidates, usd_brl)
+    profitable = [m for m in matrix if m["is_profitable"]]
+
+    now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M:%S UTC")
+    best_spread = matrix[0]["net_spread_pct"] if matrix else 0.0
+    best_route = matrix[0]["route_text"] if matrix else "Aguardando spread"
+
+    result = {
+        "status": "ok",
+        "updated_at_utc": now_utc,
+        "timestamp_ms": int(now * 1000),
+        "usd_brl": usd_brl,
+        "dexes": ["Aerodrome", "Uniswap v3", "PancakeSwap"],
+        "summary": {
+            "total_pairs_monitored": len(matrix),
+            "profitable_count": len(profitable),
+            "best_net_spread_pct": best_spread,
+            "best_route": best_route,
+            "base_l2_avg_gas_usd": 0.03
+        },
+        "matrix": matrix,
+        "smart_contract": {
+            "name": "BaseFlashArbExecutor",
+            "network": "Base Layer 2 (ChainID 8453)",
+            "balancer_vault": "0xBA12222222228d8Ba5359726c66236535c7e3261",
+            "balancer_fee": "0.00%",
+            "uniswap_v3_router": "0x2626664c2603336E57B271c5C0b26F421741e481",
+            "aerodrome_router": "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43",
+            "pancakeswap_router": "0x678Aa4bF4E210cf2166753e054d5b7c31cc7fa86",
+            "atomic_protection": "require(returnAmount > totalOwed && netProfit >= minProfit)"
+        }
+    }
+
+    _LIVE_DASHBOARD_CACHE = {"ts": now, "data": result}
+    return result
+
+
 if __name__ == "__main__":
     notify_flag = "--notify" in sys.argv
     if "--daemon" in sys.argv:
         run_daemon_loop(interval_sec=15)
+    elif "--matrix" in sys.argv:
+        snap = get_arbitrage_live_snapshot(force=True)
+        print(json.dumps(snap["summary"], indent=2))
+        print(f"Matrix Rows: {len(snap['matrix'])}")
     else:
         run_scanner_once(notify=notify_flag)
+

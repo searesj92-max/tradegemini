@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cockpit de Arbitragem Cross-DEX (Base L2) — Botrade</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <style>
+    :root {
+      --bg: #070a13;
+      --card-bg: #0f172a;
+      --card-border: #1e293b;
+      --card-hover: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --accent: #818cf8;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.25);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --aero-color: #0052ff;
+      --uni-color: #ff007a;
+      --pancake-color: #00bcd4;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      padding: 16px;
+      padding-bottom: 90px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* HEADER COCKPIT */
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .brand-title h1 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+    .brand-title p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .telemetry-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--success);
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .telemetry-chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-family: var(--mono);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .telemetry-chip strong {
+      color: var(--primary);
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-action:hover {
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      transform: translateY(-1px);
+    }
+    .btn-action:active { transform: translateY(0); }
+
+    .control-select {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid #334155;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* KPI CARDS */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      position: relative;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+    .kpi-card.success-border::before {
+      background: linear-gradient(90deg, #10b981, #059669);
+    }
+    .kpi-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .kpi-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-family: var(--mono);
+      color: #fff;
+    }
+    .kpi-sub {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* FLASH LOAN CALCULATOR BAR */
+    .calc-bar {
+      background: #111c33;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .calc-info h3 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .calc-info p {
+      font-size: 0.74rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .calc-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .lot-btn {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: var(--mono);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .lot-btn:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .lot-btn.active {
+      background: #2563eb;
+      color: #fff;
+      border-color: #3b82f6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+    .lot-input-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    .lot-input-wrapper span {
+      position: absolute;
+      left: 10px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+    }
+    .lot-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 6px 10px 6px 24px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-family: var(--mono);
+      width: 105px;
+      outline: none;
+    }
+    .lot-input:focus { border-color: var(--primary); }
+
+    /* TABLE SECTION */
+    .table-container {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      overflow-x: auto;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    .section-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .section-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #f1f5f9;
+    }
+    .section-header p {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+    th {
+      background: #0b1120;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--card-border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #172033;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr.profitable-row {
+      background: rgba(16, 185, 129, 0.04);
+    }
+    tr.profitable-row:hover {
+      background: rgba(16, 185, 129, 0.09);
+    }
+    tr:hover {
+      background: #141f36;
+    }
+
+    /* EXCHANGE PILLS & PRICES */
+    .pair-badge {
+      font-weight: 800;
+      font-size: 0.92rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .price-cell {
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .price-buy {
+      color: #34d399;
+      font-weight: 700;
+    }
+    .price-sell {
+      color: #60a5fa;
+      font-weight: 700;
+    }
+    .tag-buy {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.18);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tag-sell {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.18);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .route-chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .route-arrow {
+      color: var(--primary);
+    }
+
+    .spread-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .spread-positive {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+    .spread-neutral {
+      background: #1e293b;
+      color: #94a3b8;
+    }
+
+    .profit-chip {
+      font-family: var(--mono);
+      font-weight: 800;
+      font-size: 0.88rem;
+      color: #10b981;
+    }
+    .profit-brl {
+      font-size: 0.72rem;
+      color: #64748b;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ATOMIC SAFETY CARD */
+    .safety-card {
+      background: #091322;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 14px;
+    }
+    .safety-card h4 {
+      font-size: 0.88rem;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .safety-card p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+    .code-preview {
+      background: #040811;
+      border: 1px solid #1e293b;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: #34d399;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+
+    /* FOOTER NAV */
+    .footer-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(7, 10, 19, 0.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--card-border);
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+    }
+    .footer-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .footer-link.active {
+      color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand-title">
+      <h1>⚡ RADAR DE ARBITRAGEM CROSS-DEX <span style="font-size:0.75rem; color:#38bdf8; border:1px solid #0284c7; padding:2px 8px; border-radius:12px;">BASE L2</span></h1>
+      <p>Monitoramento contínuo em tempo real entre Aerodrome, Uniswap v3 e PancakeSwap v3</p>
+    </div>
+
+    <div class="telemetry-bar">
+      <div class="badge-status">
+        <span class="pulse-dot"></span>
+        <span id="connStatus">Ao Vivo</span>
+      </div>
+
+      <div class="telemetry-chip">
+        ⚡ Ping: <strong id="pingVal">-- ms</strong>
+      </div>
+
+      <div class="telemetry-chip">
+        ⏱️ Idade: <strong id="ageVal">0.0s</strong>
+      </div>
+
+      <select id="refreshRate" class="control-select" onchange="changeRefreshRate()">
+        <option value="1500">Fluxo Ultra (1.5s)</option>
+        <option value="2500" selected>Padrão (2.5s)</option>
+        <option value="5000">Econômico (5.0s)</option>
+        <option value="pause">Pausar</option>
+      </select>
+
+      <button id="soundToggle" class="btn-action" style="background:#1e293b; border:1px solid #334155;" onclick="toggleSound()">
+        <span id="soundIcon">🔔</span> Som: <span id="soundText">Desligado</span>
+      </button>
+
+      <button id="btnRefresh" class="btn-action" onclick="fetchLiveArbitrage(true)">
+        🔄 Atualizar Agora
+      </button>
+    </div>
+  </header>
+
+  <!-- KPI METRICS ROW -->
+  <div class="kpi-row">
+    <div class="kpi-card success-border">
+      <div class="kpi-label">Oportunidades Lucrativas</div>
+      <div class="kpi-value" id="kpiProfitableCount" style="color:#10b981;">--</div>
+      <div class="kpi-sub">Spreads após taxas de swap e gas</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">Maior Spread Líquido</div>
+      <div class="kpi-value" id="kpiBestSpread" style="color:#38bdf8;">--</div>
+      <div class="kpi-sub" id="kpiBestRoute">Aguardando cotações...</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">Cotação Dólar Base</div>
+      <div class="kpi-value" id="kpiUsdRate">R$ 5.02</div>
+      <div class="kpi-sub">Referência comercial ao vivo</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">Custo Médio de Gas (Base L2)</div>
+      <div class="kpi-value" style="color:#a78bfa;">~$0.025</div>
+      <div class="kpi-sub">Taxa quase nula por transação</div>
+    </div>
+  </div>
+
+  <!-- FLASH LOAN CALCULATOR BAR -->
+  <div class="calc-bar">
+    <div class="calc-info">
+      <h3>💼 Simulador de Flash Loan (Balancer Vault 0% Fee)</h3>
+      <p>Altere o valor do empréstimo para recalcular instantaneamente os retornos líquidos na tabela:</p>
+    </div>
+
+    <div class="calc-controls">
+      <button class="lot-btn" onclick="selectLot(1000)">$1k</button>
+      <button class="lot-btn" onclick="selectLot(5000)">$5k</button>
+      <button class="lot-btn active" id="btnLot10k" onclick="selectLot(10000)">$10k</button>
+      <button class="lot-btn" onclick="selectLot(25000)">$25k</button>
+      <button class="lot-btn" onclick="selectLot(5000)">$50k</button>
+      <button class="lot-btn" onclick="selectLot(100000)">$100k</button>
+
+      <div class="lot-input-wrapper">
+        <span>$</span>
+        <input type="number" id="customLotInput" class="lot-input" value="10000" step="1000" oninput="onCustomLotChange()">
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE CONTAINER (3 EXCHANGES MATRIX) -->
+  <div class="table-container">
+    <div class="section-header">
+      <div>
+        <h2>📊 Matriz Comparativa Lado a Lado (3 Exchanges)</h2>
+        <p>Acompanhe o preço de cada token simultaneamente nas 3 DEXes e a rota ótima de arbitragem</p>
+      </div>
+      <span id="matrixCountBadge" style="font-size:0.75rem; color:#94a3b8; font-family:var(--mono);">8 pares monitorados</span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Par / Token</th>
+          <th style="color:#60a5fa;">🔵 Aerodrome</th>
+          <th style="color:#f472b6;">🦄 Uniswap v3</th>
+          <th style="color:#22d3ee;">🥞 PancakeSwap</th>
+          <th>Melhor Rota</th>
+          <th>Spread Bruto</th>
+          <th>Taxas Pools</th>
+          <th>Spread Líquido</th>
+          <th>Lucro Líquido (<span id="lotDisplayHeader">$10.000</span>)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="matrixTableBody">
+        <tr>
+          <td colspan="10" style="text-align:center; padding:30px; color:#94a3b8;">
+            ⚡ Carregando pools da rede Base em tempo real...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ATOMIC SAFETY INFO CARD -->
+  <div class="safety-card">
+    <h4>🛡️ Proteção Atômica de Risco Zero — Smart Contract BaseFlashArbExecutor</h4>
+    <p>
+      As ordens de arbitragem utilizam o <strong>Balancer v2 Vault</strong> (taxa de empréstimo 0,00% na Base). A transação empresta o capital, executa a compra na DEX mais barata, a venda na DEX mais cara e devolve o empréstimo em uma única transação no mesmo bloco.
+    </p>
+    <div class="code-preview">
+      require(returnAmount &gt; totalOwed &amp;&amp; netProfit &gt;= params.minProfit, "Revert: Sem lucro garantido");
+    </div>
+    <p style="margin-top:6px; font-size:0.7rem; color:#64748b;">
+      Se o spread fechar antes da execução ou o lucro for insuficiente, a transação reverte automaticamente pela EVM. Risco de capital próprio = Zero.
+    </p>
+  </div>
+
+  <!-- FOOTER NAVIGATION -->
+  <nav class="footer-nav">
+    <a href="/arbitragem" class="footer-link active">
+      <span>⚡</span>
+      <span>Arbitragem</span>
+    </a>
+    <a href="/planilha" class="footer-link">
+      <span>📊</span>
+      <span>Planilha Ao Vivo</span>
+    </a>
+    <a href="/cockpit" class="footer-link">
+      <span>🕹️</span>
+      <span>Cockpit</span>
+    </a>
+    <a href="https://t.me/" target="_blank" class="footer-link">
+      <span>📱</span>
+      <span>Telegram</span>
+    </a>
+  </nav>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentLot = 10000;
+    let refreshIntervalMs = 2500;
+    let refreshTimer = null;
+    let soundEnabled = false;
+    let lastProfitableCount = 0;
+    let lastFetchedTs = Date.now();
+    let currentMatrixData = [];
+    let usdBrlRate = 5.02;
+
+    // Web Audio Synthesizer for alerts (no external sound files needed)
+    let audioCtx = null;
+    function playChime() {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880.00, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.36);
+      } catch (e) {
+        console.warn("Audio chime error:", e);
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const text = document.getElementById("soundText");
+      const icon = document.getElementById("soundIcon");
+      if (soundEnabled) {
+        text.innerText = "Ligado";
+        icon.innerText = "🔊";
+        playChime();
+      } else {
+        text.innerText = "Desligado";
+        icon.innerText = "🔔";
+      }
+    }
+
+    function formatNumber(num, decimals = 2) {
+      if (num === null || num === undefined || isNaN(num)) return "—";
+      return Number(num).toLocaleString("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function selectLot(val) {
+      currentLot = val;
+      document.querySelectorAll(".lot-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById("customLotInput").value = val;
+      document.getElementById("lotDisplayHeader").innerText = "$" + formatNumber(val, 0);
+
+      const targetBtn = Array.from(document.querySelectorAll(".lot-btn")).find(b => b.innerText === `$${val/1000}k`);
+      if (targetBtn) targetBtn.classList.add("active");
+
+      renderMatrixTable(currentMatrixData);
+    }
+
+    function onCustomLotChange() {
+      const val = parseFloat(document.getElementById("customLotInput").value);
+      if (!isNaN(val) && val > 0) {
+        currentLot = val;
+        document.querySelectorAll(".lot-btn").forEach(b => b.classList.remove("active"));
+        document.getElementById("lotDisplayHeader").innerText = "$" + formatNumber(val, 0);
+        renderMatrixTable(currentMatrixData);
+      }
+    }
+
+    function renderMatrixTable(matrix) {
+      const tbody = document.getElementById("matrixTableBody");
+      if (!matrix || matrix.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:#94a3b8;">Nenhum par detectado no momento.</td></tr>`;
+        return;
+      }
+
+      let html = "";
+      matrix.forEach((row, idx) => {
+        const pair = row.pair;
+        const exchs = row.exchanges || {};
+        const aero = exchs["Aerodrome"];
+        const uni = exchs["Uniswap v3"];
+        const pancake = exchs["PancakeSwap"];
+
+        const bestBuyDex = row.best_buy_dex;
+        const bestSellDex = row.best_sell_dex;
+
+        function formatPriceCell(item, dexName) {
+          if (!item || !item.price) return `<span style="color:#475569;">—</span>`;
+          const px = item.price;
+          const pxFormatted = px < 1 ? formatNumber(px, 4) : (px < 100 ? formatNumber(px, 3) : formatNumber(px, 2));
+
+          let tag = "";
+          if (dexName === bestBuyDex) {
+            tag = `<span class="tag-buy">COMPRA</span>`;
+          } else if (dexName === bestSellDex) {
+            tag = `<span class="tag-sell">VENDA</span>`;
+          }
+
+          const isBuy = dexName === bestBuyDex;
+          const isSell = dexName === bestSellDex;
+          const cls = isBuy ? "price-buy" : (isSell ? "price-sell" : "");
+
+          return `<div class="price-cell ${cls}">$${pxFormatted} ${tag}</div>
+                  <div style="font-size:0.68rem; color:#64748b; margin-top:2px;">Fee: ${item.fee_pct}%</div>`;
+        }
+
+        const netSpread = row.net_spread_pct;
+        const isProfit = row.is_profitable;
+        const spreadCls = isProfit ? "spread-positive" : "spread-neutral";
+        const rowCls = isProfit ? "profitable-row" : "";
+
+        // Calculate custom profit on currentLot
+        const estGas = 0.03;
+        const profitUsd = (currentLot * (netSpread / 100.0)) - estGas;
+        const profitBrl = profitUsd * usdBrlRate;
+
+        const sign = profitUsd >= 0 ? "+" : "";
+
+        html += `
+          <tr class="${rowCls}">
+            <td>
+              <div class="pair-badge">${pair}</div>
+              <div style="font-size:0.68rem; color:#64748b;">${row.base}</div>
+            </td>
+            <td>${formatPriceCell(aero, "Aerodrome")}</td>
+            <td>${formatPriceCell(uni, "Uniswap v3")}</td>
+            <td>${formatPriceCell(pancake, "PancakeSwap")}</td>
+            <td>
+              <span class="route-chip">
+                ${bestBuyDex} <span class="route-arrow">➔</span> ${bestSellDex}
+              </span>
+            </td>
+            <td style="font-family:var(--mono); color:#cbd5e1;">+${formatNumber(row.gross_spread_pct, 2)}%</td>
+            <td style="font-family:var(--mono); color:#94a3b8;">${formatNumber(row.total_fees_pct, 2)}%</td>
+            <td>
+              <span class="spread-pill ${spreadCls}">
+                ${netSpread >= 0 ? "+" : ""}${formatNumber(netSpread, 2)}%
+              </span>
+            </td>
+            <td>
+              <span class="profit-chip" style="color: ${profitUsd > 0 ? '#10b981' : '#94a3b8'};">
+                ${sign}$${formatNumber(profitUsd, 2)} USD
+              </span>
+              <span class="profit-brl">
+                ${sign}R$ ${formatNumber(profitBrl, 2)}
+              </span>
+            </td>
+            <td>
+              ${isProfit ? '<span class="badge-status" style="font-size:0.7rem; padding:3px 8px;">🟢 ATIVA</span>' : '<span style="font-size:0.7rem; color:#64748b;">Aguardando</span>'}
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    async function fetchLiveArbitrage(isManual = false) {
+      const btn = document.getElementById("btnRefresh");
+      if (isManual) {
+        btn.innerText = "⏳ Atualizando...";
+        btn.style.opacity = "0.7";
+      }
+
+      const tStart = performance.now();
+      try {
+        const res = await fetch("/api/arbitrage/live", { cache: "no-store" });
+        const tEnd = performance.now();
+        const pingMs = Math.round(tEnd - tStart);
+
+        document.getElementById("pingVal").innerText = `${pingMs} ms`;
+        document.getElementById("pingVal").style.color = pingMs < 100 ? "#10b981" : (pingMs < 300 ? "#38bdf8" : "#f59e0b");
+
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+
+        lastFetchedTs = Date.now();
+        currentMatrixData = data.matrix || [];
+        usdBrlRate = data.usd_brl || 5.02;
+
+        // Update KPIs
+        const sum = data.summary || {};
+        document.getElementById("kpiProfitableCount").innerText = `${sum.profitable_count || 0} ativas`;
+        document.getElementById("kpiBestSpread").innerText = `+${formatNumber(sum.best_net_spread_pct, 2)}%`;
+        document.getElementById("kpiBestRoute").innerText = sum.best_route || "Aguardando spread";
+        document.getElementById("kpiUsdRate").innerText = `R$ ${formatNumber(usdBrlRate, 4)}`;
+        document.getElementById("matrixCountBadge").innerText = `${currentMatrixData.length} pares monitorados`;
+
+        // Sound alert if new profitable opportunity appeared
+        if (sum.profitable_count > 0 && sum.profitable_count > lastProfitableCount) {
+          playChime();
+        }
+        lastProfitableCount = sum.profitable_count || 0;
+
+        renderMatrixTable(currentMatrixData);
+      } catch (err) {
+        console.error("Erro ao buscar arbitragem:", err);
+        document.getElementById("connStatus").innerText = "Reconectando...";
+        document.getElementById("connStatus").style.color = "#ef4444";
+      } finally {
+        if (isManual) {
+          setTimeout(() => {
+            btn.innerText = "🔄 Atualizar Agora";
+            btn.style.opacity = "1";
+          }, 300);
+        }
+      }
+    }
+
+    // Age ticker loop (updates ageVal every 200ms)
+    setInterval(() => {
+      const ageSec = ((Date.now() - lastFetchedTs) / 1000).toFixed(1);
+      document.getElementById("ageVal").innerText = `${ageSec}s`;
+    }, 200);
+
+    function startAutoRefresh() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      if (refreshIntervalMs > 0) {
+        refreshTimer = setInterval(() => {
+          fetchLiveArbitrage(false);
+        }, refreshIntervalMs);
+      }
+    }
+
+    function changeRefreshRate() {
+      const val = document.getElementById("refreshRate").value;
+      if (val === "pause") {
+        if (refreshTimer) clearInterval(refreshTimer);
+        document.getElementById("connStatus").innerText = "Pausado";
+        document.getElementById("connStatus").style.color = "#f59e0b";
+      } else {
+        refreshIntervalMs = parseInt(val);
+        document.getElementById("connStatus").innerText = "Ao Vivo";
+        document.getElementById("connStatus").style.color = "#10b981";
+        startAutoRefresh();
+      }
+    }
+
+    // Initial load
+    fetchLiveArbitrage(false);
+    startAutoRefresh();
+  </script>
+</body>
+</html>

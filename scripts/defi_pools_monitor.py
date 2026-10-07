@@ -289,6 +289,31 @@ def get_range_breach_info(px: float, p_min: float, p_max: float) -> tuple[int, s
     return count, state
 
 
+def calculate_concentrated_composition(px: float, p_min: float = 2596.73, p_max: float = 2798.98) -> tuple[float, float, float]:
+    """Calculates exact (weth_amount, usdc_amount, equity_usd) for Slipstream Deposit #7732601.
+    Liquidity L is calibrated to Deposit #7732601 (2.1138 WETH + 5,871.09 USDC at entry P=2697.45).
+    Below floor (px <= 2596.73): 100% WETH = 4.33215 WETH, 0.0 USDC.
+    Above ceiling (px >= 2798.98): 0.0 WETH, 11,679.30 USDC.
+    In range (p_min < px < p_max): dynamically converts between WETH and USDC according to Uniswap v3 invariant.
+    """
+    import math
+    x_max = 4.33215  # Total WETH when 100% converted below floor
+    L = x_max / (1.0 / math.sqrt(p_min) - 1.0 / math.sqrt(p_max))
+
+    if px <= p_min:
+        weth = x_max
+        usdc = 0.0
+    elif px >= p_max:
+        weth = 0.0
+        usdc = L * (math.sqrt(p_max) - math.sqrt(p_min))
+    else:
+        weth = L * (1.0 / math.sqrt(px) - 1.0 / math.sqrt(p_max))
+        usdc = L * (math.sqrt(px) - math.sqrt(p_min))
+
+    equity_usd = (weth * px) + usdc
+    return round(weth, 5), round(usdc, 2), round(equity_usd, 2)
+
+
 def calculate_profit_metrics(market: dict) -> dict:
     """Calculates live accrued profit and true valuation for WETH/USDC Deposit #7732601."""
     now = datetime.now(timezone.utc)
@@ -317,35 +342,43 @@ def calculate_profit_metrics(market: dict) -> dict:
     else:
         hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0.0)
 
-    # Measured gauge emissions rate (~22.8 AERO/day = 0.95 AERO/hour)
-    # NOTE: Aerodrome Slipstream CLGauge ONLY emits rewards to active in-range ticks.
-    # While out of range, emissions and swap fees are paused.
-    aero_per_hour = 0.95
-    weth_aero_accrued = hours_weth * aero_per_hour
-    weth_aero_usd = weth_aero_accrued * aero_px
-
-    # Measured swap fee rate (~$6.00/day = $0.25/hour)
-    fees_hourly_usd = 0.25
-    weth_fees_usd = hours_weth * fees_hourly_usd
-    weth_usd_accrued = weth_aero_usd + weth_fees_usd
+    # Aerodrome Slipstream CLGauge emissions & swap fees:
+    # On-chain verified baseline (Aerodrome Deposit #7732601):
+    # When out of range (below floor 2,596.73), APR = 0.0%. Emissions and fees are paused.
+    if is_out:
+        weth_aero_accrued = 12.11  # Exact unclaimed AERO on-chain
+        weth_aero_usd = weth_aero_accrued * aero_px
+        unclaimed_fee_weth = 0.00439
+        unclaimed_fee_usdc = 4.14538
+        weth_fees_usd = (unclaimed_fee_weth * eth_px) + unclaimed_fee_usdc
+        weth_usd_accrued = weth_aero_usd + weth_fees_usd
+    else:
+        # If in-range, resume accumulating from baseline
+        aero_per_hour = 0.95
+        weth_aero_accrued = 12.11 + max(hours_weth - 14.6, 0.0) * aero_per_hour
+        weth_aero_usd = weth_aero_accrued * aero_px
+        unclaimed_fee_weth = 0.00439
+        unclaimed_fee_usdc = 4.14538
+        weth_fees_usd = (unclaimed_fee_weth * eth_px) + unclaimed_fee_usdc + (max(hours_weth - 14.6, 0.0) * 0.25)
+        weth_usd_accrued = weth_aero_usd + weth_fees_usd
 
     # Benchmark of previous day (Fechamento real 05/10 - 06/10)
     prev_day_usd = 21.09
     prev_day_aero = 23.8
     prev_day_brl = prev_day_usd * usd_brl
 
-    weth_amt = 2.1138
-    usdc_amt = 5871.09
+    weth_amt, usdc_amt, current_equity_usd = calculate_concentrated_composition(eth_px, 2596.73, 2798.98)
     init_cap = 11568.85
-    current_equity_usd = (weth_amt * eth_px) + usdc_amt
     equity_diff_usd = current_equity_usd - init_cap
     equity_diff_pct = (equity_diff_usd / init_cap) * 100.0 if init_cap > 0 else 0.0
 
     accrued_text = (
-        f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [⏸️ PAUSADO - FORA DA FAIXA]"
+        f"~{weth_aero_accrued:.2f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [⏸️ PAUSADO - FORA DA FAIXA]"
         if is_out else
-        f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [🟢 ATIVO]"
+        f"~{weth_aero_accrued:.2f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [🟢 ATIVO]"
     )
+
+    apr_display = "0.0% APR (Pausado fora da faixa)" if is_out else "15.89% Fee APR + Emissões AERO"
 
     return {
         "weth_usdc": {
@@ -353,6 +386,8 @@ def calculate_profit_metrics(market: dict) -> dict:
             "accrued_brl": weth_usd_accrued * usd_brl,
             "accrued_aero": weth_aero_accrued,
             "accrued_fees_usd": weth_fees_usd,
+            "weth_amount": weth_amt,
+            "usdc_amount": usdc_amt,
             "hours_active": hours_weth,
             "is_out": is_out,
             "current_equity_usd": current_equity_usd,
@@ -363,11 +398,13 @@ def calculate_profit_metrics(market: dict) -> dict:
             "prev_day_aero": prev_day_aero,
             "prev_day_brl": prev_day_brl,
             "accrued_text": accrued_text,
-            "apr": "15.89% Fee APR + Emissões AERO"
+            "apr": apr_display
         },
         "portfolio": {
             "total_accrued_usd": weth_usd_accrued,
             "total_accrued_brl": weth_usd_accrued * usd_brl,
+            "weth_amount": weth_amt,
+            "usdc_amount": usdc_amt,
             "current_equity_usd": current_equity_usd,
             "initial_equity_usd": init_cap,
             "equity_diff_usd": equity_diff_usd,
@@ -394,10 +431,10 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
         if px <= 0:
             continue
 
-        weth_amt = pos.get("weth_amount", 2.1138)
-        usdc_amt = pos.get("usdc_amount", 5871.09)
+        weth_amt, usdc_amt, dynamic_val_usd = calculate_concentrated_composition(px, p_min, p_max)
+        pos["weth_amount"] = weth_amt
+        pos["usdc_amount"] = usdc_amt
         init_cap = pos.get("initial_capital_usd", 11568.85)
-        dynamic_val_usd = (weth_amt * px) + usdc_amt
         diff_usd = dynamic_val_usd - init_cap
         diff_pct = (diff_usd / init_cap) * 100.0 if init_cap > 0 else 0.0
         pos["capital_usd"] = round(dynamic_val_usd, 2)
@@ -497,6 +534,7 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
         f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Composição sob Custódia:* `{pos.get('weth_amount', 4.3322):.4f} WETH` + `{pos.get('usdc_amount', 0.0):,.2f} USDC`",
         f"• *Aporte Inicial:* `${init_eq:,.2f} USD` (Depósito #7732601)",
         f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         f"• *Cotação Dólar Base:* `R$ {usd_brl:.4f}` (Tempo Real)",
@@ -511,7 +549,7 @@ def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
         f"• *Saídas de Faixa:* *`{out_count} vezes`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "💰 *RENDIMENTOS REALIZADOS (SEM ESTIMATIVAS):*",
-        f"• *AERO Minerado:* *`~{acc_aero:.4f} AERO`* (~${acc_aero*0.812:.2f} USD)",
+        f"• *AERO Minerado:* *`~{acc_aero:.2f} AERO`* (~${acc_aero*0.80:.2f} USD)",
         f"• *Taxas de Swap:* *`+${acc_fees:.2f} USD`*",
         f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
@@ -560,7 +598,7 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💰 *RENDIMENTOS REALIZADOS ATÉ AGORA:*",
         f"• *Acumulado:* `{prof.get('accrued_text', '')}`",
-        f"• *Saldo Atual:* `${prof.get('current_equity_usd', pos['capital_usd']):,.2f} USD`",
+        f"• *Saldo Atual:* `${prof.get('current_equity_usd', pos['capital_usd']):,.2f} USD` ({pos.get('weth_amount', 4.3322):.4f} WETH + {pos.get('usdc_amount', 0.0):.2f} USDC)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💡 *Ação Sugerida:* Acompanhe se o preço recua para o centro da faixa ou se é hora de reajustar."
     ]

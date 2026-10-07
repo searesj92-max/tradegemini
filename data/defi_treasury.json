@@ -9,20 +9,20 @@
       "type": "Cofre Principal (Consolidado)",
       "initial_capital_usd": 11568.85,
       "capital_usd": 11568.85,
-      "composition": "2.1138 WETH + 5,871.09 USDC",
-      "weth_amount": 2.1138,
-      "usdc_amount": 5871.09,
+      "composition": "4.33215 WETH + 0.00 USDC (100% WETH fora da faixa)",
+      "weth_amount": 4.33215,
+      "usdc_amount": 0.0,
       "range_min": 2596.73,
       "range_max": 2798.98,
       "range_unit": "USDC/ETH",
-      "current_price_ref": 2697.0,
-      "status": "🟢 IN RANGE (Ativo e Lucrando)",
-      "accrued_rewards": "AERO Staked no Gauge",
-      "apr_display": "15.89% Fee APR",
+      "current_price_ref": 2565.0,
+      "status": "🔴 OUT OF RANGE (Pausado abaixo do piso)",
+      "accrued_rewards": "12.11 AERO + $15.35 Taxas (Emissões Pausadas)",
+      "apr_display": "0.0% APR (Pausado fora da faixa)",
       "deposit_id": "#7732601",
       "prev_day_yield_usd": 21.09,
       "prev_day_aero": 23.8,
-      "out_of_range_count": 0
+      "out_of_range_count": 1
     }
   ]
 }

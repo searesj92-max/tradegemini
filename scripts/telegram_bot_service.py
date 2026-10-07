@@ -201,6 +201,7 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
         f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Composição sob Custódia:* `{pos.get('weth_amount', 4.3322):.4f} WETH` + `{pos.get('usdc_amount', 0.0):,.2f} USDC`",
         f"• *Aporte Inicial:* `${init_eq:,.2f} USD` (Depósito #7732601)",
         f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         f"• *Cotação Dólar Base:* `R$ {usd_brl:.4f}` (Tempo Real)",
@@ -215,7 +216,7 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
         f"• *Saídas de Faixa:* *`{out_count} vezes`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "💰 *RENDIMENTOS REALIZADOS (SEM ESTIMATIVAS):*",
-        f"• *AERO Minerado:* *`~{acc_aero:.4f} AERO`* (~${acc_aero*0.812:.2f} USD)",
+        f"• *AERO Minerado:* *`~{acc_aero:.2f} AERO`* (~${acc_aero*0.80:.2f} USD)",
         f"• *Taxas de Swap:* *`+${acc_fees:.2f} USD`*",
         f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
@@ -256,6 +257,11 @@ def format_defi_status_summary() -> tuple[str, dict]:
     prev_usd = prof.get("prev_day_usd", 21.09)
     out_count = item.get("out_of_range_count", 0)
 
+    p_min = pos.get("range_min", 2596.73)
+    p_max = pos.get("range_max", 2798.98)
+    range_state_str = "🔴 Rompido abaixo" if px < p_min else ("🔴 Rompido acima" if px > p_max else "100% dentro do range")
+    status_foot = "🔴 *Posição fora da faixa (100% em WETH). Emissões e taxas pausadas.*" if (px < p_min or px > p_max) else "🟢 *Cofre consolidado único, 100% ativo e gerando taxas no Gauge.*"
+
     lines = [
         "💼 *SALDO CONSOLIDADO — TESOURARIA DEFI*",
         f"⏱️ _{now_utc}_",
@@ -265,18 +271,18 @@ def format_defi_status_summary() -> tuple[str, dict]:
         f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "📍 *POSIÇÃO PRINCIPAL EM CUSTÓDIA:*",
-        "• *Par:* *WETH / USDC (Slipstream 50)* 🟢",
+        "• *Par:* *WETH / USDC (Slipstream 50)*",
         "  ├ *Identificação:* `Deposit #7732601` (Staked no Gauge Aerodrome)",
-        f"  ├ *Composição:* `{pos.get('weth_amount', 2.1138):.4f} WETH` + `{pos.get('usdc_amount', 5871.09):,.2f} USDC`",
-        f"  ├ *Faixa Ativa:* `${pos.get('range_min', 2596.73):,.2f}` ↔ `${pos.get('range_max', 2798.98):,.2f}`",
+        f"  ├ *Composição:* `{pos.get('weth_amount', 4.3322):.4f} WETH` + `{pos.get('usdc_amount', 0.0):,.2f} USDC`",
+        f"  ├ *Faixa Ativa:* `${p_min:,.2f}` ↔ `${p_max:,.2f}`",
         f"  ├ *Preço Atual:* `${px:,.2f} USDC`",
-        f"  └ *Saídas de Faixa:* `{out_count} vezes` (100% dentro do range)",
+        f"  └ *Saídas de Faixa:* `{out_count} vezes` ({range_state_str})",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "💰 *RENDIMENTOS REALIZADOS:*",
         f"• *Acumulado neste Ciclo:* *`+${acc_usd:.2f} USD`* (~R$ {acc_usd*usd_brl:.2f})",
         f"• *Referência Fechamento Anterior:* *`+${prev_usd:.2f} USD`* (~R$ {prev_usd*usd_brl:.2f})",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🟢 *Cofre consolidado único, 100% ativo e gerando taxas no Gauge.*"
+        status_foot
     ]
 
     markup = {
@@ -337,6 +343,7 @@ def format_daily_report_message() -> tuple[str, dict]:
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
         f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Composição sob Custódia:* `{pos.get('weth_amount', 4.3322):.4f} WETH` + `{pos.get('usdc_amount', 0.0):,.2f} USDC`",
         f"• *Aporte Inicial:* `${init_eq:,.2f} USD`",
         f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
@@ -347,7 +354,7 @@ def format_daily_report_message() -> tuple[str, dict]:
         "  └ _(Valor verificado do dia anterior para base comparativa empírica)_\n",
         "💰 *RENDIMENTO REAL ACUMULADO NESTE CICLO:*",
         f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
-        f"• *Composição:* `~{acc_aero:.4f} AERO` + `+${acc_fees:.2f} Taxas de Swap`",
+        f"• *Composição:* `~{acc_aero:.2f} AERO` + `+${acc_fees:.2f} Taxas de Swap`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "🎯 *RADAR DA FAIXA & STATUS:*",
         f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",

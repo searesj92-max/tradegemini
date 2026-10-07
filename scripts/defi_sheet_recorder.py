@@ -62,13 +62,13 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
     weth_item = evaluated_positions[0] if evaluated_positions else {}
     pos = weth_item.get("pos", {})
 
-    weth_amt = pos.get("weth_amount", 2.1138)
-    usdc_amt = pos.get("usdc_amount", 5871.09)
+    weth_amt = weth_prof.get("weth_amount", pos.get("weth_amount", 2.1138))
+    usdc_amt = weth_prof.get("usdc_amount", pos.get("usdc_amount", 5871.09))
     init_cap_usd = pos.get("initial_capital_usd", 11568.85)
     init_cap_brl = init_cap_usd * usd_brl
 
-    # Live dynamic equity based on current ETH price
-    cur_equity_usd = (weth_amt * eth_px) + usdc_amt
+    # Live dynamic equity based on concentrated liquidity math
+    cur_equity_usd = weth_prof.get("current_equity_usd", (weth_amt * eth_px) + usdc_amt)
     cur_equity_brl = cur_equity_usd * usd_brl
 
     # PnL / Asset variation vs initial capital
@@ -106,10 +106,10 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         [f"Atualizado em: {ts_iso}", "", "", ""],
         ["", "", "", ""],
         ["METRICA PATRIMONIAL", "VALOR (USD)", "VALOR (BRL)", "DETALHE / BASE COMPARATIVA"],
-        ["Patrimonio Total Alocado", f"${cur_equity_usd:,.2f}", f"R$ {cur_equity_brl:,.2f}", "Deposito #7732601 (Staked no Gauge)"],
+        ["Patrimonio Total Alocado", f"${cur_equity_usd:,.2f}", f"R$ {cur_equity_brl:,.2f}", f"Deposito #7732601 ({weth_amt:.4f} WETH + {usdc_amt:,.2f} USDC)"],
         ["Aporte Inicial de Capital", f"${init_cap_usd:,.2f}", f"R$ {init_cap_brl:,.2f}", "2.1138 WETH + 5,871.09 USDC (06/10/2026)"],
         ["Variacao Patrimonial (PnL)", f"{diff_usd:+,.2f}", f"R$ {diff_brl:+,.2f}", f"{diff_pct:+.2f}% vs Capital Inicial"],
-        ["Rendimento Real Acumulado", f"+${accrued_usd:,.2f}", f"+R$ {accrued_brl:,.2f}", f"{accrued_aero:.4f} AERO + ${accrued_fees_usd:.2f} Taxas ({hours_active:.1f}h ativas)"],
+        ["Rendimento Real Acumulado", f"+${accrued_usd:,.2f}", f"+R$ {accrued_brl:,.2f}", f"{accrued_aero:.2f} AERO + ${accrued_fees_usd:.2f} Taxas ({hours_active:.1f}h ativas)"],
         ["Referencia Fechamento Anterior", f"+${prev_day_usd:,.2f}", f"+R$ {prev_day_brl:,.2f}", f"~{prev_day_aero:.1f} AERO (Rendimento Real 24h Anterior)"],
         ["Cotacao Dolar Base (USD/BRL)", f"R$ {usd_brl:.4f}", "", "Cotacao em tempo real (AwesomeAPI/Binance)"],
         ["", "", "", ""],
@@ -122,7 +122,7 @@ def record_snapshot(evaluated_positions: list[dict], profits: dict, market: dict
         ["Largura da Faixa", f"${range_width:,.2f} USDC", "", "Faixa concentrada conservadora (~$202)"],
         ["Status da Faixa", status_label, range_state, "Liquidez 100% ativa gerando taxas e AERO" if range_state == "IN_RANGE" else "Fora da faixa (100% em WETH)"],
         ["Saidas da Faixa (Out of Range)", f"{out_of_range_count} vezes", "100% DENTRO" if out_of_range_count == 0 else f"{out_of_range_count} ocorrencia(s)", "Contador persistente oficial de rompimentos"],
-        ["Composicao sob Custodia", f"{weth_amt:.4f} WETH + {usdc_amt:,.2f} USDC", "", "Equilibrio ideal para geracao de taxas"],
+        ["Composicao sob Custodia", f"{weth_amt:.4f} WETH + {usdc_amt:,.2f} USDC", "100% WETH (Piso Rompido)" if eth_px < p_min else ("100% USDC (Teto Rompido)" if eth_px > p_max else "Balanceado na Faixa"), "Liquidez concentrada convertida em tempo real"],
         ["Cotacao Token AERO", f"${aero_px:.4f} USD", "", "Token de recompensa emitido pelo Gauge"],
         ["", "", "", ""],
         ["TABELA DE DADOS BRUTOS (PARA FORMULAS E INDICES)", "", "", ""],

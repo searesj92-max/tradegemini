@@ -296,10 +296,30 @@ def calculate_profit_metrics(market: dict) -> dict:
     eth_px = market.get("eth", {}).get("price", 2697.0)
     usd_brl = market.get("usd_brl") or fetch_usd_brl()
 
+    rf = ROOT / "data" / "range_events.json"
+    is_out = False
+    exit_ts = None
+    if rf.exists():
+        try:
+            rdata = json.loads(rf.read_text(encoding="utf-8"))
+            if rdata.get("current_status") == "OUT_OF_RANGE":
+                is_out = True
+                evs = rdata.get("events", [])
+                if evs and evs[-1].get("type") == "EXIT":
+                    t_str = evs[-1].get("time", "").replace(" UTC", "+00:00")
+                    exit_ts = datetime.fromisoformat(t_str)
+        except Exception:
+            pass
+
     t_weth = datetime.fromisoformat("2026-10-06T21:48:00+00:00")
-    hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0.0)
+    if is_out and exit_ts:
+        hours_weth = max((exit_ts - t_weth).total_seconds() / 3600.0, 0.0)
+    else:
+        hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0.0)
 
     # Measured gauge emissions rate (~22.8 AERO/day = 0.95 AERO/hour)
+    # NOTE: Aerodrome Slipstream CLGauge ONLY emits rewards to active in-range ticks.
+    # While out of range, emissions and swap fees are paused.
     aero_per_hour = 0.95
     weth_aero_accrued = hours_weth * aero_per_hour
     weth_aero_usd = weth_aero_accrued * aero_px
@@ -321,6 +341,12 @@ def calculate_profit_metrics(market: dict) -> dict:
     equity_diff_usd = current_equity_usd - init_cap
     equity_diff_pct = (equity_diff_usd / init_cap) * 100.0 if init_cap > 0 else 0.0
 
+    accrued_text = (
+        f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [⏸️ PAUSADO - FORA DA FAIXA]"
+        if is_out else
+        f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f}) [🟢 ATIVO]"
+    )
+
     return {
         "weth_usdc": {
             "accrued_usd": weth_usd_accrued,
@@ -328,6 +354,7 @@ def calculate_profit_metrics(market: dict) -> dict:
             "accrued_aero": weth_aero_accrued,
             "accrued_fees_usd": weth_fees_usd,
             "hours_active": hours_weth,
+            "is_out": is_out,
             "current_equity_usd": current_equity_usd,
             "initial_equity_usd": init_cap,
             "equity_diff_usd": equity_diff_usd,
@@ -335,7 +362,7 @@ def calculate_profit_metrics(market: dict) -> dict:
             "prev_day_usd": prev_day_usd,
             "prev_day_aero": prev_day_aero,
             "prev_day_brl": prev_day_brl,
-            "accrued_text": f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
+            "accrued_text": accrued_text,
             "apr": "15.89% Fee APR + Emissões AERO"
         },
         "portfolio": {
@@ -347,7 +374,7 @@ def calculate_profit_metrics(market: dict) -> dict:
             "equity_diff_pct": equity_diff_pct,
             "prev_day_usd": prev_day_usd,
             "prev_day_brl": prev_day_brl,
-            "accrued_text": f"~{weth_aero_accrued:.4f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})"
+            "accrued_text": accrued_text
         }
     }
 

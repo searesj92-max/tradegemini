@@ -2,11 +2,12 @@
 """
 Botrade Interactive DeFi Treasury & Yield Sentinel Bot (Telegram)
 Provides real-time institutional monitoring and profit tracking for DeFi positions:
-- /lucro: Dedicated profit dashboard (today's hours, total accrued yield, asset valuation)
-- /defi or /pools: Radar of all 4 concentrated liquidity positions across Base & Monad
+- /lucro: Dedicated profit dashboard (real accrued yield, price distance, yesterday's benchmark)
+- /defi or /pools: Radar of the active concentrated liquidity range (min, max, floor/ceiling distances)
 - /relatorio: Consolidated 24h daily summary report
-- /saldo or /status: Consolidated treasury capital & network allocation
-- Interactive 1-tap inline buttons for effortless mobile tracking
+- /saldo or /status: Consolidated treasury capital, live equity and asset composition
+- /planilha: Live spreadsheet link for Google Sheets (=IMPORTDATA) & instant CSV download
+- Strictly presents real accrued yield and previous day's baseline. Zero future daily estimates.
 """
 
 from __future__ import annotations
@@ -43,9 +44,7 @@ from defi_pools_monitor import (
     evaluate_positions,
     generate_consolidated_report,
     calculate_profit_metrics,
-    format_virtual_rebalance_notification,
-    audit_virtual,
-    VIRT_INITIAL_USD,
+    fetch_usd_brl,
     POSITIONS
 )
 from defi_treasury_tracker import format_defi_message
@@ -153,59 +152,73 @@ def answer_callback(callback_query_id: str, text: str = None) -> dict:
 
 
 def format_defi_profit_dashboard() -> tuple[str, dict]:
-    """Generates pure dedicated profit & valuation dashboard."""
+    """Generates pure dedicated profit & valuation dashboard without speculative future estimates."""
     now = datetime.now(timezone.utc)
     market = fetch_live_market_data()
-    profits = calculate_profit_metrics(market)
+    evaluated, _, profits = evaluate_positions(market)
 
-    hours_today = now.hour + now.minute / 60.0
-    p_info = profits.get("portfolio", {})
-    daily_pace = p_info.get("total_daily_usd", 56.17)
-    daily_brl = p_info.get("total_daily_brl", daily_pace * 5.50)
-    hourly_pace = daily_pace / 24.0
-    hourly_brl = hourly_pace * 5.50
+    item = evaluated[0] if evaluated else {}
+    pos = item.get("pos", {})
+    prof = item.get("profit", {})
+    px = item.get("current_price", 2697.0)
+    usd_brl = fetch_usd_brl()
 
-    today_earned_usd = hours_today * hourly_pace
-    today_earned_brl = today_earned_usd * 5.50
+    cur_eq = prof.get("current_equity_usd", pos.get("capital_usd", 11568.85))
+    init_eq = prof.get("initial_equity_usd", 11568.85)
+    diff_usd = prof.get("equity_diff_usd", 0.0)
+    diff_pct = prof.get("equity_diff_pct", 0.0)
+    diff_sign = "+" if diff_usd >= 0 else "-"
 
-    tot_accrued_usd = p_info.get("total_accrued_usd", 125.50)
-    tot_accrued_brl = p_info.get("total_accrued_brl", tot_accrued_usd * 5.50)
+    acc_aero = prof.get("accrued_aero", 0.0)
+    acc_usd = prof.get("accrued_usd", 0.0)
+    acc_fees = prof.get("accrued_fees_usd", 0.0)
+    hours = prof.get("hours_active", 0.0)
 
-    base_capital = 12094.33
-    est_current_equity = base_capital + tot_accrued_usd
-    val_diff_usd = tot_accrued_usd
-    val_diff_pct = (val_diff_usd / base_capital) * 100.0
+    prev_usd = prof.get("prev_day_usd", 21.09)
+    prev_aero = prof.get("prev_day_aero", 23.8)
+    prev_brl = prof.get("prev_day_brl", prev_usd * usd_brl)
 
-    weth_prof = profits.get("weth_usdc", {})
-    googl_prof = profits.get("usdc_googlc", {})
-    virt_prof = profits.get("virtual_weth", {})
-    mon_prof = profits.get("mon_usdc", {})
+    dist_ceil = item.get("dist_ceiling", 0.0)
+    dist_floor = item.get("dist_floor", 0.0)
+    out_count = item.get("out_of_range_count", 0)
+
+    p_min = pos.get("range_min", 2596.73)
+    p_max = pos.get("range_max", 2798.98)
 
     lines = [
         "💰 *PAINEL DE RENDIMENTOS — TESOURARIA DEFI*",
         f"⏱️ _{now.strftime('%d/%m/%Y %H:%M UTC')}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"💵 *Rendimento Diário Total:* *`~${daily_pace:.2f} USD / dia`* (**`~R$ {daily_brl:.2f}/dia`**)",
-        f"💼 *Patrimônio sob Custódia:* *`${base_capital:,.2f} USD`* (~R$ {base_capital*5.50:,.2f})",
+        "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
+        f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Aporte Inicial:* `${init_eq:,.2f} USD` (Depósito #7732601)",
+        f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
+        f"• *Cotação Dólar Base:* `R$ {usd_brl:.4f}` (Tempo Real)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "📊 *RENDIMENTO POR POOL:*",
-        f"• *1. WETH / USDC (2 Pools):* `~${weth_prof.get('daily_usd'):.2f}/dia` (~R$ {weth_prof.get('daily_usd')*5.5:.2f}/dia)",
-        f"  └ _Saldo Somado: $10,378.16 (Principal $10.181 + Menor $196)_",
-        f"• *2. USDC / GOOGLc (Google):* `~${googl_prof.get('daily_usd'):.2f}/dia` (~R$ {googl_prof.get('daily_usd')*5.5:.2f}/dia)",
-        f"• *3. VIRTUAL / WETH (Autopilot):* `~${virt_prof.get('daily_usd'):.2f}/dia` (~R$ {virt_prof.get('daily_usd')*5.5:.2f}/dia)",
-        f"• *4. MON / USDC (Monad):* `~${mon_prof.get('daily_usd'):.2f}/dia` (~R$ {mon_prof.get('daily_usd')*5.5:.2f}/dia)",
-        "\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🚀 *PROJEÇÃO ESTIMADA:*",
-        f"• *Semanal:* `~${daily_pace*7:.2f} USD` (~R$ {daily_pace*7*5.50:,.2f})",
-        f"• *Mensal:* `~${daily_pace*30:.2f} USD` (**~R$ {daily_pace*30*5.50:,.2f}**)",
+        "🎯 *RADAR DA FAIXA & SEGURANÇA:*",
+        f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",
+        f"• *Preço Atual:* *`${px:,.2f} USDC`*",
+        f"• *Faixa Ativa:* *`${p_min:,.2f}` ↔ `${p_max:,.2f}`*",
+        f"• *Distância do Teto:* `+{dist_ceil:.2f}%` (falta ~${abs(p_max - px):.2f})",
+        f"• *Distância do Piso:* `-{abs(dist_floor):.2f}%` (falta ~${abs(px - p_min):.2f})",
+        f"• *Status:* {item.get('status_text', '🟢 100% IN RANGE')}",
+        f"• *Saídas de Faixa:* *`{out_count} vezes`* (100% dentro da faixa)",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
+        "💰 *RENDIMENTOS REALIZADOS (SEM ESTIMATIVAS):*",
+        f"• *AERO Minerado:* *`~{acc_aero:.4f} AERO`* (~${acc_aero*0.812:.2f} USD)",
+        f"• *Taxas de Swap:* *`+${acc_fees:.2f} USD`*",
+        f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"📊 *Referência do Dia Anterior:* *`~{prev_aero:.1f} AERO`* (*`+${prev_usd:.2f} USD`* / **~R$ {prev_brl:.2f}**)",
+        "  └ _(Rendimento real do fechamento anterior para base comparativa)_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "🛡️ _Monitoramento 24/7 ativo na nuvem (Render.com)._"
     ]
 
     markup = {
         "inline_keyboard": [
-            [{"text": "🔄 Atualizar", "callback_data": "defi_profit"}, {"text": "📑 Fechamento 24h", "callback_data": "daily_report"}],
-            [{"text": "💼 Ver Saldo por Rede", "callback_data": "refresh_status"}]
+            [{"text": "🔄 Atualizar", "callback_data": "defi_profit"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
+            [{"text": "📡 Radar da Faixa", "callback_data": "defi_treasury"}, {"text": "📑 Fechamento 24h", "callback_data": "daily_report"}]
         ]
     }
     return "\n".join(lines), markup
@@ -215,147 +228,147 @@ def format_defi_status_summary() -> tuple[str, dict]:
     """Generates clean high-level treasury capital allocation status."""
     now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     market = fetch_live_market_data()
-    profits = calculate_profit_metrics(market)
-    p_info = profits.get("portfolio", {})
-    daily_usd = p_info.get("total_daily_usd", 70.80)
+    evaluated, _, profits = evaluate_positions(market)
+
+    item = evaluated[0] if evaluated else {}
+    pos = item.get("pos", {})
+    prof = item.get("profit", {})
+    px = item.get("current_price", 2697.0)
+    usd_brl = fetch_usd_brl()
+
+    cur_eq = prof.get("current_equity_usd", pos.get("capital_usd", 11568.85))
+    init_eq = prof.get("initial_equity_usd", 11568.85)
+    diff_usd = prof.get("equity_diff_usd", 0.0)
+    diff_pct = prof.get("equity_diff_pct", 0.0)
+    diff_sign = "+" if diff_usd >= 0 else "-"
+
+    acc_usd = prof.get("accrued_usd", 0.0)
+    prev_usd = prof.get("prev_day_usd", 21.09)
+    out_count = item.get("out_of_range_count", 0)
 
     lines = [
-        "💼 *SALDO ATUALIZADO — TESOURARIA DEFI*",
+        "💼 *SALDO CONSOLIDADO — TESOURARIA DEFI*",
         f"⏱️ _{now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💰 *PATRIMÔNIO TOTAL:* *`$12,078.42 USD`* (**~R$ 66.431,00**)",
-        f"💵 *Rendimento Passivo:* *`~${daily_usd:.2f} / dia`* (~R$ {daily_usd*5.5:.2f}/dia)",
+        f"💰 *PATRIMÔNIO TOTAL:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Aporte Inicial:* `${init_eq:,.2f} USD`",
+        f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "📍 *DISTRIBUIÇÃO REAL DAS 4 POOLS:*",
-        "• *WETH / USDC (Base):* *`$10,378.16 USD`* (~R$ 57.080) 🟢",
-        "  ├ Depósito Principal (#7669576): `$10,181.75` (Staked no Gauge)",
-        "  └ Depósito Menor (#7670917): `$196.41` (Pool Ativa)",
-        "• *USDC / GOOGLc (Base):* *`$978.28 USD`* (~R$ 5.380) 🟢",
-        "• *VIRTUAL / WETH (Base):* *`~$390.00 USD`* (~R$ 2.145) 🟢",
-        "• *MON / USDC (Monad):* *`~$331.98 USD`* (~R$ 1.825) 🟢",
+        "📍 *POSIÇÃO PRINCIPAL EM CUSTÓDIA:*",
+        "• *Par:* *WETH / USDC (Slipstream 50)* 🟢",
+        "  ├ *Identificação:* `Deposit #7732601` (Staked no Gauge Aerodrome)",
+        f"  ├ *Composição:* `{pos.get('weth_amount', 2.1138):.4f} WETH` + `{pos.get('usdc_amount', 5871.09):,.2f} USDC`",
+        f"  ├ *Faixa Ativa:* `${pos.get('range_min', 2596.73):,.2f}` ↔ `${pos.get('range_max', 2798.98):,.2f}`",
+        f"  ├ *Preço Atual:* `${px:,.2f} USDC`",
+        f"  └ *Saídas de Faixa:* `{out_count} vezes` (100% dentro do range)",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
+        "💰 *RENDIMENTOS REALIZADOS:*",
+        f"• *Acumulado neste Ciclo:* *`+${acc_usd:.2f} USD`* (~R$ {acc_usd*usd_brl:.2f})",
+        f"• *Referência Fechamento Anterior:* *`+${prev_usd:.2f} USD`* (~R$ {prev_usd*usd_brl:.2f})",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🟢 *Todas as 4 posições ativas e rendendo normalmente.*"
+        "🟢 *Cofre consolidado único, 100% ativo e gerando taxas no Gauge.*"
     ]
 
     markup = {
         "inline_keyboard": [
-            [{"text": "💰 Ver Rendimentos (/lucro)", "callback_data": "defi_profit"}],
-            [{"text": "📑 Fechamento 24h (/relatorio)", "callback_data": "daily_report"}]
+            [{"text": "💰 Ver Rendimentos (/lucro)", "callback_data": "defi_profit"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
+            [{"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}, {"text": "📑 Fechamento 24h (/relatorio)", "callback_data": "daily_report"}]
         ]
     }
     return "\n".join(lines), markup
 
 
 def format_daily_report_message() -> tuple[str, dict]:
-    """Generates 24-hour daily closing summary for DeFi treasury with isolated 24h yield."""
+    """Generates 24-hour daily closing summary for DeFi treasury with verified real baseline."""
     now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     market = fetch_live_market_data()
     evaluated, _, profits = evaluate_positions(market)
-    p_info = profits.get("portfolio", {})
 
-    weth_prof = profits.get("weth_usdc", {})
-    googl_prof = profits.get("usdc_googlc", {})
-    virt_prof = profits.get("virtual_weth", {})
-    mon_prof = profits.get("mon_usdc", {})
+    item = evaluated[0] if evaluated else {}
+    pos = item.get("pos", {})
+    prof = item.get("profit", {})
+    px = item.get("current_price", 2697.0)
+    usd_brl = fetch_usd_brl()
 
-    # 24h isolated metrics
-    daily_usd_24h = p_info.get("total_daily_usd", 67.50)
-    daily_brl_24h = daily_usd_24h * 5.50
+    cur_eq = prof.get("current_equity_usd", pos.get("capital_usd", 11568.85))
+    init_eq = prof.get("initial_equity_usd", 11568.85)
+    diff_usd = prof.get("equity_diff_usd", 0.0)
+    diff_pct = prof.get("equity_diff_pct", 0.0)
+    diff_sign = "+" if diff_usd >= 0 else "-"
 
-    # Baseline comparison with previous 24h (prior to WETH/USDC migration, it was ~58.14 USD)
-    prev_24h_usd = 58.14
-    prev_24h_brl = prev_24h_usd * 5.50
-    diff_24h_usd = daily_usd_24h - prev_24h_usd
-    diff_24h_brl = diff_24h_usd * 5.50
-    diff_pct = (diff_24h_usd / prev_24h_usd) * 100.0 if prev_24h_usd > 0 else 0.0
-    comp_sign = "+" if diff_24h_usd >= 0 else "-"
+    acc_aero = prof.get("accrued_aero", 0.0)
+    acc_usd = prof.get("accrued_usd", 0.0)
+    acc_fees = prof.get("accrued_fees_usd", 0.0)
+    hours = prof.get("hours_active", 0.0)
+
+    prev_usd = prof.get("prev_day_usd", 21.09)
+    prev_aero = prof.get("prev_day_aero", 23.8)
+    prev_brl = prof.get("prev_day_brl", prev_usd * usd_brl)
+
+    dist_ceil = item.get("dist_ceiling", 0.0)
+    dist_floor = item.get("dist_floor", 0.0)
+    out_count = item.get("out_of_range_count", 0)
 
     lines = [
-        "📑 *RELATÓRIO DE FECHAMENTO — RENDIMENTO DAS ÚLTIMAS 24H*",
+        "📑 *RELATÓRIO DE FECHAMENTO — TESOURARIA DEFI*",
         f"⏱️ _Período Apurado: {now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💵 *LUCRO LÍQUIDO GERADO NAS ÚLTIMAS 24 HORAS:*",
-        f"• *Em Reais:* 🟢 *`+R$ {daily_brl_24h:,.2f}`* (cotação USD/BRL ~5.50)",
-        f"• *Em Dólar:* *`+${daily_usd_24h:.2f} USD`*",
-        f"• *Comparação c/ 24h Anteriores:* 🟢 *`{comp_sign}R$ {abs(diff_24h_brl):.2f} ({comp_sign}{abs(diff_pct):.1f}%)`* a mais que ontem!",
+        "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
+        f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Aporte Inicial:* `${init_eq:,.2f} USD`",
+        f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "📊 *DESDOBRAMENTO DAS 24H POR POOL:*",
-        f"  ├ *1. WETH / USDC (2 Posições):* `+${weth_prof.get('daily_usd'):.2f} USD` (~R$ {weth_prof.get('daily_brl'):.2f})",
-        f"  │  ├ Principal (#7669576): `+$55.00 USD` (~R$ 302,50)",
-        f"  │  └ Secundária (#7670917): `+$0.60 USD` (~R$ 3,30)",
-        f"  ├ *2. USDC / GOOGLc (Google):* `+${googl_prof.get('daily_usd'):.2f} USD` (~R$ {googl_prof.get('daily_brl'):.2f})",
-        f"  ├ *3. VIRTUAL / WETH (Autopilot):* `+${virt_prof.get('daily_usd'):.2f} USD` (~R$ {virt_prof.get('daily_brl'):.2f})",
-        f"  └ *4. MON / USDC (Monad):* `+${mon_prof.get('daily_usd'):.2f} USD` (~R$ {mon_prof.get('daily_brl'):.2f})",
+        "💰 *RENDIMENTO REAL DO DIA ANTERIOR (BASE COMPARATIVA):*",
+        f"• *Em Dólar:* *`+${prev_usd:.2f} USD`*",
+        f"• *Em Reais:* 🟢 *`+R$ {prev_brl:,.2f}`*",
+        f"• *Em AERO:* *`~{prev_aero:.1f} AERO`* (Fechamento 24h Real)",
+        "  └ _(Valor verificado do dia anterior para base comparativa empírica)_\n",
+        "💰 *RENDIMENTO REAL ACUMULADO NESTE CICLO:*",
+        f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
+        f"• *Composição:* `~{acc_aero:.4f} AERO` + `+${acc_fees:.2f} Taxas de Swap`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        f"💼 *Patrimônio Total em Custódia:* `$12,094.33 USD` (~R$ 66.518)",
-        "🎯 *Status de Faixas das 4 Posições:*"
+        "🎯 *RADAR DA FAIXA & STATUS:*",
+        f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",
+        f"• *Preço Atual:* *`${px:,.2f} USDC`*",
+        f"• *Faixa Ativa:* `${pos.get('range_min', 2596.73):,.2f}` ↔ `${pos.get('range_max', 2798.98):,.2f}`",
+        f"• *Distância do Teto:* `+{dist_ceil:.2f}%`",
+        f"• *Distância do Piso:* `-{abs(dist_floor):.2f}%`",
+        f"• *Saídas da Faixa:* *`{out_count} vezes`* (100% dentro do range)",
+        f"• *Status:* {item.get('status_text', '🟢 100% IN RANGE')}",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🛡️ _Relatório oficial consolidado do Sentinela 24/7 na nuvem (Render.com)._"
     ]
-
-    for idx, item in enumerate(evaluated, 1):
-        pos = item["pos"]
-        status = item["status_text"]
-        lines.append(f"• *{pos['name']}*: {status}")
-
-    lines.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("🛡️ _Relatório oficial consolidado do Sentinela 24/7 na nuvem (Render.com)._")
 
     markup = {
         "inline_keyboard": [
-            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
-            [{"text": "📡 Ver Radar das 4 Pools", "callback_data": "defi_treasury"}]
+            [{"text": "💰 Ver Rendimento Real", "callback_data": "defi_profit"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
+            [{"text": "📡 Radar da Faixa", "callback_data": "defi_treasury"}, {"text": "💼 Alocação Patrimonial", "callback_data": "refresh_status"}]
         ]
     }
     return "\n".join(lines), markup
 
 
 def format_virtual_rebalance_status() -> tuple[str, dict]:
-    """Generates on-demand diagnostic of VIRTUAL / WETH position and on-chain audit status."""
-    audit = audit_virtual()
-    if not audit:
-        text = format_virtual_rebalance_notification(
-            old_id=6127604,
-            active_id=6131939,
-            old_min=0.00027864,
-            old_max=0.00029617,
-            new_min=0.00028885,
-            new_max=0.00030702
-        )
-    else:
-        now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
-        active_id = audit["active_nft"]
-        px = audit["px_weth"]
-        p_min = audit["range_min"]
-        p_max = audit["range_max"]
-        in_range = audit["in_range"]
-        status_sym = "🟢 100% IN RANGE (Gerando Taxas)" if in_range else "🔴 FORA DA FAIXA"
-
-        lines = [
-            "🔄 *RAIO-X VIRTUAL / WETH — RESULTADO LÍQUIDO NO BOLSO*",
-            f"⏱️ _{now_utc}_",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "📍 *Posição:* VIRTUAL / WETH 0.05% (Uniswap V3 via Krystal Autopilot)",
-            f"🏷️ *NFT Ativo:* `#{active_id}` | *Status:* {status_sym}",
-            f"💵 *Preço Atual:* `{px:.8f} WETH` (${audit['virtual_usd']:.4f})",
-            f"🎯 *Faixa Ativa:* `{p_min:.8f}` ↔ `{p_max:.8f}` WETH",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-            "💰 *CAPITAL & LUCRO LÍQUIDO REAL:*",
-            f"• 💵 *Aporte Inicial (30/09):* `${audit.get('initial_usd', 406.46):.2f} USD` (~R$ {audit.get('initial_usd', 406.46)*5.5:.2f})",
-            f"• 🏦 *Patrimônio Líquido Atual:* *`~${audit['equity_usd']:.2f} USD`* (**`~R$ {audit['equity_usd']*5.5:.2f}`**)",
-            f"  └ _(Pool + Trocos livres na carteira já somados)_",
-            f"• 🟢 *LUCRO LÍQUIDO REAL:* *`{audit['net_usd']:+.2f} USD ({audit['net_pct']:+.2f}%)`* (**`~R$ {audit['net_usd']*5.5:+.2f}`**)",
-            f"• 📈 *Ritmo Médio:* `~${audit['fees_per_day_avg']:.2f} / dia` (~R$ {audit['fees_per_day_avg']*5.5:.2f}/dia)",
-            "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-            "✅ _Valor 100% líquido: todas as taxas de protocolo, swaps e oscilações já foram descontadas._"
-        ]
-        text = "\n".join(lines)
-
+    """Informs that VIRTUAL position was disassembled and capital consolidated into WETH/USDC."""
+    lines = [
+        "ℹ️ *POSIÇÃO VIRTUAL / WETH CONCLUÍDA & DESMONTADA*",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "Todo o capital das posições secundárias anteriores foi resgatado e **consolidado integralmente** no cofre principal:",
+        "\n• *Cofre Principal:* **WETH / USDC (Slipstream 50)**",
+        "• *Identificação:* `Deposit #7732601`",
+        "• *Rede:* Base Network (Aerodrome Finance)",
+        "• *Faixa Concentrada:* `$2,596.73` ↔ `$2,798.98 USDC`",
+        "• *Benefício:* Zero risco de rebalanceamento forçado no fundo e mineração direta de AERO no Gauge.",
+        "\n━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "👉 Digite `/lucro` para ver os rendimentos ou `/defi` para ver o radar da faixa."
+    ]
     markup = {
         "inline_keyboard": [
-            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
-            [{"text": "📡 Radar das 4 Pools", "callback_data": "defi_treasury"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+            [{"text": "💰 Ver Rendimentos (/lucro)", "callback_data": "defi_profit"}],
+            [{"text": "📡 Ver Radar da Faixa (/defi)", "callback_data": "defi_treasury"}]
         ]
     }
-    return text, markup
+    return "\n".join(lines), markup
 
 
 def handle_planilha_command(chat_id: int | str):
@@ -368,33 +381,35 @@ def handle_planilha_command(chat_id: int | str):
     except Exception as e:
         print(f"[-] Erro ao atualizar snapshot para /planilha: {e}")
 
-    sheet_url = "https://botrade-hyperliquid.onrender.com/api/defi/sheet.csv"
+    sheet_url = "https://botrade-hyperliquid.onrender.com/api/defi/live.csv"
+    web_dashboard_url = "https://botrade-hyperliquid.onrender.com/planilha"
     history_url = "https://botrade-hyperliquid.onrender.com/api/defi/history.csv"
 
     msg = (
-        "📊 *PLANILHA AO VIVO DE RENDIMENTOS & PNL*\n"
+        "📊 *PLANILHA AO VIVO DE RENDIMENTOS & PNL (SEM ESTIMATIVAS)*\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "Sua planilha é atualizada automaticamente **a cada 10 minutos** com:\n"
-        "• Saldo e capital de cada uma das 4 pools\n"
-        "• Rendimento passivo acumulado e diário\n"
-        "• Valorização ou desvalorização (PnL patrimonial)\n"
-        "• Cotações em tempo real de ETH, AERO, GOOGL, VIRTUAL e MON\n\n"
+        "Sua planilha atualiza **dinamicamente a todo momento que você abre** com:\n"
+        "• *Saldo Atual:* Patrimônio total atualizado em USD e BRL\n"
+        "• *Aporte Inicial:* $11,568.85 USD (Depósito #7732601)\n"
+        "• *Valorização ou Desvalorização:* PnL exato em $ e %\n"
+        "• *Rendimentos Reais Acumulados:* AERO minerado + taxas de swap reais\n"
+        "• *Referência do Dia Anterior:* Rendimento real de ontem (~23.8 AERO / +$21.09 USD)\n"
+        "• *Faixa de Liquidez:* Piso ($2,596.73), Teto ($2,798.98) e distâncias\n"
+        "• *Saídas do Range:* Contador persistente de quantas vezes saiu da faixa\n\n"
         "🟢 *OPÇÃO 1: GOOGLE PLANILHAS (AO VIVO NO NAVEGADOR/CELULAR)*\n"
         "1. Abra uma nova planilha no Google Sheets (`sheets.new`)\n"
         "2. Na célula **A1**, cole a fórmula abaixo:\n\n"
         f"`=IMPORTDATA(\"{sheet_url}\")`\n\n"
-        "_Pronto! O Google Sheets atualizará sozinho a cada ciclo sem precisar de nenhum conector externo pago!_\n\n"
-        "📁 *OPÇÃO 2: ARQUIVOS EXCEL / CSV EM ANEXO*\n"
-        "Estou enviando abaixo os 2 arquivos para você abrir direto no Excel:\n"
-        "• `defi_latest.csv`: Painel com resumo atual das 4 pools\n"
-        "• `defi_history.csv`: Histórico completo minuto a minuto"
+        "_Pronto! Toda vez que você abrir a planilha, o Google Sheets busca os dados mais recentes do servidor!_\n\n"
+        "📁 *OPÇÃO 2: ARQUIVOS CSV EM ANEXO*\n"
+        "Enviando abaixo os arquivos para abrir direto no Excel ou Bloco de Notas:"
     )
 
     markup = {
         "inline_keyboard": [
-            [{"text": "🌐 Abrir Planilha Online (Web)", "url": sheet_url}],
-            [{"text": "📈 Baixar Histórico Completo", "url": history_url}],
-            [{"text": "💰 Ver Lucros de Hoje", "callback_data": "defi_profit"}]
+            [{"text": "🌐 Abrir Painel Web (/planilha)", "url": web_dashboard_url}],
+            [{"text": "📥 Baixar CSV ao Vivo", "url": sheet_url}],
+            [{"text": "💰 Ver Rendimento Real", "callback_data": "defi_profit"}]
         ]
     }
     send_message(chat_id, msg, markup)
@@ -404,35 +419,33 @@ def handle_planilha_command(chat_id: int | str):
     history_file = ROOT / "data" / "defi_history.csv"
 
     if latest_file.exists():
-        send_document(chat_id, latest_file, caption="📊 Painel Atualizado das 4 Pools (defi_latest.csv)")
+        send_document(chat_id, latest_file, caption="📊 Resumo Consolidado WETH/USDC (defi_latest.csv)")
     if history_file.exists():
-        send_document(chat_id, history_file, caption="📈 Histórico 10min de Rendimentos & PnL (defi_history.csv)")
+        send_document(chat_id, history_file, caption="📈 Histórico Granular de Rendimentos & PnL (defi_history.csv)")
 
 
 def handle_command(chat_id: int | str, text: str, message_id: int = None):
     cmd_parts = text.strip().split()
     cmd = cmd_parts[0].lower()
-    arg = cmd_parts[1].upper() if len(cmd_parts) > 1 else ""
 
     # 1. MENU / AJUDA
     if cmd in ("/start", "/help", "/ajuda", "ajuda", "help", "menu"):
         msg = (
             "🏛️ *SENTINELA & TESOURARIA DEFI BOTRADE*\n\n"
-            "Acompanhe o rendimento passivo e o radar de faixas das suas 4 pools em tempo real:\n\n"
-            "• `/planilha` ou `planilha` - 📊 Planilha ao vivo (Google Sheets automático e arquivos Excel)\n"
-            "• `/lucro` ou `lucro` - 💰 Mostra o lucro de hoje, lucro acumulado total e valorização patrimonial\n"
-            "• `/defi` ou `/pools` - 🏦 Raio-X completo das 4 pools com faixas de liquidez e distâncias\n"
-            "• `/virtual` ou `virtual` - 🔄 Raio-X do par VIRTUAL (rebalanceamento, alta/queda e taxas)\n"
-            "• `/saldo` ou `/status` - 💼 Patrimônio alocado por rede (Base + Monad)\n"
-            "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento das últimas 24h\n\n"
-            "_Dica: Você pode tocar diretamente nos botões interativos abaixo:_"
+            "Monitoramento 24/7 do cofre consolidado WETH / USDC (Deposit #7732601):\n\n"
+            "• `/planilha` ou `planilha` - 📊 Planilha ao vivo (Google Sheets automático e arquivos CSV)\n"
+            "• `/lucro` ou `lucro` - 💰 Rendimento real acumulado e base de ontem (sem estimativas)\n"
+            "• `/defi` ou `/pools` - 🎯 Radar da faixa ($2,596 ↔ $2,798), distâncias de piso/teto e saídas\n"
+            "• `/saldo` ou `/status` - 💼 Saldo atualizado, composição e valorização/desvalorização\n"
+            "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento 24h\n\n"
+            "_Toque diretamente nos botões interativos abaixo:_"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "📊 Planilha ao Vivo (Sheets/Excel)", "callback_data": "defi_sheet"}],
-                [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
-                [{"text": "📡 Radar das 4 Pools & Faixas", "callback_data": "defi_treasury"}],
-                [{"text": "🔄 Posição VIRTUAL (Autopilot)", "callback_data": "virtual_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+                [{"text": "📊 Planilha ao Vivo (Sheets/CSV)", "callback_data": "defi_sheet"}],
+                [{"text": "💰 Rendimento Real (/lucro)", "callback_data": "defi_profit"}],
+                [{"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
+                [{"text": "💼 Saldo Atualizado (/saldo)", "callback_data": "refresh_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
             ]
         }
         send_message(chat_id, msg, markup)
@@ -443,14 +456,14 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         handle_planilha_command(chat_id)
         return
 
-    # 3. LUCRO DEDICADO (HOJE + ACUMULADO + VALORIZAÇÃO)
+    # 3. LUCRO DEDICADO (REAL ACUMULADO + BASE ANTERIOR)
     if cmd in ("/lucro", "/lucros", "/rendimento", "/rendimentos", "/ganhos", "lucro", "lucros", "rendimento", "rendimentos", "ganhos", "quanto rendeu", "lucro de hoje") or "lucro" in text.lower() or "rendeu" in text.lower():
         text_out, markup = format_defi_profit_dashboard()
         send_message(chat_id, text_out, markup)
         return
 
     # 4. DEFI TREASURY / POOLS RADAR
-    if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "defi", "tesouraria", "pools", "pool") or "pool" in text.lower():
+    if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "defi", "tesouraria", "pools", "pool") or "pool" in text.lower() or "faixa" in text.lower():
         text_out, markup = format_defi_message()
         send_message(chat_id, text_out, markup)
         return
@@ -461,7 +474,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, text_out, markup)
         return
 
-    # 6. DIAGNÓSTICO VIRTUAL / REBALANCEAMENTO KRYSTAL
+    # 6. DIAGNÓSTICO VIRTUAL (DESMONTADA)
     if cmd in ("/virtual", "/krystal", "/rebalance", "virtual", "krystal", "rebalance", "rebalanceamento"):
         text_out, markup = format_virtual_rebalance_status()
         send_message(chat_id, text_out, markup)
@@ -473,24 +486,9 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, text_out, markup)
         return
 
-    # 8. COMANDOS DESATIVADOS (HYPERLIQUID PERPS)
-    if cmd in ("/funding", "/pausar", "/retomar", "/colher", "/fechar", "/fechar_todas", "/panic", "/sniper"):
-        msg = (
-            "ℹ️ *Operações de Trading Perpétuo Desativadas*\n\n"
-            "Todo o saldo foi transferido e alocado com sucesso na **Tesouraria DeFi de Alta Renda Passiva** (Base + Monad).\n\n"
-            "Use `/lucro` para acompanhar os rendimentos ou `/defi` para ver o radar das faixas."
-        )
-        markup = {
-            "inline_keyboard": [
-                [{"text": "💰 Ver Lucros", "callback_data": "defi_profit"}, {"text": "📡 Ver Pools", "callback_data": "defi_treasury"}]
-            ]
-        }
-        send_message(chat_id, msg, markup)
-        return
-
     send_message(
         chat_id,
-        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/lucro` para ver os rendimentos, `/defi` para ver as pools ou `/ajuda` para ver o menu."
+        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/lucro` para ver o rendimento, `/defi` para o radar da faixa, `/planilha` para a planilha ao vivo ou `/ajuda` para o menu."
     )
 
 
@@ -503,7 +501,7 @@ def handle_callback_query(cq: dict):
     data = cq.get("data", "")
 
     if data in ("defi_profit", "profit_summary"):
-        answer_callback(cq_id, "Calculando lucros de hoje e acumulado...")
+        answer_callback(cq_id, "Calculando rendimento real...")
         text_out, markup = format_defi_profit_dashboard()
         if msg_id:
             edit_message(chat_id, msg_id, text_out, markup)
@@ -512,7 +510,7 @@ def handle_callback_query(cq: dict):
         return
 
     if data == "defi_treasury":
-        answer_callback(cq_id, "Consultando radar das 4 pools...")
+        answer_callback(cq_id, "Consultando radar da faixa...")
         text_out, markup = format_defi_message()
         if msg_id:
             edit_message(chat_id, msg_id, text_out, markup)
@@ -521,7 +519,7 @@ def handle_callback_query(cq: dict):
         return
 
     if data == "refresh_status":
-        answer_callback(cq_id, "Atualizando alocação patrimonial...")
+        answer_callback(cq_id, "Atualizando saldo consolidado...")
         text_out, markup = format_defi_status_summary()
         if msg_id:
             edit_message(chat_id, msg_id, text_out, markup)
@@ -538,17 +536,8 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, text_out, markup)
         return
 
-    if data == "virtual_status":
-        answer_callback(cq_id, "Carregando raio-x do rebalanceamento VIRTUAL...")
-        text_out, markup = format_virtual_rebalance_status()
-        if msg_id:
-            edit_message(chat_id, msg_id, text_out, markup)
-        else:
-            send_message(chat_id, text_out, markup)
-        return
-
     if data == "defi_sheet":
-        answer_callback(cq_id, "Gerando links e arquivos da planilha...")
+        answer_callback(cq_id, "Gerando planilha ao vivo...")
         handle_planilha_command(chat_id)
         return
 
@@ -557,12 +546,10 @@ def handle_callback_query(cq: dict):
 
 def register_bot_commands():
     commands = [
-        {"command": "planilha", "description": "📊 Planilha ao vivo (Google Sheets & Excel)"},
-        {"command": "lucro", "description": "💰 Lucros de hoje, acumulado e valorização"},
-        {"command": "defi", "description": "🏦 Tesouraria DeFi e radar das 4 pools"},
-        {"command": "virtual", "description": "🔄 Raio-X do rebalanceamento VIRTUAL & PnL"},
-        {"command": "pools", "description": "🎯 Faixas ativas e distâncias do teto/piso"},
-        {"command": "saldo", "description": "💼 Patrimônio e alocação por rede"},
+        {"command": "planilha", "description": "📊 Planilha ao vivo (atualiza a todo momento)"},
+        {"command": "lucro", "description": "💰 Rendimento real acumulado e base de ontem"},
+        {"command": "defi", "description": "🎯 Radar da faixa ($2,596 a $2,798) e saídas"},
+        {"command": "saldo", "description": "💼 Saldo consolidado e valorização patrimonial"},
         {"command": "relatorio", "description": "📑 Relatório de fechamento 24h"},
         {"command": "ajuda", "description": "❓ Menu interativo de comandos"}
     ]

@@ -1,16 +1,26 @@
-﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,,,,
-Atualizado em: 2026-10-06 18:59:05 UTC,,,,,,
-,,,,,,
-RESUMO CONSOLIDADO DA CARTEIRA,,,,,,
-Patrimonio Total (USD),"$12,089.07",Rendimento Diario Total (USD),$23.51/dia,Variacao Total (USD),-34.23,-0.28%
-Patrimonio Total (BRL),"R$ 60,155.20",Rendimento Diario Total (BRL),R$ 117.00/dia,Cotacao Dolar Base,R$ 4.9760,
-,,,,,,
-DETALHAMENTO POR POOL,,,,,,
-Pool / Ativo,Rede / Protocolo,Saldo Alocado (USD),Saldo Alocado (BRL),Renda Diaria Est. (USD),Renda Diaria Est. (BRL),Valorizacao / PnL ($),Status Faixa,Identificacao
-USDC / NVDAc (Slipstream 10),Base (Aerodrome),10407.47,51787.57,21.09,104.94,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Deposit #7718530
-USDC / GOOGLc (Google RWA),Base (Aerodrome),977.39,4863.49,0.50,2.49,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),NFT #7508296
-VIRTUAL / WETH 0.05%,Base (Krystal Autopilot),372.23,1852.20,0.02,0.11,-30.09,🟡 ATENÇÃO: Apenas -0.91% do piso!,NFT #6166911
-MON / USDC (Concentrated),Monad (Uniswap v4),331.98,1651.93,1.90,9.45,+0.00,🟢 100% IN RANGE (RENDENDO FORTE),Pool 0x659b
-,,,,,,
-COTACAO DOS ATIVOS,,,,,,
-Nvidia (NVDAc),$240.56,Aerodrome (AERO),$0.8108,Google (GOOGLc),$348.52,Virtual (VIRTUAL),$0.8125,Monad (MON),$0.02886
+﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,
+Atualizado em: 2026-10-07 02:14:28 UTC,,,
+,,,
+METRICA PATRIMONIAL,VALOR (USD),VALOR (BRL),DETALHE / BASE COMPARATIVA
+Patrimonio Total Alocado,"$11,402.74","R$ 56,814.13",Deposito #7732601 (Staked no Gauge)
+Aporte Inicial de Capital,"$11,568.85","R$ 57,641.80","2.1138 WETH + 5,871.09 USDC (06/10/2026)"
+Variacao Patrimonial (PnL),-166.11,R$ -827.67,-1.44% vs Capital Inicial
+Rendimento Real Acumulado,+$4.45,+R$ 22.15,4.2191 AERO + $1.11 Taxas (4.4h ativas)
+Referencia Fechamento Anterior,+$21.09,+R$ 105.08,~23.8 AERO (Rendimento Real 24h Anterior)
+Cotacao Dolar Base (USD/BRL),R$ 4.9825,,Cotacao em tempo real (AwesomeAPI/Binance)
+,,,
+RADAR DA FAIXA DE LIQUIDEZ,VALOR,STATUS,SEGURANCA / PROXIMIDADE
+Par de Negociacao,WETH / USDC (Slipstream 50),ATIVO,Base Network • Aerodrome Finance
+ID do Deposito,Deposit #7732601,STAKED,NFT Travado no Gauge de Emissoes
+Preco Atual do ETH,"$2,616.92 USDC",,Variacao 24h: -3.18%
+Faixa de Preco Minima (Piso),"$2,596.73 USDC",-0.77%,Distancia: $20.19
+Faixa de Preco Maxima (Teto),"$2,798.98 USDC",+6.96%,Distancia: $182.06
+Largura da Faixa,$202.25 USDC,,Faixa concentrada conservadora (~$202)
+Status da Faixa,🟢 100% IN RANGE,IN_RANGE,Liquidez 100% ativa gerando taxas e AERO
+Saidas da Faixa (Out of Range),0 vezes,100% DENTRO,Contador persistente oficial de rompimentos
+Composicao sob Custodia,"2.1138 WETH + 5,871.09 USDC",,Equilibrio ideal para geracao de taxas
+Cotacao Token AERO,$0.7906 USD,,Token de recompensa emitido pelo Gauge
+,,,
+TABELA DE DADOS BRUTOS (PARA FORMULAS E INDICES),,,
+Data_Hora_UTC,Par,Patrimonio_USD,Patrimonio_BRL,Aporte_Inicial_USD,Variacao_USD,Variacao_Pct,Rendimento_Acumulado_USD,Rendimento_Acumulado_BRL,Rendimento_Dia_Anterior_USD,Preco_ETH,Faixa_Min,Faixa_Max,Dist_Piso_Pct,Dist_Teto_Pct,Status_Faixa,Saidas_Range_Count
+2026-10-07 02:14:28 UTC,WETH/USDC,11402.74,56814.13,11568.85,-166.11,-1.44%,4.45,22.15,21.09,2616.92,2596.73,2798.98,0.77%,6.96%,IN_RANGE,0

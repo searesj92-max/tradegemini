@@ -1,0 +1,15 @@
+{
+  "deposit_id": "#7732601",
+  "pair": "WETH / USDC",
+  "protocol": "Aerodrome Finance (Slipstream 50)",
+  "initial_capital_usd": 11568.85,
+  "weth_amount": 2.1138,
+  "usdc_amount": 5871.09,
+  "range_min": 2596.73,
+  "range_max": 2798.98,
+  "created_at_utc": "2026-10-06 21:48:00 UTC",
+  "out_of_range_count": 0,
+  "current_status": "IN_RANGE",
+  "last_check_utc": "2026-10-07 02:14:28 UTC",
+  "events": []
+}

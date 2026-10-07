@@ -371,11 +371,18 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == "/api/defi/data.json":
             try:
-                from defi_sheet_recorder import get_sheet_json
+                from defi_sheet_recorder import record_snapshot, get_sheet_json
+                from defi_pools_monitor import fetch_live_market_data, evaluate_positions
+                m = fetch_live_market_data()
+                e, _, p = evaluate_positions(m)
+                record_snapshot(e, p, m)
                 data = get_sheet_json()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
                 self.end_headers()
                 self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
                 return
@@ -387,23 +394,26 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # DEFI SPREADSHEET LIVE CSV ENDPOINTS (Google Sheets =IMPORTDATA & Excel)
+        # Dynamically refreshes live snapshot on every single request
         if parsed.path in ("/api/defi/sheet.csv", "/api/defi/live.csv"):
-            csv_path = ROOT / "data" / "defi_latest.csv"
-            if not csv_path.exists():
-                try:
-                    from defi_sheet_recorder import record_snapshot
-                    from defi_pools_monitor import fetch_live_market_data, evaluate_positions
-                    m = fetch_live_market_data()
-                    e, _, p = evaluate_positions(m)
-                    record_snapshot(e, p, m)
-                except Exception:
-                    pass
+            try:
+                from defi_sheet_recorder import record_snapshot
+                from defi_pools_monitor import fetch_live_market_data, evaluate_positions
+                m = fetch_live_market_data()
+                e, _, p = evaluate_positions(m)
+                record_snapshot(e, p, m)
+            except Exception as e:
+                print(f"[-] Erro ao atualizar snapshot ao vivo para CSV: {e}")
 
+            csv_path = ROOT / "data" / "defi_latest.csv"
             content = csv_path.read_bytes() if csv_path.exists() else b""
             self.send_response(200)
             self.send_header("Content-Type", "text/csv; charset=utf-8")
             self.send_header("Content-Disposition", 'inline; filename="defi_latest.csv"')
             self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.send_header("Content-Length", str(len(content)))
             self.end_headers()
             self.wfile.write(content)

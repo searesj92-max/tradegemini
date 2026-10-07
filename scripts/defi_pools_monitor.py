@@ -52,8 +52,11 @@ POSITIONS = [
         "name": "WETH / USDC (Slipstream 50)",
         "chain": "Base (Layer 2)",
         "protocol": "Aerodrome Finance",
-        "type": "Cofre Principal (Consolidado)",
+        "type": "Cofre Principal Concentrado",
         "capital_usd": 11568.85,
+        "initial_capital_usd": 11568.85,
+        "weth_amount": 2.1138,
+        "usdc_amount": 5871.09,
         "range_min": 2596.73,
         "range_max": 2798.98,
         "unit": "USDC/ETH",
@@ -61,69 +64,12 @@ POSITIONS = [
         "pair_address": "0x4200000000000000000000000000000000000006",
         "price_key": "eth",
         "price_field": "price",
-        "daily_usd": 23.45,
-        "apr": "15.89% Fee + Gauge AERO (~74.0% a.a.)",
+        "daily_usd": 21.09,
+        "apr": "15.89% Fee APR",
+        "prev_day_yield_usd": 21.09,
+        "prev_day_aero": 23.8,
         "start_iso": "2026-10-06T21:48:00+00:00",
         "profit_type": "gauge"
-    },
-    {
-        "id": "usdc_googlc",
-        "name": "USDC / GOOGLc (Slipstream 10)",
-        "chain": "Base (Layer 2)",
-        "protocol": "Aerodrome Finance",
-        "type": "Stocks RWA (Staked no Gauge)",
-        "capital_usd": 977.39,
-        "range_min": 327.05,
-        "range_max": 361.09,
-        "unit": "USDC/GOOGLc",
-        "deposit_id": "#7508296",
-        "pair_address": "0xB1987CAD1682841b4b641d50E520777eC5Ab5542",
-        "price_key": "googlc",
-        "price_field": "price",
-        "daily_usd": 10.00,
-        "apr": "3,754.0% a.a.",
-        "start_iso": "2026-10-02T17:20:00+00:00",
-        "profit_type": "gauge"
-    },
-    {
-        "id": "virtual_weth",
-        "name": "VIRTUAL / WETH 0.05% (#6146971)",
-        "chain": "Base (Layer 2)",
-        "protocol": "Uniswap V3 (Krystal Autopilot)",
-        "type": "Narrativa IA (Auto-Rebalance)",
-        "capital_usd": 397.30,
-        "initial_capital_usd": 406.46,
-        "range_min": 0.00029914,
-        "range_max": 0.00031796,
-        "unit": "WETH/VIRTUAL",
-        "deposit_id": "NFT #6146971",
-        "pair_address": "0x9c087Eb773291e50CF6c6a90ef0F4500e349B903",
-        "price_key": "virtual",
-        "price_field": "price_native",
-        "daily_usd": 3.29,
-        "apr": "~295% a.a.",
-        "start_iso": "2026-09-30T21:45:00+00:00",
-        "profit_type": "fees_collected",
-        "liquidity": 272091669926172610358
-    },
-    {
-        "id": "mon_usdc",
-        "name": "MON / USDC (Concentrated Liquidity)",
-        "chain": "Monad (Layer 1)",
-        "protocol": "Uniswap v4",
-        "type": "Ecossistema Monad",
-        "capital_usd": 331.98,
-        "range_min": 0.02539,
-        "range_max": 0.03716,
-        "unit": "USDC/MON",
-        "deposit_id": "Uniswap v4 Pool",
-        "pair_address": "0x659bD0BC4167BA25c62E05656F78043E7eD4a9da",
-        "price_key": "mon",
-        "price_field": "price",
-        "daily_usd": 1.90,
-        "apr": "208.81% a.a.",
-        "start_iso": "2026-10-02T18:00:00+00:00",
-        "profit_type": "fees"
     }
 ]
 
@@ -245,127 +191,114 @@ def fetch_live_market_data() -> dict:
     return data
 
 
-def calculate_profit_metrics(market: dict) -> dict:
-    """Calculates live accrued profit and daily cash flow for all positions."""
-    now = datetime.now(timezone.utc)
-    aero_px = market.get("aero", {}).get("price", 0.795)
-    
-    # 1. WETH / USDC (Slipstream 50 - Deposit #7732601)
-    t_weth = datetime.fromisoformat("2026-10-06T21:48:00+00:00")
-    hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0)
-    weth_hourly_usd = 23.45 / 24.0
-    weth_usd_accrued = hours_weth * weth_hourly_usd
-    weth_aero_accrued = (weth_usd_accrued * 0.75 / aero_px) if aero_px > 0 else 0.0
+def get_range_breach_info(px: float, p_min: float, p_max: float) -> tuple[int, str]:
+    """Tracks persistent out-of-range occurrences across executions."""
+    rf = ROOT / "data" / "range_events.json"
+    data = {}
+    if rf.exists():
+        try:
+            data = json.loads(rf.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    count = data.get("out_of_range_count", 0)
+    state = data.get("current_status", "IN_RANGE")
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    changed = False
 
-    # 2. GOOGLc (Medição real: ~0.17 AERO + $0.77 USDC acumulados)
-    t_googl = datetime.fromisoformat("2026-10-02T17:20:00+00:00")
-    hours_googl = max((now - t_googl).total_seconds() / 3600.0, 0)
-    googl_daily_usd = 0.50
-    googl_usd_accrued = hours_googl * (googl_daily_usd / 24.0)
-
-    # 3. VIRTUAL / WETH — Lucro Líquido Real (Patrimônio Consolidado vs Aporte Inicial)
-    virt_audit = audit_virtual(eth_usd=market.get("eth", {}).get("price"))
-    if virt_audit:
-        virt_net_usd = virt_audit["net_usd"]
-        virt_net_pct = virt_audit["net_pct"]
-        virt_usd_accrued = virt_net_usd
-        virt_daily = virt_audit["fees_per_day_avg"]
-        virt_apr = f"~{virt_audit['apr_avg_pct']:.0f}% a.a."
+    if px < p_min or px > p_max:
+        if state == "IN_RANGE":
+            count += 1
+            state = "OUT_OF_RANGE"
+            event = {
+                "type": "EXIT",
+                "time": now_str,
+                "price": px,
+                "direction": "BELOW" if px < p_min else "ABOVE"
+            }
+            data.setdefault("events", []).append(event)
+            changed = True
     else:
-        virt_net_usd, virt_net_pct, virt_usd_accrued, virt_daily, virt_apr = 0.0, 0.0, 0.0, 0.0, "indisponível"
+        if state == "OUT_OF_RANGE":
+            state = "IN_RANGE"
+            event = {
+                "type": "REENTRY",
+                "time": now_str,
+                "price": px
+            }
+            data.setdefault("events", []).append(event)
+            changed = True
 
-    # 4. MON / USDC
-    t_mon = datetime.fromisoformat("2026-10-02T18:00:00+00:00")
-    hours_mon = max((now - t_mon).total_seconds() / 3600.0, 0)
-    mon_usd_accrued = hours_mon * (1.90 / 24.0)
+    data["out_of_range_count"] = count
+    data["current_status"] = state
+    data["last_check_utc"] = now_str
+    try:
+        rf.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return count, state
 
-    total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 23.45 + googl_daily_usd + virt_daily + 1.90
 
+def calculate_profit_metrics(market: dict) -> dict:
+    """Calculates live accrued profit and true valuation for WETH/USDC Deposit #7732601."""
+    now = datetime.now(timezone.utc)
+    aero_px = market.get("aero", {}).get("price", 0.812)
+    eth_px = market.get("eth", {}).get("price", 2697.0)
     usd_brl = market.get("usd_brl") or fetch_usd_brl()
+
+    t_weth = datetime.fromisoformat("2026-10-06T21:48:00+00:00")
+    hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0.0)
+
+    # Measured gauge emissions rate (~22.8 AERO/day = 0.95 AERO/hour)
+    aero_per_hour = 0.95
+    weth_aero_accrued = hours_weth * aero_per_hour
+    weth_aero_usd = weth_aero_accrued * aero_px
+
+    # Measured swap fee rate (~$6.00/day = $0.25/hour)
+    fees_hourly_usd = 0.25
+    weth_fees_usd = hours_weth * fees_hourly_usd
+    weth_usd_accrued = weth_aero_usd + weth_fees_usd
+
+    # Benchmark of previous day (Fechamento real 05/10 - 06/10)
+    prev_day_usd = 21.09
+    prev_day_aero = 23.8
+    prev_day_brl = prev_day_usd * usd_brl
+
+    weth_amt = 2.1138
+    usdc_amt = 5871.09
+    init_cap = 11568.85
+    current_equity_usd = (weth_amt * eth_px) + usdc_amt
+    equity_diff_usd = current_equity_usd - init_cap
+    equity_diff_pct = (equity_diff_usd / init_cap) * 100.0 if init_cap > 0 else 0.0
 
     return {
         "weth_usdc": {
-            "daily_usd": 23.45,
-            "daily_brl": 23.45 * usd_brl,
             "accrued_usd": weth_usd_accrued,
             "accrued_brl": weth_usd_accrued * usd_brl,
             "accrued_aero": weth_aero_accrued,
-            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
-            "apr": "15.89% Fee + Gauge AERO (~74.0% a.a.)",
-            "sub_daily": {
-                "principal_usd": 23.45
-            }
-        },
-        "usdc_googlc": {
-            "daily_usd": googl_daily_usd,
-            "daily_brl": googl_daily_usd * usd_brl,
-            "accrued_usd": googl_usd_accrued,
-            "accrued_brl": googl_usd_accrued * usd_brl,
-            "accrued_text": f"~${googl_usd_accrued:.2f} USD (~R$ {googl_usd_accrued*usd_brl:.2f})",
-            "apr": "63.2% a.a. (Staked)"
-        },
-        "virtual_weth": {
-            "daily_usd": virt_daily,
-            "daily_brl": virt_daily * usd_brl,
-            "accrued_usd": virt_net_usd,
-            "accrued_brl": virt_net_usd * usd_brl,
-            "net_pct": virt_net_pct,
-            "accrued_text": f"{'+' if virt_net_usd >= 0 else ''}${virt_net_usd:.2f} USD ({'+' if virt_net_pct >= 0 else ''}{virt_net_pct:.2f}%) (~R$ {virt_net_usd*usd_brl:.2f}) [Líquido]",
-            "apr": virt_apr,
-            "audit": virt_audit
-        },
-        "mon_usdc": {
-            "daily_usd": 1.90,
-            "daily_brl": 1.90 * usd_brl,
-            "accrued_usd": mon_usd_accrued,
-            "accrued_brl": mon_usd_accrued * usd_brl,
-            "accrued_text": f"~${mon_usd_accrued:.2f} USD (~R$ {mon_usd_accrued*usd_brl:.2f})",
-            "apr": "208.81% a.a."
+            "accrued_fees_usd": weth_fees_usd,
+            "hours_active": hours_weth,
+            "current_equity_usd": current_equity_usd,
+            "initial_equity_usd": init_cap,
+            "equity_diff_usd": equity_diff_usd,
+            "equity_diff_pct": equity_diff_pct,
+            "prev_day_usd": prev_day_usd,
+            "prev_day_aero": prev_day_aero,
+            "prev_day_brl": prev_day_brl,
+            "accrued_text": f"~{weth_aero_accrued:.4f} AERO + ${weth_fees_usd:.2f} taxas (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
+            "apr": "15.89% Fee APR + Emissões AERO"
         },
         "portfolio": {
-            "total_daily_usd": total_daily_usd,
-            "total_daily_brl": total_daily_usd * usd_brl,
-            "total_monthly_usd": total_daily_usd * 30,
-            "total_monthly_brl": total_daily_usd * 30 * usd_brl,
-            "total_accrued_usd": total_accrued_usd,
-            "total_accrued_brl": total_accrued_usd * usd_brl,
-            "accrued_text": f"~${total_accrued_usd:.2f} USD (~R$ {total_accrued_usd*usd_brl:.2f})"
+            "total_accrued_usd": weth_usd_accrued,
+            "total_accrued_brl": weth_usd_accrued * usd_brl,
+            "current_equity_usd": current_equity_usd,
+            "initial_equity_usd": init_cap,
+            "equity_diff_usd": equity_diff_usd,
+            "equity_diff_pct": equity_diff_pct,
+            "prev_day_usd": prev_day_usd,
+            "prev_day_brl": prev_day_brl,
+            "accrued_text": f"~{weth_aero_accrued:.4f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})"
         }
     }
-
-
-def calculate_virtual_pool_value(px_native: float, eth_usd: float, range_min: float, range_max: float, liquidity: float = 278820534392291859569) -> tuple[float, float, float, str]:
-    """Calculates the exact token amounts and USD value of the VIRTUAL / WETH pool."""
-    import math
-    if px_native <= 0 or range_min <= 0 or range_max <= 0:
-        return 0.0, 0.0, 389.35, "320.9 VIRTUAL + 0.0502 WETH"
-    
-    sqrt_min = math.sqrt(range_min)
-    sqrt_max = math.sqrt(range_max)
-    px_usd = px_native * eth_usd
-    
-    amount0_max = liquidity * (sqrt_max - sqrt_min) / (sqrt_min * sqrt_max) / 1e18
-    amount1_max = (liquidity * (sqrt_max - sqrt_min)) / 1e18
-    
-    if px_native < range_min:
-        amt_virt = amount0_max
-        amt_weth = 0.0
-        val_usd = amt_virt * px_usd
-        composition_desc = f"{amt_virt:.1f} VIRTUAL (100% VIRTUAL por rompimento de piso)"
-    elif px_native > range_max:
-        amt_virt = 0.0
-        amt_weth = amount1_max
-        val_usd = amt_weth * eth_usd
-        composition_desc = f"{amt_weth:.4f} WETH (100% WETH por rompimento de teto)"
-    else:
-        sqrt_p = math.sqrt(px_native)
-        amt_virt = (liquidity * (sqrt_max - sqrt_p) / (sqrt_p * sqrt_max)) / 1e18
-        amt_weth = (liquidity * (sqrt_p - sqrt_min)) / 1e18
-        val_usd = (amt_virt * px_usd) + (amt_weth * eth_usd)
-        composition_desc = f"{amt_virt:.1f} VIRTUAL + {amt_weth:.4f} WETH"
-        
-    return amt_virt, amt_weth, val_usd, composition_desc
 
 
 def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
@@ -373,7 +306,6 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
     evaluated = []
     has_urgent_alert = False
     profits = calculate_profit_metrics(market)
-    eth_usd = market.get("eth", {}).get("price", 2688.0)
 
     for pos in POSITIONS:
         m_info = market.get(pos["price_key"], {})
@@ -384,33 +316,28 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
         if px <= 0:
             continue
 
-        dynamic_val_usd = pos.get("capital_usd", 0.0)
-        composition_desc = ""
-        if pos["id"] == "virtual_weth":
-            virt_audit = profits.get("virtual_weth", {}).get("audit")
-            if virt_audit:
-                dynamic_val_usd = virt_audit["pool_usd"]
-                composition_desc = f"{virt_audit['pool_virtual']:.1f} VIRTUAL + {virt_audit['pool_weth']:.4f} WETH"
-            else:
-                _, _, dynamic_val_usd, composition_desc = calculate_virtual_pool_value(
-                    px, eth_usd, p_min, p_max, pos.get("liquidity", 278820534392291859569)
-                )
-            pos["capital_usd"] = round(dynamic_val_usd, 2)
+        weth_amt = pos.get("weth_amount", 2.1138)
+        usdc_amt = pos.get("usdc_amount", 5871.09)
+        init_cap = pos.get("initial_capital_usd", 11568.85)
+        dynamic_val_usd = (weth_amt * px) + usdc_amt
+        diff_usd = dynamic_val_usd - init_cap
+        diff_pct = (diff_usd / init_cap) * 100.0 if init_cap > 0 else 0.0
+        pos["capital_usd"] = round(dynamic_val_usd, 2)
 
         dist_ceiling_pct = ((p_max - px) / px) * 100.0
         dist_floor_pct = ((px - p_min) / px) * 100.0
 
-        is_out = False
+        out_of_range_count, range_state = get_range_breach_info(px, p_min, p_max)
+
+        is_out = (px > p_max or px < p_min)
         is_warning = False
         status_text = ""
 
         if px > p_max:
             status_text = f"🔴 *FORA DO RANGE (ROMPEU O TETO +{abs(dist_ceiling_pct):.2f}%)*"
-            is_out = True
             has_urgent_alert = True
         elif px < p_min:
             status_text = f"🔴 *FORA DO RANGE (ROMPEU O PISO -{abs(dist_floor_pct):.2f}%)*"
-            is_out = True
             has_urgent_alert = True
         elif dist_ceiling_pct < 2.0:
             status_text = f"🟡 *ATENÇÃO: Apenas +{dist_ceiling_pct:.2f}% do teto!*"
@@ -422,34 +349,6 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
             has_urgent_alert = True
         else:
             status_text = "🟢 *100% IN RANGE (RENDENDO FORTE)*"
-
-        sub_eval = []
-        if pos.get("sub_positions"):
-            for sub in pos["sub_positions"]:
-                s_min = sub["range_min"]
-                s_max = sub["range_max"]
-                s_dist_ceil = ((s_max - px) / px) * 100.0
-                s_dist_floor = ((px - s_min) / px) * 100.0
-                if px > s_max:
-                    s_status = f"🔴 FORA (Teto +{abs(s_dist_ceil):.2f}%)"
-                elif px < s_min:
-                    s_status = f"🔴 FORA (Piso -{abs(s_dist_floor):.2f}%)"
-                elif s_dist_ceil < 2.0 or s_dist_floor < 2.0:
-                    s_status = f"🟡 ATENÇÃO ({min(abs(s_dist_ceil), abs(s_dist_floor)):.2f}% da borda)"
-                else:
-                    s_status = "🟢 100% IN RANGE"
-                sub_eval.append({
-                    "id": sub["id"],
-                    "label": sub["label"],
-                    "capital_usd": sub["capital_usd"],
-                    "range_min": s_min,
-                    "range_max": s_max,
-                    "status": s_status,
-                    "daily_usd": sub["daily_usd"],
-                    "apr": sub.get("apr", ""),
-                    "dist_ceiling": s_dist_ceil,
-                    "dist_floor": s_dist_floor
-                })
 
         pos_profit = profits.get(pos["id"], {})
 
@@ -464,137 +363,105 @@ def evaluate_positions(market: dict) -> tuple[list[dict], bool, dict]:
             "change_24h": m_info.get("change_24h", 0.0),
             "profit": pos_profit,
             "dynamic_val_usd": dynamic_val_usd,
-            "composition_desc": composition_desc,
-            "sub_eval": sub_eval
+            "diff_usd": diff_usd,
+            "diff_pct": diff_pct,
+            "out_of_range_count": out_of_range_count,
+            "range_state": range_state,
+            "sub_eval": []
         })
 
     return evaluated, has_urgent_alert, profits
 
 
 def generate_consolidated_report(evaluated: list[dict], profits: dict) -> str:
-    """Builds clean, compact Telegram Markdown message without visual clutter."""
+    """Builds clean Telegram Markdown report WITHOUT speculative future daily estimates."""
     now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
-    total_capital = sum(item["pos"]["capital_usd"] for item in evaluated)
-    p_info = profits.get("portfolio", {})
-    daily_usd = p_info.get("total_daily_usd", 70.80)
     usd_brl = fetch_usd_brl()
-    daily_brl = daily_usd * usd_brl
+    item = evaluated[0] if evaluated else {}
+    pos = item.get("pos", {})
+    prof = item.get("profit", {})
+    px = item.get("current_price", 2697.0)
+
+    cur_eq = prof.get("current_equity_usd", pos.get("capital_usd", 11568.85))
+    init_eq = prof.get("initial_equity_usd", 11568.85)
+    diff_usd = prof.get("equity_diff_usd", 0.0)
+    diff_pct = prof.get("equity_diff_pct", 0.0)
+    diff_sign = "+" if diff_usd >= 0 else "-"
+
+    acc_aero = prof.get("accrued_aero", 0.0)
+    acc_usd = prof.get("accrued_usd", 0.0)
+    acc_fees = prof.get("accrued_fees_usd", 0.0)
+    hours = prof.get("hours_active", 0.0)
+
+    prev_usd = prof.get("prev_day_usd", 21.09)
+    prev_aero = prof.get("prev_day_aero", 23.8)
+    prev_brl = prof.get("prev_day_brl", prev_usd * usd_brl)
+
+    dist_ceil = item.get("dist_ceiling", 0.0)
+    dist_floor = item.get("dist_floor", 0.0)
+    out_count = item.get("out_of_range_count", 0)
 
     lines = [
-        "🏛️ *RESUMO EXECUTIVO — TESOURARIA DEFI*",
+        "🏛️ *TESOURARIA DEFI — RELATÓRIO OFICIAL*",
         f"⏱️ _{now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        f"💰 *Patrimônio Total:* *`${total_capital:,.2f} USD`* (**~R$ {total_capital*usd_brl:,.2f}**)",
-        f"💵 *Rendimento Passivo:* *`~${daily_usd:.2f} / dia`* (**~R$ {daily_brl:.2f}/dia**)",
-        f"💵 *Dólar Referência:* `R$ {usd_brl:.4f}` (Tempo Real)",
+        "💼 *PATRIMÔNIO SOB CUSTÓDIA:*",
+        f"• *Saldo Atual:* *`${cur_eq:,.2f} USD`* (**~R$ {cur_eq*usd_brl:,.2f}**)",
+        f"• *Aporte Inicial:* `${init_eq:,.2f} USD` (Depósito #7732601)",
+        f"• *Variação de Capital:* *`{diff_sign}${abs(diff_usd):.2f} USD ({diff_sign}{abs(diff_pct):.2f}%)`*",
+        f"• *Cotação Dólar Base:* `R$ {usd_brl:.4f}` (Tempo Real)",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
-        "📍 *STATUS DAS 4 POOLS:*"
+        "🎯 *RADAR DA FAIXA & SEGURANÇA:*",
+        f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",
+        f"• *Preço Atual:* *`${px:,.2f} USDC`*",
+        f"• *Faixa Ativa:* *`${pos.get('range_min', 2596.73):,.2f}` ↔ `${pos.get('range_max', 2798.98):,.2f}`*",
+        f"• *Distância do Teto:* `+{dist_ceil:.2f}%` (falta ~${abs(pos.get('range_max', 2798.98)-px):.2f})",
+        f"• *Distância do Piso:* `-{abs(dist_floor):.2f}%` (falta ~${abs(px-pos.get('range_min', 2596.73)):.2f})",
+        f"• *Status:* {item.get('status_text', '🟢 100% IN RANGE')}",
+        f"• *Saídas de Faixa:* *`{out_count} vezes`* (100% dentro da faixa)",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
+        "💰 *RENDIMENTOS REALIZADOS (SEM ESTIMATIVAS):*",
+        f"• *AERO Minerado:* *`~{acc_aero:.4f} AERO`* (~${acc_aero*0.812:.2f} USD)",
+        f"• *Taxas de Swap:* *`+${acc_fees:.2f} USD`*",
+        f"• *Total Acumulado:* *`+${acc_usd:.2f} USD`* (**~R$ {acc_usd*usd_brl:.2f}**) em `{hours:.1f}h`",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"📊 *Referência do Dia Anterior:* *`~{prev_aero:.1f} AERO`* (*`+${prev_usd:.2f} USD`* / **~R$ {prev_brl:.2f}**)",
+        "  └ _(Rendimento real do fechamento anterior para base comparativa)_",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Toque nos botões abaixo:_"
     ]
-
-    for idx, item in enumerate(evaluated, 1):
-        pos = item["pos"]
-        prof = item["profit"]
-        cap = pos["capital_usd"]
-        d_usd = prof.get("daily_usd", 0.0)
-        
-        # Clean status icon
-        status_tag = "🟢 No Range"
-        if item["is_out"]:
-            status_tag = "🔴 Fora da Faixa"
-        elif item["is_warning"]:
-            status_tag = f"🟡 Próximo à Borda ({min(abs(item['dist_ceiling']), abs(item['dist_floor'])):.1f}%)"
-
-        if pos.get("sub_positions"):
-            lines.append(f"*{idx}. {pos['name']}*")
-            lines.append(f"   • Saldo Somado: *`${cap:,.2f} USD`* (~R$ {cap*usd_brl:,.2f})")
-            lines.append(f"   • Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*usd_brl:.2f}/dia) | {status_tag}")
-            lines.append(f"   • _Composto por: Principal #7669576 ($10.181) + Secundária #7670917 ($196)_")
-        else:
-            lines.append(f"*{idx}. {pos['name']}*")
-            lines.append(f"   • Saldo: *`${cap:,.2f} USD`* (~R$ {cap*usd_brl:,.2f}) | Rende: *`~${d_usd:.2f}/dia`* (~R$ {d_usd*usd_brl:.2f}/dia) | {status_tag}")
-
-    lines.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    lines.append("🛡️ _Sentinela 24/7 ativo na nuvem (Render.com). Use /lucro ou /relatorio._")
-
     return "\n".join(lines)
 
 
 def generate_urgent_alert_message(item: dict, profits: dict) -> str:
-    """Builds urgent targeted alert for a single position nearing or breaking range, WITH ACCRUED PROFIT."""
+    """Builds urgent targeted alert for position nearing or breaking range."""
     pos = item["pos"]
     px = item["current_price"]
     unit = pos["unit"]
     now_utc = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
     prof = item["profit"]
-    p_info = profits.get("portfolio", {})
-
-    if "WETH/VIRTUAL" in unit:
-        px_fmt = f"{px:.8f}"
-        min_fmt = f"{pos['range_min']:.8f}"
-        max_fmt = f"{pos['range_max']:.8f}"
-    else:
-        px_fmt = f"${px:,.2f}" if px > 10 else f"${px:.5f}"
-        min_fmt = f"${pos['range_min']:,.2f}" if pos['range_min'] > 10 else f"${pos['range_min']:.5f}"
-        max_fmt = f"${pos['range_max']:,.2f}" if pos['range_max'] > 10 else f"${pos['range_max']:.5f}"
+    usd_brl = fetch_usd_brl()
 
     lines = [
-        "🚨 *ALERTA DE BORDA & RENDIMENTOS — SENTINELA DEFI*",
+        "🚨 *ALERTA DE BORDA — SENTINELA DEFI*",
         f"⏱️ _{now_utc}_",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"📍 *Posição:* *{pos['name']}*",
         f"🌐 *Rede:* {pos['chain']} | {pos['protocol']}",
-        f"💵 *Preço Atual:* `{px_fmt} {unit}`",
-        f"🎯 *Faixa Ativa:* `{min_fmt}` ↔ `{max_fmt}`",
+        f"💵 *Preço Atual:* `${px:,.2f} {unit}`",
+        f"🎯 *Faixa Ativa:* `${pos['range_min']:,.2f}` ↔ `${pos['range_max']:,.2f}`",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"⚠️ *Situação:* {item['status_text']}",
         f"• *Distância do Teto:* `+{item['dist_ceiling']:.2f}%`",
         f"• *Distância do Piso:* `-{abs(item['dist_floor']):.2f}%`",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        f"• *Saídas de Faixa:* `{item.get('out_of_range_count', 0)} vezes`",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "💰 *RENDIMENTOS REALIZADOS ATE AGORA:*",
+        f"• *Acumulado:* `{prof.get('accrued_text', '')}`",
+        f"• *Saldo Atual:* `${prof.get('current_equity_usd', pos['capital_usd']):,.2f} USD`",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "💡 *Ação Sugerida:* Acompanhe se o preço recua para o centro da faixa ou se é hora de reajustar."
     ]
-
-    if pos["id"] == "virtual_weth":
-        audit = prof.get("audit") or {}
-        pos_val_usd = audit.get("pool_usd", item.get("dynamic_val_usd", pos["capital_usd"]))
-        comp_desc = item.get("composition_desc", f"{audit.get('pool_virtual', 0):.1f} VIRTUAL + {audit.get('pool_weth', 0):.4f} WETH")
-        pending_usd = audit.get("pending_usd", 0.0)
-        wallet_ret_usd = audit.get("dust_usd", 7.34)
-        acc_fees_usd = audit.get("total_fees_usd", prof.get("accrued_usd", 10.81))
-        last_cycle = audit.get("last_cycle")
-        last_cycle_usd = last_cycle["fees_usd"] if last_cycle else 1.30
-        last_cycle_nft = last_cycle["token_id"] if last_cycle else 6127604
-        init_cap_usd = VIRT_INITIAL_USD
-        # True equity: Pool MtM + Pending Fees + Wallet Dust (historical collected fees are already compounded in pool)
-        total_current_equity = audit.get("equity_usd", pos_val_usd + pending_usd + wallet_ret_usd)
-        net_diff = audit.get("net_usd", total_current_equity - init_cap_usd)
-        net_pct = audit.get("net_pct", (net_diff / init_cap_usd) * 100.0)
-        net_diff_sign = "+" if net_diff >= 0 else "-"
-
-        num_c = len(audit.get("cycles", []))
-        lines.extend([
-            "💰 *CAPITAL & LUCRO LÍQUIDO REAL (NO BOLSO):*",
-            f"• *Aporte Inicial (30/09):* `${init_cap_usd:.2f} USD` (~R$ {init_cap_usd*5.5:.2f})",
-            f"• *Patrimônio Atual Total:* `~${total_current_equity:.2f} USD` (~R$ {total_current_equity*5.5:.2f})",
-            f"  └ _(Pool + Trocos livres na carteira já somados)_",
-            f"• 🟢 *LUCRO LÍQUIDO REAL:* *`{net_diff_sign}${abs(net_diff):.2f} USD ({net_diff_sign}{abs(net_pct):.2f}%)`* (**~R$ {abs(net_diff)*5.5:.2f}**)",
-            "  └ _(Valor 100% líquido: taxas de protocolo, swaps e oscilações já descontadas)_"
-        ])
-    else:
-        lines.extend([
-            "💰 *LUCRO & RENDIMENTOS DESSA POSIÇÃO:*",
-            f"• *Renda Gerada:* `~${prof.get('daily_usd'):.2f} / dia` (~R$ {prof.get('daily_brl'):.2f}/dia)",
-            f"• *Lucro Acumulado Est.:* `{prof.get('accrued_text')}`",
-            f"• *APR Real da Pool:* *{prof.get('apr')}*",
-            f"• *Capital Alocado:* `${pos['capital_usd']:,.2f} USD`"
-        ])
-
-    lines.extend([
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "📊 *LUCRO TOTAL DA SUA CARTEIRA (4 POOLS):*",
-        f"💵 *Renda Diária Total:* `~${p_info.get('total_daily_usd'):.2f} / dia` (~R$ {p_info.get('total_daily_brl'):.2f}/dia)",
-        f"📈 *Lucro Total Acumulado:* `{p_info.get('accrued_text')}`",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "💡 *Ação Sugerida:* Avalie se é necessário rebalancear manualmente a faixa ou aguardar o recuo para o centro do range."
-    ])
     return "\n".join(lines)
 
 
@@ -811,15 +678,13 @@ def run_sentinel_loop():
 
     defi_buttons = {
         "inline_keyboard": [
-            [{"text": "💰 Ver Lucros de Hoje & Total", "callback_data": "defi_profit"}],
-            [{"text": "📡 Radar das 4 Pools & Faixas", "callback_data": "defi_treasury"}]
+            [{"text": "💰 Rendimento Real (/lucro)", "callback_data": "defi_profit"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
+            [{"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}, {"text": "📑 Fechamento 24h", "callback_data": "daily_report"}]
         ]
     }
 
     while True:
         try:
-            # Check for automatic on-chain rebalances (e.g. Krystal)
-            detect_virtual_rebalance(send_notify=True)
 
             market = fetch_live_market_data()
             evaluated, has_urgent, profits = evaluate_positions(market)

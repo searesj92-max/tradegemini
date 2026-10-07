@@ -8,8 +8,15 @@
   "range_min": 2596.73,
   "range_max": 2798.98,
   "created_at_utc": "2026-10-06 21:48:00 UTC",
-  "out_of_range_count": 0,
-  "current_status": "IN_RANGE",
-  "last_check_utc": "2026-10-07 02:14:28 UTC",
-  "events": []
+  "out_of_range_count": 1,
+  "current_status": "OUT_OF_RANGE",
+  "last_check_utc": "2026-10-07 12:25:12 UTC",
+  "events": [
+    {
+      "type": "EXIT",
+      "time": "2026-10-07 12:24:53 UTC",
+      "price": 2577.75,
+      "direction": "BELOW"
+    }
+  ]
 }

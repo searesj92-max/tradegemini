@@ -1,26 +1,26 @@
 ﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,
-Atualizado em: 2026-10-07 02:14:28 UTC,,,
+Atualizado em: 2026-10-07 12:25:12 UTC,,,
 ,,,
 METRICA PATRIMONIAL,VALOR (USD),VALOR (BRL),DETALHE / BASE COMPARATIVA
-Patrimonio Total Alocado,"$11,402.74","R$ 56,814.13",Deposito #7732601 (Staked no Gauge)
-Aporte Inicial de Capital,"$11,568.85","R$ 57,641.80","2.1138 WETH + 5,871.09 USDC (06/10/2026)"
-Variacao Patrimonial (PnL),-166.11,R$ -827.67,-1.44% vs Capital Inicial
-Rendimento Real Acumulado,+$4.45,+R$ 22.15,4.2191 AERO + $1.11 Taxas (4.4h ativas)
-Referencia Fechamento Anterior,+$21.09,+R$ 105.08,~23.8 AERO (Rendimento Real 24h Anterior)
-Cotacao Dolar Base (USD/BRL),R$ 4.9825,,Cotacao em tempo real (AwesomeAPI/Binance)
+Patrimonio Total Alocado,"$11,318.73","R$ 56,571.03",Deposito #7732601 (Staked no Gauge)
+Aporte Inicial de Capital,"$11,568.85","R$ 57,821.11","2.1138 WETH + 5,871.09 USDC (06/10/2026)"
+Variacao Patrimonial (PnL),-250.12,"R$ -1,250.08",-2.16% vs Capital Inicial
+Rendimento Real Acumulado,+$14.77,+R$ 73.81,13.8891 AERO + $3.66 Taxas (14.6h ativas)
+Referencia Fechamento Anterior,+$21.09,+R$ 105.41,~23.8 AERO (Rendimento Real 24h Anterior)
+Cotacao Dolar Base (USD/BRL),R$ 4.9980,,Cotacao em tempo real (AwesomeAPI/Binance)
 ,,,
 RADAR DA FAIXA DE LIQUIDEZ,VALOR,STATUS,SEGURANCA / PROXIMIDADE
 Par de Negociacao,WETH / USDC (Slipstream 50),ATIVO,Base Network • Aerodrome Finance
 ID do Deposito,Deposit #7732601,STAKED,NFT Travado no Gauge de Emissoes
-Preco Atual do ETH,"$2,616.92 USDC",,Variacao 24h: -3.18%
-Faixa de Preco Minima (Piso),"$2,596.73 USDC",-0.77%,Distancia: $20.19
-Faixa de Preco Maxima (Teto),"$2,798.98 USDC",+6.96%,Distancia: $182.06
+Preco Atual do ETH,"$2,577.18 USDC",,Variacao 24h: -4.92%
+Faixa de Preco Minima (Piso),"$2,596.73 USDC",-0.76%,Rompido: -$19.55
+Faixa de Preco Maxima (Teto),"$2,798.98 USDC",+8.61%,Margem: $221.80
 Largura da Faixa,$202.25 USDC,,Faixa concentrada conservadora (~$202)
-Status da Faixa,🟢 100% IN RANGE,IN_RANGE,Liquidez 100% ativa gerando taxas e AERO
-Saidas da Faixa (Out of Range),0 vezes,100% DENTRO,Contador persistente oficial de rompimentos
+Status da Faixa,🔴 FORA DA FAIXA,OUT_OF_RANGE,Fora da faixa (100% em WETH)
+Saidas da Faixa (Out of Range),1 vezes,1 ocorrencia(s),Contador persistente oficial de rompimentos
 Composicao sob Custodia,"2.1138 WETH + 5,871.09 USDC",,Equilibrio ideal para geracao de taxas
-Cotacao Token AERO,$0.7906 USD,,Token de recompensa emitido pelo Gauge
+Cotacao Token AERO,$0.8001 USD,,Token de recompensa emitido pelo Gauge
 ,,,
 TABELA DE DADOS BRUTOS (PARA FORMULAS E INDICES),,,
 Data_Hora_UTC,Par,Patrimonio_USD,Patrimonio_BRL,Aporte_Inicial_USD,Variacao_USD,Variacao_Pct,Rendimento_Acumulado_USD,Rendimento_Acumulado_BRL,Rendimento_Dia_Anterior_USD,Preco_ETH,Faixa_Min,Faixa_Max,Dist_Piso_Pct,Dist_Teto_Pct,Status_Faixa,Saidas_Range_Count
-2026-10-07 02:14:28 UTC,WETH/USDC,11402.74,56814.13,11568.85,-166.11,-1.44%,4.45,22.15,21.09,2616.92,2596.73,2798.98,0.77%,6.96%,IN_RANGE,0
+2026-10-07 12:25:12 UTC,WETH/USDC,11318.73,56571.03,11568.85,-250.12,-2.16%,14.77,73.81,21.09,2577.18,2596.73,2798.98,-0.76%,8.61%,OUT_OF_RANGE,1

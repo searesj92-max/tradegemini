@@ -185,6 +185,16 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
     p_min = pos.get("range_min", 2596.73)
     p_max = pos.get("range_max", 2798.98)
 
+    if px >= p_min:
+        floor_dist_str = f"+{dist_floor:.2f}% (margem de ~${px - p_min:.2f})"
+    else:
+        floor_dist_str = f"🔴 Rompido abaixo por -{abs(dist_floor):.2f}% (-${p_min - px:.2f})"
+
+    if px <= p_max:
+        ceiling_dist_str = f"+{dist_ceil:.2f}% (margem de ~${p_max - px:.2f})"
+    else:
+        ceiling_dist_str = f"🔴 Rompido acima por +{abs(dist_ceil):.2f}% (+${px - p_max:.2f})"
+
     lines = [
         "💰 *PAINEL DE RENDIMENTOS — TESOURARIA DEFI*",
         f"⏱️ _{now.strftime('%d/%m/%Y %H:%M UTC')}_",
@@ -199,10 +209,10 @@ def format_defi_profit_dashboard() -> tuple[str, dict]:
         f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",
         f"• *Preço Atual:* *`${px:,.2f} USDC`*",
         f"• *Faixa Ativa:* *`${p_min:,.2f}` ↔ `${p_max:,.2f}`*",
-        f"• *Distância do Teto:* `+{dist_ceil:.2f}%` (falta ~${abs(p_max - px):.2f})",
-        f"• *Distância do Piso:* `-{abs(dist_floor):.2f}%` (falta ~${abs(px - p_min):.2f})",
+        f"• *Distância do Teto:* `{ceiling_dist_str}`",
+        f"• *Distância do Piso:* `{floor_dist_str}`",
         f"• *Status:* {item.get('status_text', '🟢 100% IN RANGE')}",
-        f"• *Saídas de Faixa:* *`{out_count} vezes`* (100% dentro da faixa)",
+        f"• *Saídas de Faixa:* *`{out_count} vezes`*",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━\n",
         "💰 *RENDIMENTOS REALIZADOS (SEM ESTIMATIVAS):*",
         f"• *AERO Minerado:* *`~{acc_aero:.4f} AERO`* (~${acc_aero*0.812:.2f} USD)",
@@ -309,6 +319,18 @@ def format_daily_report_message() -> tuple[str, dict]:
     dist_floor = item.get("dist_floor", 0.0)
     out_count = item.get("out_of_range_count", 0)
 
+    p_min = pos.get("range_min", 2596.73)
+    p_max = pos.get("range_max", 2798.98)
+    if px >= p_min:
+        floor_dist_str = f"+{dist_floor:.2f}% (margem de ~${px - p_min:.2f})"
+    else:
+        floor_dist_str = f"🔴 Rompido abaixo por -{abs(dist_floor):.2f}% (-${p_min - px:.2f})"
+
+    if px <= p_max:
+        ceiling_dist_str = f"+{dist_ceil:.2f}% (margem de ~${p_max - px:.2f})"
+    else:
+        ceiling_dist_str = f"🔴 Rompido acima por +{abs(dist_ceil):.2f}% (+${px - p_max:.2f})"
+
     lines = [
         "📑 *RELATÓRIO DE FECHAMENTO — TESOURARIA DEFI*",
         f"⏱️ _Período Apurado: {now_utc}_",
@@ -330,10 +352,10 @@ def format_daily_report_message() -> tuple[str, dict]:
         "🎯 *RADAR DA FAIXA & STATUS:*",
         f"• *Par:* *{pos.get('name', 'WETH / USDC (Slipstream 50)')}*",
         f"• *Preço Atual:* *`${px:,.2f} USDC`*",
-        f"• *Faixa Ativa:* `${pos.get('range_min', 2596.73):,.2f}` ↔ `${pos.get('range_max', 2798.98):,.2f}`",
-        f"• *Distância do Teto:* `+{dist_ceil:.2f}%`",
-        f"• *Distância do Piso:* `-{abs(dist_floor):.2f}%`",
-        f"• *Saídas da Faixa:* *`{out_count} vezes`* (100% dentro do range)",
+        f"• *Faixa Ativa:* `${p_min:,.2f}` ↔ `${p_max:,.2f}`*",
+        f"• *Distância do Teto:* `{ceiling_dist_str}`",
+        f"• *Distância do Piso:* `{floor_dist_str}`",
+        f"• *Saídas da Faixa:* *`{out_count} vezes`*",
         f"• *Status:* {item.get('status_text', '🟢 100% IN RANGE')}",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "🛡️ _Relatório oficial consolidado do Sentinela 24/7 na nuvem (Render.com)._"

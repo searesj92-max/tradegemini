@@ -345,7 +345,11 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
-        if parsed.path in ("/", "/index.html", "/cockpit"):
+        clean_path = parsed.path.rstrip("/")
+        if not clean_path:
+            clean_path = "/"
+
+        if clean_path in ("/", "/index.html", "/cockpit"):
             index_path = DASHBOARD_DIR / "index.html"
             if index_path.exists():
                 content = index_path.read_bytes()
@@ -357,7 +361,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # MOBILE SPREADSHEET DASHBOARD (100% Mobile Responsive for Smartphone)
-        if parsed.path in ("/planilha", "/planilha.html", "/sheets", "/mobile"):
+        if clean_path in ("/planilha", "/planilha.html", "/sheets", "/mobile"):
             planilha_path = DASHBOARD_DIR / "planilha.html"
             if planilha_path.exists():
                 content = planilha_path.read_bytes()
@@ -370,7 +374,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # REAL-TIME 3-EXCHANGE ARBITRAGE DASHBOARD (Aerodrome vs Uniswap v3 vs PancakeSwap)
-        if parsed.path in ("/arbitragem", "/arbitragem.html", "/arb", "/radar", "/arbitrage"):
+        if clean_path in ("/arbitragem", "/arbitragem.html", "/arb", "/radar", "/arbitrage"):
             arb_path = DASHBOARD_DIR / "arbitragem.html"
             if arb_path.exists():
                 content = arb_path.read_bytes()
@@ -383,7 +387,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # ULTRA-FAST ARBITRAGE LIVE API ENDPOINT (Zero blocking, served from RAM)
-        if parsed.path in ("/api/arbitrage/live", "/api/defi/arbitrage.json", "/api/arb/live"):
+        if clean_path in ("/api/arbitrage/live", "/api/defi/arbitrage.json", "/api/arb/live"):
             try:
                 from defi_arbitrage_engine import get_arbitrage_live_snapshot
                 query = parse_qs(parsed.query)

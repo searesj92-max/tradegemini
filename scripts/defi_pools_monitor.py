@@ -48,22 +48,22 @@ CHAT_ID = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CH
 
 POSITIONS = [
     {
-        "id": "usdc_nvdac",
-        "name": "USDC / NVDAc (Slipstream 10)",
+        "id": "weth_usdc",
+        "name": "WETH / USDC (Slipstream 50)",
         "chain": "Base (Layer 2)",
         "protocol": "Aerodrome Finance",
-        "type": "Stocks RWA (Staked no Gauge)",
-        "capital_usd": 10407.47,
-        "range_min": 224.11,
-        "range_max": 260.11,
-        "unit": "USDC/NVDAc",
-        "deposit_id": "Deposit #7718530",
-        "pair_address": "0x853F5f1B92b16714Fe6CDA67CAad0856B83C7ab9",
-        "price_key": "nvdac",
+        "type": "Cofre Principal (Consolidado)",
+        "capital_usd": 11568.85,
+        "range_min": 2596.73,
+        "range_max": 2798.98,
+        "unit": "USDC/ETH",
+        "deposit_id": "Deposit #7732601",
+        "pair_address": "0x4200000000000000000000000000000000000006",
+        "price_key": "eth",
         "price_field": "price",
-        "daily_usd": 21.09,
-        "apr": "74.08% a.a. (Medido)",
-        "start_iso": "2026-10-06T18:00:00+00:00",
+        "daily_usd": 23.45,
+        "apr": "15.89% Fee + Gauge AERO (~74.0% a.a.)",
+        "start_iso": "2026-10-06T21:48:00+00:00",
         "profit_type": "gauge"
     },
     {
@@ -250,12 +250,12 @@ def calculate_profit_metrics(market: dict) -> dict:
     now = datetime.now(timezone.utc)
     aero_px = market.get("aero", {}).get("price", 0.795)
     
-    # 1. NVDAc (Slipstream 10 - Deposit #7718530)
-    t_nvda = datetime.fromisoformat("2026-10-06T18:00:00+00:00")
-    hours_nvda = max((now - t_nvda).total_seconds() / 3600.0, 0)
-    nvda_hourly_usd = 21.09 / 24.0
-    nvda_usd_accrued = hours_nvda * nvda_hourly_usd
-    nvda_aero_accrued = (nvda_usd_accrued * 0.72 / aero_px) if aero_px > 0 else 0.0
+    # 1. WETH / USDC (Slipstream 50 - Deposit #7732601)
+    t_weth = datetime.fromisoformat("2026-10-06T21:48:00+00:00")
+    hours_weth = max((now - t_weth).total_seconds() / 3600.0, 0)
+    weth_hourly_usd = 23.45 / 24.0
+    weth_usd_accrued = hours_weth * weth_hourly_usd
+    weth_aero_accrued = (weth_usd_accrued * 0.75 / aero_px) if aero_px > 0 else 0.0
 
     # 2. GOOGLc (Medição real: ~0.17 AERO + $0.77 USDC acumulados)
     t_googl = datetime.fromisoformat("2026-10-02T17:20:00+00:00")
@@ -279,22 +279,22 @@ def calculate_profit_metrics(market: dict) -> dict:
     hours_mon = max((now - t_mon).total_seconds() / 3600.0, 0)
     mon_usd_accrued = hours_mon * (1.90 / 24.0)
 
-    total_accrued_usd = nvda_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
-    total_daily_usd = 21.09 + googl_daily_usd + virt_daily + 1.90
+    total_accrued_usd = weth_usd_accrued + googl_usd_accrued + virt_usd_accrued + mon_usd_accrued
+    total_daily_usd = 23.45 + googl_daily_usd + virt_daily + 1.90
 
     usd_brl = market.get("usd_brl") or fetch_usd_brl()
 
     return {
-        "usdc_nvdac": {
-            "daily_usd": 21.09,
-            "daily_brl": 21.09 * usd_brl,
-            "accrued_usd": nvda_usd_accrued,
-            "accrued_brl": nvda_usd_accrued * usd_brl,
-            "accrued_aero": nvda_aero_accrued,
-            "accrued_text": f"~{nvda_aero_accrued:.2f} AERO (~${nvda_usd_accrued:.2f} USD / R$ {nvda_usd_accrued*usd_brl:.2f})",
-            "apr": "74.08% a.a. (Medido)",
+        "weth_usdc": {
+            "daily_usd": 23.45,
+            "daily_brl": 23.45 * usd_brl,
+            "accrued_usd": weth_usd_accrued,
+            "accrued_brl": weth_usd_accrued * usd_brl,
+            "accrued_aero": weth_aero_accrued,
+            "accrued_text": f"~{weth_aero_accrued:.2f} AERO (~${weth_usd_accrued:.2f} USD / R$ {weth_usd_accrued*usd_brl:.2f})",
+            "apr": "15.89% Fee + Gauge AERO (~74.0% a.a.)",
             "sub_daily": {
-                "principal_usd": 21.09
+                "principal_usd": 23.45
             }
         },
         "usdc_googlc": {

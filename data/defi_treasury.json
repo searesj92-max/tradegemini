@@ -3,46 +3,24 @@
   "positions": [
     {
       "id": "aerodrome_weth_usdc",
-      "name": "WETH / USDC (Slipstream 50 - 2 Posições)",
+      "name": "WETH / USDC (Slipstream Concentrated 50)",
       "chain": "Base (Layer 2)",
       "protocol": "Aerodrome Finance (Slipstream 50)",
-      "type": "Cofre Conservador (Âncora Principal)",
-      "capital_usd": 10378.16,
-      "composition": "2.0019 WETH + 4,963.43 USDC",
-      "range_min": 2622.82,
-      "range_max": 2827.09,
+      "type": "Cofre Principal (Consolidado)",
+      "capital_usd": 11568.85,
+      "composition": "2.1138 WETH + 5,871.09 USDC",
+      "range_min": 2596.73,
+      "range_max": 2798.98,
       "range_unit": "USDC/ETH",
-      "current_price_ref": 2710.0,
-      "status": "🟢 IN RANGE (2 Posições Ativas e Lucrando)",
+      "current_price_ref": 2697.0,
+      "status": "🟢 IN RANGE (Ativo e Lucrando)",
       "accrued_rewards": "AERO Staked no Gauge",
-      "apr_display": "22.97% - 114.85% Fees + Emissões",
-      "apr_real": "~200.0% a.a. (Consolidado)",
-      "daily_usd": 55.6,
-      "monthly_usd": 1668.0,
+      "apr_display": "15.89% Fee APR",
+      "apr_real": "~74.0% a.a. (Slipstream 50)",
+      "daily_usd": 23.45,
+      "monthly_usd": 703.50,
       "reward_token": "AERO + Taxas",
-      "deposit_id": "Principal #7669576 + Secundária #7670917",
-      "sub_positions": [
-        {
-          "id": "#7669576",
-          "label": "Depósito Principal (Fortaleza)",
-          "capital_usd": 10181.75,
-          "composition": "1.9580 WETH + 4,886.36 USDC",
-          "range_min": 2622.82,
-          "range_max": 2827.09,
-          "daily_usd": 55.0,
-          "status": "🟢 IN RANGE (±3.5%)"
-        },
-        {
-          "id": "#7670917",
-          "label": "Depósito Secundário (Concentrada)",
-          "capital_usd": 196.41,
-          "composition": "0.0439 WETH + 77.07 USDC",
-          "range_min": 2702.7,
-          "range_max": 2743.54,
-          "daily_usd": 0.6,
-          "status": "🟢 IN RANGE (±0.5%)"
-        }
-      ]
+      "deposit_id": "#7732601"
     },
     {
       "id": "aerodrome_usdc_googlc",

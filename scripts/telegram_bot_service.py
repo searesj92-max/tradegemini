@@ -461,7 +461,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
     if cmd in ("/start", "/help", "/ajuda", "ajuda", "help", "menu"):
         msg = (
             "🏛️ *SENTINELA & TESOURARIA DEFI BOTRADE*\n\n"
-            "Monitoramento 24/7 do cofre consolidado WETH / USDC (Deposit #7732601):\n\n"
+            "Monitoramento 24/7 da pool WETH / USDC (Deposit #7732601) e Arbitragem Flash Loan:\n\n"
+            "• `/arbitragem` ou `/arb` - ⚡ Radar de Spreads ao Vivo (Aerodrome, Uniswap v3, PancakeSwap)\n"
             "• `/planilha` ou `planilha` - 📊 Planilha ao vivo (Google Sheets automático e arquivos CSV)\n"
             "• `/lucro` ou `lucro` - 💰 Rendimento real acumulado e base de ontem (sem estimativas)\n"
             "• `/defi` ou `/pools` - 🎯 Radar da faixa ($2,596 ↔ $2,798), distâncias de piso/teto e saídas\n"
@@ -471,9 +472,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "📊 Planilha ao Vivo (Sheets/CSV)", "callback_data": "defi_sheet"}],
-                [{"text": "💰 Rendimento Real (/lucro)", "callback_data": "defi_profit"}],
-                [{"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
+                [{"text": "⚡ Radar Arbitragem (/arb)", "callback_data": "refresh_arbitrage"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
+                [{"text": "💰 Rendimento Real (/lucro)", "callback_data": "defi_profit"}, {"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
                 [{"text": "💼 Saldo Atualizado (/saldo)", "callback_data": "refresh_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
             ]
         }
@@ -515,9 +515,25 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, text_out, markup)
         return
 
+    # 8. RADAR DE ARBITRAGEM DEFI ON-CHAIN
+    if cmd in ("/arbitragem", "/arb", "arbitragem", "arb") or "arbitragem" in text.lower():
+        from defi_arbitrage_engine import scan_all_markets, format_radar_report, record_opportunities
+        send_message(chat_id, "⚡ *Consultando pools da Base em tempo real (Aerodrome, Uniswap, PancakeSwap)...*")
+        opps = scan_all_markets()
+        record_opportunities(opps)
+        rep = format_radar_report(opps)
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}],
+                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}]
+            ]
+        }
+        send_message(chat_id, rep, markup)
+        return
+
     send_message(
         chat_id,
-        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/lucro` para ver o rendimento, `/defi` para o radar da faixa, `/planilha` para a planilha ao vivo ou `/ajuda` para o menu."
+        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/arbitragem` para ver spreads ao vivo, `/lucro` para o rendimento da pool, `/defi` para o radar da faixa ou `/ajuda` para o menu."
     )
 
 
@@ -528,6 +544,24 @@ def handle_callback_query(cq: dict):
     msg = cq.get("message", {})
     msg_id = msg.get("message_id")
     data = cq.get("data", "")
+
+    if data == "refresh_arbitrage":
+        answer_callback(cq_id, "Buscando spreads na Base...")
+        from defi_arbitrage_engine import scan_all_markets, format_radar_report, record_opportunities
+        opps = scan_all_markets()
+        record_opportunities(opps)
+        rep = format_radar_report(opps)
+        markup = {
+            "inline_keyboard": [
+                [{"text": "🔄 Atualizar Spreads", "callback_data": "refresh_arbitrage"}, {"text": "💰 Rendimento da Pool", "callback_data": "defi_profit"}],
+                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}]
+            ]
+        }
+        if msg_id:
+            edit_message(chat_id, msg_id, rep, markup)
+        else:
+            send_message(chat_id, rep, markup)
+        return
 
     if data in ("defi_profit", "profit_summary"):
         answer_callback(cq_id, "Calculando rendimento real...")
@@ -576,6 +610,7 @@ def handle_callback_query(cq: dict):
 def register_bot_commands():
     commands = [
         {"command": "planilha", "description": "📊 Planilha ao vivo (atualiza a todo momento)"},
+        {"command": "arbitragem", "description": "⚡ Radar de arbitragem on-chain (spreads ao vivo)"},
         {"command": "lucro", "description": "💰 Rendimento real acumulado e base de ontem"},
         {"command": "defi", "description": "🎯 Radar da faixa ($2,596 a $2,798) e saídas"},
         {"command": "saldo", "description": "💼 Saldo consolidado e valorização patrimonial"},

@@ -1,0 +1,5597 @@
+{
+  "0x4200000000000000000000000000000000000006": {
+    "ts": 1791411753.4069412,
+    "pools": [
+      {
+        "id": "base_0x6c561b446416e1a00e8e93e221854d6ea4171372",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2564.72",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "0.994991170890688",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "2577.630912749",
+          "quote_token_price_base_token": "0.0003879531375",
+          "address": "0x6c561b446416e1a00e8e93e221854d6ea4171372",
+          "name": "WETH / USDC 0.3%",
+          "pool_created_at": "2023-11-18T05:59:09Z",
+          "token_price_usd": "2564.72",
+          "fdv_usd": "717366535.447565",
+          "market_cap_usd": "725529957.008605",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.096",
+            "m30": "-0.068",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 8,
+              "sells": 3,
+              "buyers": 8,
+              "sellers": 2
+            },
+            "m30": {
+              "buys": 37,
+              "sells": 30,
+              "buyers": 24,
+              "sellers": 24
+            },
+            "h1": {
+              "buys": 46,
+              "sells": 42,
+              "buyers": 32,
+              "sellers": 35
+            },
+            "h6": {
+              "buys": 1173,
+              "sells": 829,
+              "buyers": 540,
+              "sellers": 365
+            },
+            "h24": {
+              "buys": 3224,
+              "sells": 7185,
+              "buyers": 1060,
+              "sellers": 2080
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "4763.3840006944",
+            "m30": "9737.4300033239",
+            "h1": "11858.5887506216",
+            "h6": "11370601.8761042",
+            "h24": "66471887.260249"
+          },
+          "reserve_in_usd": "155841077.3581"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x3fe04a59ebd38cf06080a6f60a98d124eb59392a",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2564.66",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "0.999330298397758",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "2577.630912749",
+          "quote_token_price_base_token": "0.0003879531375",
+          "address": "0x3fe04a59ebd38cf06080a6f60a98d124eb59392a",
+          "name": "WETH / USDC 0.05%",
+          "pool_created_at": "2026-04-22T21:59:50Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.023",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 3,
+              "sells": 2,
+              "buyers": 3,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 14,
+              "sells": 35,
+              "buyers": 13,
+              "sellers": 26
+            },
+            "m30": {
+              "buys": 71,
+              "sells": 74,
+              "buyers": 60,
+              "sellers": 40
+            },
+            "h1": {
+              "buys": 97,
+              "sells": 152,
+              "buyers": 70,
+              "sellers": 91
+            },
+            "h6": {
+              "buys": 1068,
+              "sells": 1058,
+              "buyers": 399,
+              "sellers": 456
+            },
+            "h24": {
+              "buys": 4651,
+              "sells": 5333,
+              "buyers": 1101,
+              "sellers": 1363
+            }
+          },
+          "volume_usd": {
+            "m5": "24780.7963744734",
+            "m15": "214845.185683758",
+            "m30": "770204.225001975",
+            "h1": "1410072.74909706",
+            "h6": "10488215.0438207",
+            "h24": "48246467.6391655"
+          },
+          "reserve_in_usd": "8653192.5901"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2564.66",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "0.999356244557512",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "2577.630912749",
+          "quote_token_price_base_token": "0.0003879531375",
+          "address": "0xb2cc224c1c9fee385f8ad6a55b4d94e92359dc59",
+          "name": "WETH / USDC 0.05%",
+          "pool_created_at": "2024-05-06T05:03:45Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.023",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 8,
+              "sells": 2,
+              "buyers": 8,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 36,
+              "sells": 28,
+              "buyers": 21,
+              "sellers": 17
+            },
+            "m30": {
+              "buys": 94,
+              "sells": 61,
+              "buyers": 27,
+              "sellers": 28
+            },
+            "h1": {
+              "buys": 144,
+              "sells": 132,
+              "buyers": 47,
+              "sellers": 54
+            },
+            "h6": {
+              "buys": 1189,
+              "sells": 1232,
+              "buyers": 263,
+              "sellers": 218
+            },
+            "h24": {
+              "buys": 5578,
+              "sells": 6070,
+              "buyers": 780,
+              "sellers": 826
+            }
+          },
+          "volume_usd": {
+            "m5": "31024.604359233",
+            "m15": "190852.79370184",
+            "m30": "567830.956307297",
+            "h1": "906546.673606877",
+            "h6": "8320235.51007795",
+            "h24": "40394594.6469891"
+          },
+          "reserve_in_usd": "8772428.7628"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x42d4a22cad0f5a49681a5715ce994af73a43b76b",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83193.5935493158",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x42d4a22cad0f5a49681a5715ce994af73a43b76b",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2026-04-22T21:55:43Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.15",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 25,
+              "buyers": 0,
+              "sellers": 21
+            },
+            "m30": {
+              "buys": 22,
+              "sells": 63,
+              "buyers": 12,
+              "sellers": 51
+            },
+            "h1": {
+              "buys": 48,
+              "sells": 70,
+              "buyers": 34,
+              "sellers": 55
+            },
+            "h6": {
+              "buys": 612,
+              "sells": 297,
+              "buyers": 302,
+              "sellers": 205
+            },
+            "h24": {
+              "buys": 1736,
+              "sells": 1652,
+              "buyers": 507,
+              "sellers": 662
+            }
+          },
+          "volume_usd": {
+            "m5": "6287.5751421645",
+            "m15": "297878.307455989",
+            "m30": "974043.488689425",
+            "h1": "1409806.9586383",
+            "h6": "10001794.4608008",
+            "h24": "35715197.4516279"
+          },
+          "reserve_in_usd": "8851487.2284"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7aea2e8a3843516afa07293a10ac8e49906dabd1",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83195.7232657226",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.72",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x7aea2e8a3843516afa07293a10ac8e49906dabd1",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2024-09-13T15:24:23Z",
+          "token_price_usd": "2564.72",
+          "fdv_usd": "717366535.447565",
+          "market_cap_usd": "725529957.008605",
+          "price_change_percentage": {
+            "m5": "-0.14",
+            "m15": "-0.14",
+            "m30": "-0.06",
+            "h1": "-0.25",
+            "h6": "-0.35",
+            "h24": "-4.86"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 1,
+              "sells": 8,
+              "buyers": 1,
+              "sellers": 8
+            },
+            "m15": {
+              "buys": 1,
+              "sells": 16,
+              "buyers": 1,
+              "sellers": 16
+            },
+            "m30": {
+              "buys": 20,
+              "sells": 26,
+              "buyers": 16,
+              "sellers": 23
+            },
+            "h1": {
+              "buys": 35,
+              "sells": 50,
+              "buyers": 31,
+              "sellers": 37
+            },
+            "h6": {
+              "buys": 449,
+              "sells": 251,
+              "buyers": 228,
+              "sellers": 169
+            },
+            "h24": {
+              "buys": 2665,
+              "sells": 2138,
+              "buyers": 913,
+              "sellers": 754
+            }
+          },
+          "volume_usd": {
+            "m5": "19661.4268288587",
+            "m15": "43957.8383491428",
+            "m30": "135422.233936077",
+            "h1": "189743.317110793",
+            "h6": "1712607.89645631",
+            "h24": "16756111.9870293"
+          },
+          "reserve_in_usd": "12994569.3079"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83194.8675952569",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+          "name": "cbBTC / WETH 0.01%",
+          "pool_created_at": "2024-09-13T06:45:47Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 1,
+              "sells": 7,
+              "buyers": 1,
+              "sellers": 7
+            },
+            "m15": {
+              "buys": 32,
+              "sells": 37,
+              "buyers": 30,
+              "sellers": 30
+            },
+            "m30": {
+              "buys": 105,
+              "sells": 109,
+              "buyers": 72,
+              "sellers": 71
+            },
+            "h1": {
+              "buys": 221,
+              "sells": 184,
+              "buyers": 151,
+              "sellers": 116
+            },
+            "h6": {
+              "buys": 1508,
+              "sells": 1537,
+              "buyers": 495,
+              "sellers": 557
+            },
+            "h24": {
+              "buys": 8607,
+              "sells": 9298,
+              "buyers": 1554,
+              "sellers": 1937
+            }
+          },
+          "volume_usd": {
+            "m5": "15908.2823458581",
+            "m15": "158452.352070621",
+            "m30": "494317.21398865",
+            "h1": "853079.643136008",
+            "h6": "4909176.38978872",
+            "h24": "32752150.1109909"
+          },
+          "reserve_in_usd": "5659716.0523"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "pancakeswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2564.66",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "0.999290767111119",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "2577.630912749",
+          "quote_token_price_base_token": "0.0003879531375",
+          "address": "0x72ab388e2e2f6facef59e3c3fa2c4e29011c2d38",
+          "name": "WETH / USDC 0.01%",
+          "pool_created_at": "2023-10-18T05:54:25Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.023",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 17,
+              "sells": 7,
+              "buyers": 17,
+              "sellers": 6
+            },
+            "m15": {
+              "buys": 68,
+              "sells": 70,
+              "buyers": 59,
+              "sellers": 53
+            },
+            "m30": {
+              "buys": 210,
+              "sells": 161,
+              "buyers": 161,
+              "sellers": 98
+            },
+            "h1": {
+              "buys": 484,
+              "sells": 332,
+              "buyers": 296,
+              "sellers": 154
+            },
+            "h6": {
+              "buys": 3865,
+              "sells": 4284,
+              "buyers": 969,
+              "sellers": 1016
+            },
+            "h24": {
+              "buys": 22799,
+              "sells": 20805,
+              "buyers": 3006,
+              "sellers": 3446
+            }
+          },
+          "volume_usd": {
+            "m5": "16334.3082460563",
+            "m15": "94481.7997660971",
+            "m30": "290317.192686331",
+            "h1": "694875.037715202",
+            "h6": "6820737.69732878",
+            "h24": "37611113.8676551"
+          },
+          "reserve_in_usd": "4722225.363"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "pancakeswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xd0b53d9277642d899df5c87a3966a349a798f224",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "1.000271081",
+          "base_token_price_native_currency": "0.000387953137531851",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003879531375",
+          "quote_token_price_base_token": "2577.630912749",
+          "address": "0xd0b53d9277642d899df5c87a3966a349a798f224",
+          "name": "USDC / WETH 0.05%",
+          "pool_created_at": "2024-03-23T12:55:07Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.92"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 4,
+              "sells": 6,
+              "buyers": 4,
+              "sellers": 5
+            },
+            "m15": {
+              "buys": 29,
+              "sells": 40,
+              "buyers": 24,
+              "sellers": 29
+            },
+            "m30": {
+              "buys": 88,
+              "sells": 124,
+              "buyers": 57,
+              "sellers": 43
+            },
+            "h1": {
+              "buys": 145,
+              "sells": 226,
+              "buyers": 81,
+              "sellers": 84
+            },
+            "h6": {
+              "buys": 1736,
+              "sells": 1736,
+              "buyers": 613,
+              "sellers": 507
+            },
+            "h24": {
+              "buys": 8284,
+              "sells": 8511,
+              "buyers": 2069,
+              "sellers": 2710
+            }
+          },
+          "volume_usd": {
+            "m5": "2546.1259611577",
+            "m15": "48665.7389046181",
+            "m30": "94856.7410259383",
+            "h1": "166707.916291725",
+            "h6": "3037545.72315155",
+            "h24": "16384440.2160521"
+          },
+          "reserve_in_usd": "9752988.5568"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7c7420dd105e2779316423ba3e973f434315efa9",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83180.2607465113",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x7c7420dd105e2779316423ba3e973f434315efa9",
+          "name": "cbBTC / WETH 0.009%",
+          "pool_created_at": "2026-04-16T04:45:09Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.92"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 6,
+              "sells": 13,
+              "buyers": 6,
+              "sellers": 9
+            },
+            "m15": {
+              "buys": 64,
+              "sells": 97,
+              "buyers": 60,
+              "sellers": 50
+            },
+            "m30": {
+              "buys": 170,
+              "sells": 188,
+              "buyers": 125,
+              "sellers": 101
+            },
+            "h1": {
+              "buys": 312,
+              "sells": 304,
+              "buyers": 199,
+              "sellers": 171
+            },
+            "h6": {
+              "buys": 2366,
+              "sells": 2339,
+              "buyers": 608,
+              "sellers": 715
+            },
+            "h24": {
+              "buys": 12122,
+              "sells": 12650,
+              "buyers": 1918,
+              "sellers": 2439
+            }
+          },
+          "volume_usd": {
+            "m5": "45078.8563577311",
+            "m15": "453650.965616922",
+            "m30": "975218.071759462",
+            "h1": "1655381.93225838",
+            "h6": "10606411.1388544",
+            "h24": "56356360.6880775"
+          },
+          "reserve_in_usd": "2226766.8144"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83583.8802868929",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2567.62",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2024-09-12T13:53:26Z",
+          "token_price_usd": "2567.62",
+          "fdv_usd": "718177681.675145",
+          "market_cap_usd": "726350333.84324",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.03",
+            "m30": "0.07",
+            "h1": "0.07",
+            "h6": "-0.04",
+            "h24": "-4.81"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 8,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 8,
+              "sells": 8,
+              "buyers": 7,
+              "sellers": 1
+            },
+            "h1": {
+              "buys": 8,
+              "sells": 8,
+              "buyers": 7,
+              "sellers": 1
+            },
+            "h6": {
+              "buys": 169,
+              "sells": 79,
+              "buyers": 90,
+              "sellers": 34
+            },
+            "h24": {
+              "buys": 372,
+              "sells": 432,
+              "buyers": 200,
+              "sellers": 167
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "2.5491829072",
+            "m30": "23720.0204573215",
+            "h1": "23720.0204573215",
+            "h6": "914241.194608183",
+            "h24": "3680335.94700209"
+          },
+          "reserve_in_usd": "18495403.2184"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83086.6473931119",
+          "base_token_price_native_currency": "32.3740709715127",
+          "quote_token_price_usd": "2566.62",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.3740709715",
+          "quote_token_price_base_token": "0.03088891727",
+          "address": "0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+          "name": "cbBTC / WETH 0.3%",
+          "pool_created_at": "2024-09-11T19:49:35Z",
+          "token_price_usd": "2566.62",
+          "fdv_usd": "717897976.079428",
+          "market_cap_usd": "726067445.279573",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0.03",
+            "h1": "-0.13",
+            "h6": "-0.08",
+            "h24": "-4.81"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 8,
+              "sells": 0,
+              "buyers": 7,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 9,
+              "sells": 1,
+              "buyers": 8,
+              "sellers": 1
+            },
+            "h6": {
+              "buys": 145,
+              "sells": 12,
+              "buyers": 85,
+              "sellers": 10
+            },
+            "h24": {
+              "buys": 267,
+              "sells": 242,
+              "buyers": 163,
+              "sellers": 141
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "15089.6624157289",
+            "h1": "15252.1575355013",
+            "h6": "602903.529623576",
+            "h24": "2470956.56964529"
+          },
+          "reserve_in_usd": "11133075.4574"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x4e506648d493c8870f55e870480f92f2f33ece51",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7920128167",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060163433",
+          "quote_token_price_base_token": "3267.7993244374",
+          "address": "0x4e506648d493c8870f55e870480f92f2f33ece51",
+          "name": "AERO / WETH 0.3%",
+          "pool_created_at": "2026-04-29T19:14:02Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.11",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.89"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 3,
+              "buyers": 0,
+              "sellers": 3
+            },
+            "m15": {
+              "buys": 2,
+              "sells": 13,
+              "buyers": 2,
+              "sellers": 13
+            },
+            "m30": {
+              "buys": 6,
+              "sells": 29,
+              "buyers": 4,
+              "sellers": 28
+            },
+            "h1": {
+              "buys": 74,
+              "sells": 29,
+              "buyers": 65,
+              "sellers": 28
+            },
+            "h6": {
+              "buys": 408,
+              "sells": 276,
+              "buyers": 233,
+              "sellers": 171
+            },
+            "h24": {
+              "buys": 1303,
+              "sells": 954,
+              "buyers": 469,
+              "sellers": 386
+            }
+          },
+          "volume_usd": {
+            "m5": "3805.9889770525",
+            "m15": "20382.0238700348",
+            "m30": "80543.6541518842",
+            "h1": "172804.75641438",
+            "h6": "1154026.28437563",
+            "h24": "4402954.54200753"
+          },
+          "reserve_in_usd": "4008652.8302"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x9785ef59e2b499fb741674ecf6faf912df7b3c1b",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.9985420524",
+          "base_token_price_native_currency": "0.000389345488068139",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003893454881",
+          "quote_token_price_base_token": "2568.412966494",
+          "address": "0x9785ef59e2b499fb741674ecf6faf912df7b3c1b",
+          "name": "USDT / WETH 0.05%",
+          "pool_created_at": "2024-07-24T23:06:55Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.05",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.9"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 1,
+              "sells": 0,
+              "buyers": 1,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 17,
+              "sells": 13,
+              "buyers": 17,
+              "sellers": 12
+            },
+            "m30": {
+              "buys": 45,
+              "sells": 27,
+              "buyers": 38,
+              "sellers": 24
+            },
+            "h1": {
+              "buys": 46,
+              "sells": 80,
+              "buyers": 39,
+              "sellers": 67
+            },
+            "h6": {
+              "buys": 878,
+              "sells": 800,
+              "buyers": 377,
+              "sellers": 369
+            },
+            "h24": {
+              "buys": 4767,
+              "sells": 4946,
+              "buyers": 1093,
+              "sellers": 1173
+            }
+          },
+          "volume_usd": {
+            "m5": "153.6795002014",
+            "m15": "28158.8611689044",
+            "m30": "54038.4130831526",
+            "h1": "96202.973209659",
+            "h6": "1436678.82501705",
+            "h24": "7023001.37573974"
+          },
+          "reserve_in_usd": "2357782.727"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x01784ef301d79e4b2df3a21ad9a536d4cf09a5ce",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "25.1817040868",
+          "base_token_price_native_currency": "0.00981872539048145",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.00981872539",
+          "quote_token_price_base_token": "101.846213254",
+          "address": "0x01784ef301d79e4b2df3a21ad9a536d4cf09a5ce",
+          "name": "VVV / WETH",
+          "pool_created_at": "2025-01-27T16:44:59Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.92"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 4,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 3,
+              "sells": 42,
+              "buyers": 3,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 8,
+              "sells": 102,
+              "buyers": 6,
+              "sellers": 3
+            },
+            "h1": {
+              "buys": 10,
+              "sells": 213,
+              "buyers": 8,
+              "sellers": 4
+            },
+            "h6": {
+              "buys": 244,
+              "sells": 1458,
+              "buyers": 134,
+              "sellers": 45
+            },
+            "h24": {
+              "buys": 805,
+              "sells": 5352,
+              "buyers": 374,
+              "sellers": 278
+            }
+          },
+          "volume_usd": {
+            "m5": "14.0875870982",
+            "m15": "1784.6987985132",
+            "m30": "2050.622354174",
+            "h1": "13109.7273075",
+            "h6": "189548.903268263",
+            "h24": "902515.023740628"
+          },
+          "reserve_in_usd": "17010208.2411"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xa135b59fe221c0c8d441294f97f96fbc37bc9fbe",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "25.2050436688",
+          "base_token_price_native_currency": "0.00981868596959637",
+          "quote_token_price_usd": "2568.42",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.00981868597",
+          "quote_token_price_base_token": "101.846622155",
+          "address": "0xa135b59fe221c0c8d441294f97f96fbc37bc9fbe",
+          "name": "VVV / WETH 0.3%",
+          "pool_created_at": "2026-04-16T04:45:13Z",
+          "token_price_usd": "2568.42",
+          "fdv_usd": "718401446.151718",
+          "market_cap_usd": "726576644.694174",
+          "price_change_percentage": {
+            "m5": "0.01",
+            "m15": "0.03",
+            "m30": "0.1",
+            "h1": "0.01",
+            "h6": "-0.2",
+            "h24": "-4.71"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 2,
+              "buyers": 2,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 5,
+              "sells": 4,
+              "buyers": 5,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 5,
+              "sells": 7,
+              "buyers": 5,
+              "sellers": 3
+            },
+            "h1": {
+              "buys": 5,
+              "sells": 12,
+              "buyers": 5,
+              "sellers": 7
+            },
+            "h6": {
+              "buys": 322,
+              "sells": 186,
+              "buyers": 155,
+              "sellers": 109
+            },
+            "h24": {
+              "buys": 1233,
+              "sells": 965,
+              "buyers": 437,
+              "sellers": 373
+            }
+          },
+          "volume_usd": {
+            "m5": "3600.6793173499",
+            "m15": "5002.8573021979",
+            "m30": "5242.410223669",
+            "h1": "5550.9784200491",
+            "h6": "681661.927290258",
+            "h24": "3105472.75780555"
+          },
+          "reserve_in_usd": "3005911.3644"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xb4cb800910b228ed3d0834cf79d697127bbb00e5",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2564.66",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "0.999302636189589",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "2577.630912749",
+          "quote_token_price_base_token": "0.0003879531375",
+          "address": "0xb4cb800910b228ed3d0834cf79d697127bbb00e5",
+          "name": "WETH / USDC 0.01%",
+          "pool_created_at": "2023-09-16T17:31:47Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.023",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 23,
+              "sells": 8,
+              "buyers": 21,
+              "sellers": 8
+            },
+            "m15": {
+              "buys": 90,
+              "sells": 85,
+              "buyers": 76,
+              "sellers": 56
+            },
+            "m30": {
+              "buys": 243,
+              "sells": 245,
+              "buyers": 184,
+              "sellers": 149
+            },
+            "h1": {
+              "buys": 502,
+              "sells": 493,
+              "buyers": 310,
+              "sellers": 233
+            },
+            "h6": {
+              "buys": 4273,
+              "sells": 5208,
+              "buyers": 1330,
+              "sellers": 1540
+            },
+            "h24": {
+              "buys": 23882,
+              "sells": 26239,
+              "buyers": 4692,
+              "sellers": 6761
+            }
+          },
+          "volume_usd": {
+            "m5": "2950.4864583129",
+            "m15": "20854.5589050826",
+            "m30": "65364.1236211839",
+            "h1": "152348.152420334",
+            "h6": "1830992.71050216",
+            "h24": "10919588.3751391"
+          },
+          "reserve_in_usd": "698463.8643"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x815d4e2d0f580838151b7c5b8539b6a2c918afcea43bb83a30aadaa38e80241d",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.0000000562398446",
+          "base_token_price_native_currency": "0.0000746854381510853",
+          "quote_token_price_usd": "2696.31",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.00007468543815",
+          "quote_token_price_base_token": "13389.4909738234",
+          "address": "0x815d4e2d0f580838151b7c5b8539b6a2c918afcea43bb83a30aadaa38e80241d",
+          "name": "WOTF / WETH 0.3%",
+          "pool_created_at": "2026-10-06T21:12:45Z",
+          "token_price_usd": "2696.31",
+          "fdv_usd": "754172994.787979",
+          "market_cap_usd": "762755263.101575",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "0",
+            "h24": "0.02"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h6": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h24": {
+              "buys": 7,
+              "sells": 12,
+              "buyers": 5,
+              "sellers": 8
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.0",
+            "h1": "0.0",
+            "h6": "0.0",
+            "h24": "22410.6044476006"
+          },
+          "reserve_in_usd": "310585094.7288"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x0bd52c5348882ea80952742645c1f3a0eec3b695",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v4-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x0392b12a1ceb0cd13af5ea448cf5586ea609852d",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "6.5731369399",
+          "base_token_price_native_currency": "0.00256296621770432",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.002562966218",
+          "quote_token_price_base_token": "390.172914919",
+          "address": "0x0392b12a1ceb0cd13af5ea448cf5586ea609852d",
+          "name": "ZEN / WETH 0.15%",
+          "pool_created_at": "2025-07-23T13:35:47Z",
+          "token_price_usd": "2564.66",
+          "fdv_usd": "717349753.111822",
+          "market_cap_usd": "725512983.694785",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.9"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 11,
+              "buyers": 0,
+              "sellers": 9
+            },
+            "m15": {
+              "buys": 3,
+              "sells": 17,
+              "buyers": 1,
+              "sellers": 13
+            },
+            "m30": {
+              "buys": 4,
+              "sells": 59,
+              "buyers": 2,
+              "sellers": 26
+            },
+            "h1": {
+              "buys": 62,
+              "sells": 81,
+              "buyers": 31,
+              "sellers": 35
+            },
+            "h6": {
+              "buys": 655,
+              "sells": 639,
+              "buyers": 171,
+              "sellers": 204
+            },
+            "h24": {
+              "buys": 3236,
+              "sells": 3243,
+              "buyers": 362,
+              "sellers": 417
+            }
+          },
+          "volume_usd": {
+            "m5": "1096.4106515748",
+            "m15": "1692.7442372418",
+            "m30": "15193.7917247137",
+            "h1": "42130.1163273665",
+            "h6": "384740.976272175",
+            "h24": "2071869.81753946"
+          },
+          "reserve_in_usd": "2512072.1596"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x47ca96ea59c13f72745928887f84c9f52c3d7348",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2926.8970345892",
+          "base_token_price_native_currency": "1.14135199703919",
+          "quote_token_price_usd": "2564.72",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "1.141351997",
+          "quote_token_price_base_token": "0.876153897",
+          "address": "0x47ca96ea59c13f72745928887f84c9f52c3d7348",
+          "name": "cbETH / WETH 0.05%",
+          "pool_created_at": "2024-05-06T05:11:31Z",
+          "token_price_usd": "2564.72",
+          "fdv_usd": "717366535.447565",
+          "market_cap_usd": "725529957.008605",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.08",
+            "m30": "-0.07",
+            "h1": "-0.25",
+            "h6": "-0.42",
+            "h24": "-4.91"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 4,
+              "sells": 4,
+              "buyers": 4,
+              "sellers": 4
+            },
+            "m30": {
+              "buys": 11,
+              "sells": 13,
+              "buyers": 11,
+              "sellers": 13
+            },
+            "h1": {
+              "buys": 25,
+              "sells": 29,
+              "buyers": 25,
+              "sellers": 29
+            },
+            "h6": {
+              "buys": 237,
+              "sells": 221,
+              "buyers": 195,
+              "sellers": 197
+            },
+            "h24": {
+              "buys": 1423,
+              "sells": 1528,
+              "buyers": 822,
+              "sellers": 846
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "6.7753167109",
+            "m30": "7783.9818206933",
+            "h1": "10368.8438411655",
+            "h6": "600118.694690248",
+            "h24": "2029538.79840004"
+          },
+          "reserve_in_usd": "2343809.6899"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7ec6c9d993d9832aa654593f2dbc21303650bc6c",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "25.069455099",
+          "base_token_price_native_currency": "0.00982015211806064",
+          "quote_token_price_usd": "2568.42",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.009820152118",
+          "quote_token_price_base_token": "101.831416456",
+          "address": "0x7ec6c9d993d9832aa654593f2dbc21303650bc6c",
+          "name": "VVV / WETH 0.05%",
+          "pool_created_at": "2025-01-29T23:33:20Z",
+          "token_price_usd": "2568.42",
+          "fdv_usd": "718401446.151718",
+          "market_cap_usd": "726576644.694174",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.12",
+            "m30": "0.08",
+            "h1": "0.04",
+            "h6": "-0.2",
+            "h24": "-4.72"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 1,
+              "sells": 0,
+              "buyers": 1,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 4,
+              "sells": 1,
+              "buyers": 4,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 17,
+              "sells": 5,
+              "buyers": 17,
+              "sellers": 5
+            },
+            "h1": {
+              "buys": 20,
+              "sells": 7,
+              "buyers": 19,
+              "sellers": 6
+            },
+            "h6": {
+              "buys": 327,
+              "sells": 137,
+              "buyers": 204,
+              "sellers": 103
+            },
+            "h24": {
+              "buys": 1069,
+              "sells": 805,
+              "buyers": 484,
+              "sellers": 397
+            }
+          },
+          "volume_usd": {
+            "m5": "1194.0625577838",
+            "m15": "1474.6053005211",
+            "m30": "36036.135349093",
+            "h1": "44930.3848385511",
+            "h6": "260152.56236349",
+            "h24": "1310461.10076333"
+          },
+          "reserve_in_usd": "2784798.5249"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xacfe6019ed1a7dc6f7b508c02d1b04ec88cc21bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf": {
+    "ts": 1791411739.0903196,
+    "pools": [
+      {
+        "id": "base_0x42d4a22cad0f5a49681a5715ce994af73a43b76b",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83271.5275004972",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2567.15",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x42d4a22cad0f5a49681a5715ce994af73a43b76b",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2026-04-22T21:55:43Z",
+          "token_price_usd": "83271.5275004972",
+          "fdv_usd": "3926602363.6169",
+          "market_cap_usd": "7890466847.09627",
+          "price_change_percentage": {
+            "m5": "-0.01",
+            "m15": "-0.013",
+            "m30": "0.154",
+            "h1": "-0.12",
+            "h6": "-0.42",
+            "h24": "-2.67"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 23,
+              "sells": 0,
+              "buyers": 20,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 34,
+              "sells": 0,
+              "buyers": 29,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 61,
+              "sells": 30,
+              "buyers": 50,
+              "sellers": 18
+            },
+            "h1": {
+              "buys": 75,
+              "sells": 48,
+              "buyers": 62,
+              "sellers": 34
+            },
+            "h6": {
+              "buys": 299,
+              "sells": 612,
+              "buyers": 206,
+              "sellers": 302
+            },
+            "h24": {
+              "buys": 1650,
+              "sells": 1737,
+              "buyers": 662,
+              "sellers": 507
+            }
+          },
+          "volume_usd": {
+            "m5": "291590.732313825",
+            "m15": "378676.774541666",
+            "m30": "1028117.89706099",
+            "h1": "1510678.02039428",
+            "h6": "10029492.4657788",
+            "h24": "35717910.444298"
+          },
+          "reserve_in_usd": "8455150.274"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x160d7e9d948b16c163332a277b393c288408eb12",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83490.1274826516",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "0.994967893702437",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "83909.7661005108",
+          "quote_token_price_base_token": "0.00001191756391",
+          "address": "0x160d7e9d948b16c163332a277b393c288408eb12",
+          "name": "cbBTC / USDC 0.05%",
+          "pool_created_at": "2026-04-22T21:52:40Z",
+          "token_price_usd": "83490.1274826516",
+          "fdv_usd": "3936910271.162",
+          "market_cap_usd": "7911180480.72038",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "0.496",
+            "h1": "0.32",
+            "h6": "-0.3",
+            "h24": "-3.05"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 9,
+              "sells": 0,
+              "buyers": 9,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 25,
+              "sells": 18,
+              "buyers": 24,
+              "sellers": 18
+            },
+            "m30": {
+              "buys": 87,
+              "sells": 42,
+              "buyers": 71,
+              "sellers": 41
+            },
+            "h1": {
+              "buys": 129,
+              "sells": 142,
+              "buyers": 103,
+              "sellers": 110
+            },
+            "h6": {
+              "buys": 1349,
+              "sells": 1365,
+              "buyers": 509,
+              "sellers": 419
+            },
+            "h24": {
+              "buys": 6642,
+              "sells": 6739,
+              "buyers": 987,
+              "sellers": 1111
+            }
+          },
+          "volume_usd": {
+            "m5": "61909.6015747855",
+            "m15": "211670.560403919",
+            "m30": "515550.984496258",
+            "h1": "1000090.84105587",
+            "h6": "10619653.7205135",
+            "h24": "46343054.8613902"
+          },
+          "reserve_in_usd": "6108730.3134"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7aea2e8a3843516afa07293a10ac8e49906dabd1",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83195.7232657226",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.72",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x7aea2e8a3843516afa07293a10ac8e49906dabd1",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2024-09-13T15:24:23Z",
+          "token_price_usd": "83195.7232657226",
+          "fdv_usd": "3923027875.47705",
+          "market_cap_usd": "7883283950.14083",
+          "price_change_percentage": {
+            "m5": "-0.13",
+            "m15": "-0.098",
+            "m30": "0.06",
+            "h1": "-0.2",
+            "h6": "-0.37",
+            "h24": "-2.69"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 8,
+              "sells": 1,
+              "buyers": 8,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 16,
+              "sells": 1,
+              "buyers": 16,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 26,
+              "sells": 20,
+              "buyers": 23,
+              "sellers": 16
+            },
+            "h1": {
+              "buys": 50,
+              "sells": 35,
+              "buyers": 37,
+              "sellers": 31
+            },
+            "h6": {
+              "buys": 251,
+              "sells": 449,
+              "buyers": 169,
+              "sellers": 228
+            },
+            "h24": {
+              "buys": 2138,
+              "sells": 2665,
+              "buyers": 754,
+              "sellers": 913
+            }
+          },
+          "volume_usd": {
+            "m5": "19661.4268288587",
+            "m15": "43957.8383491428",
+            "m30": "135422.233936077",
+            "h1": "189743.317110793",
+            "h6": "1712607.89645631",
+            "h24": "16756111.9870293"
+          },
+          "reserve_in_usd": "12994569.3079"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83196.9663003859",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0xc211e1f853a898bd1302385ccde55f33a8c4b3f3",
+          "name": "cbBTC / WETH 0.01%",
+          "pool_created_at": "2024-09-13T06:45:47Z",
+          "token_price_usd": "83196.9663003859",
+          "fdv_usd": "3923086489.78369",
+          "market_cap_usd": "7883401734.98392",
+          "price_change_percentage": {
+            "m5": "-0.06",
+            "m15": "-0.105",
+            "m30": "0.059",
+            "h1": "-0.2",
+            "h6": "-0.4",
+            "h24": "-2.8"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 22,
+              "sells": 17,
+              "buyers": 19,
+              "sellers": 17
+            },
+            "m15": {
+              "buys": 53,
+              "sells": 54,
+              "buyers": 41,
+              "sellers": 49
+            },
+            "m30": {
+              "buys": 120,
+              "sells": 129,
+              "buyers": 79,
+              "sellers": 88
+            },
+            "h1": {
+              "buys": 196,
+              "sells": 223,
+              "buyers": 122,
+              "sellers": 152
+            },
+            "h6": {
+              "buys": 1553,
+              "sells": 1524,
+              "buyers": 559,
+              "sellers": 496
+            },
+            "h24": {
+              "buys": 9301,
+              "sells": 8618,
+              "buyers": 1940,
+              "sellers": 1555
+            }
+          },
+          "volume_usd": {
+            "m5": "91116.1728354278",
+            "m15": "244564.707171114",
+            "m30": "579050.154815348",
+            "h1": "877519.991494769",
+            "h6": "4978540.87334392",
+            "h24": "32774469.153484"
+          },
+          "reserve_in_usd": "5659896.1877"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "pancakeswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7c7420dd105e2779316423ba3e973f434315efa9",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83179.5407929466",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x7c7420dd105e2779316423ba3e973f434315efa9",
+          "name": "cbBTC / WETH 0.009%",
+          "pool_created_at": "2026-04-16T04:45:09Z",
+          "token_price_usd": "83179.5407929466",
+          "fdv_usd": "3922264803.89954",
+          "market_cap_usd": "7881750565.69628",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.051",
+            "m30": "0.07",
+            "h1": "-0.22",
+            "h6": "-0.54",
+            "h24": "-2.78"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 8,
+              "sells": 3,
+              "buyers": 5,
+              "sellers": 3
+            },
+            "m15": {
+              "buys": 92,
+              "sells": 61,
+              "buyers": 50,
+              "sellers": 57
+            },
+            "m30": {
+              "buys": 183,
+              "sells": 167,
+              "buyers": 101,
+              "sellers": 122
+            },
+            "h1": {
+              "buys": 299,
+              "sells": 309,
+              "buyers": 171,
+              "sellers": 196
+            },
+            "h6": {
+              "buys": 2334,
+              "sells": 2363,
+              "buyers": 715,
+              "sellers": 606
+            },
+            "h24": {
+              "buys": 12645,
+              "sells": 12119,
+              "buyers": 2439,
+              "sellers": 1918
+            }
+          },
+          "volume_usd": {
+            "m5": "22044.1327519191",
+            "m15": "430616.24201111",
+            "m30": "952183.34815365",
+            "h1": "1632347.20865257",
+            "h6": "10583376.4152486",
+            "h24": "56333325.9644717"
+          },
+          "reserve_in_usd": "2236629.7274"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xfbb6eed8e7aa03b138556eedaf5d271a5e1e43ef",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83489.476421511",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "0.994991170890689",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "83909.7661005108",
+          "quote_token_price_base_token": "0.00001191756391",
+          "address": "0xfbb6eed8e7aa03b138556eedaf5d271a5e1e43ef",
+          "name": "cbBTC / USDC 0.05%",
+          "pool_created_at": "2024-09-14T12:04:07Z",
+          "token_price_usd": "83489.476421511",
+          "fdv_usd": "3936879570.89397",
+          "market_cap_usd": "7911118788.84923",
+          "price_change_percentage": {
+            "m5": "-0.14",
+            "m15": "-0.028",
+            "m30": "0.506",
+            "h1": "0.32",
+            "h6": "-0.22",
+            "h24": "-3.05"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 5,
+              "buyers": 2,
+              "sellers": 5
+            },
+            "m15": {
+              "buys": 8,
+              "sells": 6,
+              "buyers": 8,
+              "sellers": 6
+            },
+            "m30": {
+              "buys": 25,
+              "sells": 22,
+              "buyers": 23,
+              "sellers": 20
+            },
+            "h1": {
+              "buys": 31,
+              "sells": 60,
+              "buyers": 29,
+              "sellers": 43
+            },
+            "h6": {
+              "buys": 488,
+              "sells": 517,
+              "buyers": 281,
+              "sellers": 245
+            },
+            "h24": {
+              "buys": 3195,
+              "sells": 2791,
+              "buyers": 914,
+              "sellers": 696
+            }
+          },
+          "volume_usd": {
+            "m5": "8226.1416032679",
+            "m15": "21754.1606807853",
+            "m30": "75091.8513841774",
+            "h1": "131528.54730346",
+            "h6": "1598157.97636499",
+            "h24": "11074987.1623675"
+          },
+          "reserve_in_usd": "9250861.7994"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83568.2548195194",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "1.00193409505197",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "83909.7661005108",
+          "quote_token_price_base_token": "0.00001191756391",
+          "address": "0x4e962bb3889bf030368f56810a9c96b83cb3e778",
+          "name": "cbBTC / USDC 0.05%",
+          "pool_created_at": "2024-09-12T13:56:07Z",
+          "token_price_usd": "83568.2548195194",
+          "fdv_usd": "3940594303.32541",
+          "market_cap_usd": "7918583505.25843",
+          "price_change_percentage": {
+            "m5": "-0.05",
+            "m15": "0.011",
+            "m30": "0.595",
+            "h1": "0.42",
+            "h6": "-0.13",
+            "h24": "-2.96"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 7,
+              "buyers": 0,
+              "sellers": 7
+            },
+            "m15": {
+              "buys": 6,
+              "sells": 7,
+              "buyers": 6,
+              "sellers": 7
+            },
+            "m30": {
+              "buys": 30,
+              "sells": 14,
+              "buyers": 28,
+              "sellers": 12
+            },
+            "h1": {
+              "buys": 36,
+              "sells": 45,
+              "buyers": 30,
+              "sellers": 36
+            },
+            "h6": {
+              "buys": 418,
+              "sells": 432,
+              "buyers": 218,
+              "sellers": 194
+            },
+            "h24": {
+              "buys": 2328,
+              "sells": 2385,
+              "buyers": 556,
+              "sellers": 562
+            }
+          },
+          "volume_usd": {
+            "m5": "12263.7066820782",
+            "m15": "27245.9114486184",
+            "m30": "102733.393360089",
+            "h1": "176783.417040685",
+            "h6": "1674395.42017772",
+            "h24": "11234814.657032"
+          },
+          "reserve_in_usd": "6203402.1631"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83583.8802868929",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "2567.62",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.5530570283",
+          "quote_token_price_base_token": "0.03071908113",
+          "address": "0x70acdf2ad0bf2402c957154f944c19ef4e1cbae1",
+          "name": "cbBTC / WETH 0.05%",
+          "pool_created_at": "2024-09-12T13:53:26Z",
+          "token_price_usd": "83583.8802868929",
+          "fdv_usd": "3941331109.75809",
+          "market_cap_usd": "7920064110.16604",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.277",
+            "m30": "0.597",
+            "h1": "0.6",
+            "h6": "0.09",
+            "h24": "-2.74"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 8,
+              "sells": 0,
+              "buyers": 1,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 8,
+              "sells": 8,
+              "buyers": 1,
+              "sellers": 7
+            },
+            "h1": {
+              "buys": 8,
+              "sells": 8,
+              "buyers": 1,
+              "sellers": 7
+            },
+            "h6": {
+              "buys": 79,
+              "sells": 169,
+              "buyers": 34,
+              "sellers": 90
+            },
+            "h24": {
+              "buys": 432,
+              "sells": 372,
+              "buyers": 167,
+              "sellers": 200
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "2.5491829072",
+            "m30": "23720.0204573215",
+            "h1": "23720.0204573215",
+            "h6": "914241.194608183",
+            "h24": "3680335.94700209"
+          },
+          "reserve_in_usd": "18495403.2184"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.9949678937",
+          "base_token_price_native_currency": "0.000387953137531851",
+          "quote_token_price_usd": "83487.5232380893",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.00001191756391",
+          "quote_token_price_base_token": "83909.7661005108",
+          "address": "0x3e66e55e97ce60096f74b7c475e8249f2d31a9fb",
+          "name": "USDC / cbBTC 1%",
+          "pool_created_at": "2025-03-12T06:42:10Z",
+          "token_price_usd": "83487.5232380893",
+          "fdv_usd": "3936787470.08988",
+          "market_cap_usd": "7910933713.23578",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "0.48",
+            "h1": "0.31",
+            "h6": "-0.3",
+            "h24": "-3.06"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 0,
+              "buyers": 2,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 9,
+              "sells": 9,
+              "buyers": 8,
+              "sellers": 9
+            },
+            "m30": {
+              "buys": 27,
+              "sells": 12,
+              "buyers": 25,
+              "sellers": 12
+            },
+            "h1": {
+              "buys": 33,
+              "sells": 56,
+              "buyers": 26,
+              "sellers": 49
+            },
+            "h6": {
+              "buys": 449,
+              "sells": 476,
+              "buyers": 197,
+              "sellers": 180
+            },
+            "h24": {
+              "buys": 2777,
+              "sells": 2878,
+              "buyers": 570,
+              "sellers": 528
+            }
+          },
+          "volume_usd": {
+            "m5": "727.1525934452",
+            "m15": "20331.8784694105",
+            "m30": "44009.8234255563",
+            "h1": "93407.2677250192",
+            "h6": "876804.235508779",
+            "h24": "6480483.06391339"
+          },
+          "reserve_in_usd": "7278013.9476"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83086.6473931119",
+          "base_token_price_native_currency": "32.3740709715127",
+          "quote_token_price_usd": "2566.62",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "32.3740709715",
+          "quote_token_price_base_token": "0.03088891727",
+          "address": "0x8c7080564b5a792a33ef2fd473fba6364d5495e5",
+          "name": "cbBTC / WETH 0.3%",
+          "pool_created_at": "2024-09-11T19:49:35Z",
+          "token_price_usd": "83086.6473931119",
+          "fdv_usd": "3917884489.83177",
+          "market_cap_usd": "7872948369.87124",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "-0.001",
+            "h1": "-0.16",
+            "h6": "-0.62",
+            "h24": "-3.27"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 8,
+              "buyers": 0,
+              "sellers": 7
+            },
+            "h1": {
+              "buys": 1,
+              "sells": 9,
+              "buyers": 1,
+              "sellers": 8
+            },
+            "h6": {
+              "buys": 12,
+              "sells": 145,
+              "buyers": 10,
+              "sellers": 85
+            },
+            "h24": {
+              "buys": 242,
+              "sells": 267,
+              "buyers": 141,
+              "sellers": 163
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "15089.6624157289",
+            "h1": "15252.1575355013",
+            "h6": "602903.529623576",
+            "h24": "2470956.56964529"
+          },
+          "reserve_in_usd": "11133075.4574"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xdfe5f275020def30993f042174fc2d335678b626",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7948746637",
+          "base_token_price_native_currency": "0.00030601610519316039472450229139",
+          "quote_token_price_usd": "83490.1274826516",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.000009400533564",
+          "quote_token_price_base_token": "106376.940546018",
+          "address": "0xdfe5f275020def30993f042174fc2d335678b626",
+          "name": "AERO / cbBTC 0.6%",
+          "pool_created_at": "2024-11-27T22:05:52Z",
+          "token_price_usd": "83490.1274826516",
+          "fdv_usd": "3936910271.162",
+          "market_cap_usd": "7911180480.72038",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "0.5",
+            "h1": "0.32",
+            "h6": "-0.3",
+            "h24": "-3.05"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 7,
+              "sells": 11,
+              "buyers": 7,
+              "sellers": 10
+            },
+            "m30": {
+              "buys": 20,
+              "sells": 31,
+              "buyers": 16,
+              "sellers": 25
+            },
+            "h1": {
+              "buys": 78,
+              "sells": 50,
+              "buyers": 55,
+              "sellers": 38
+            },
+            "h6": {
+              "buys": 615,
+              "sells": 499,
+              "buyers": 262,
+              "sellers": 208
+            },
+            "h24": {
+              "buys": 2421,
+              "sells": 1863,
+              "buyers": 557,
+              "sellers": 432
+            }
+          },
+          "volume_usd": {
+            "m5": "4276.7149881969",
+            "m15": "40941.7317771855",
+            "m30": "100924.102286385",
+            "h1": "274357.318518992",
+            "h6": "2253497.14281132",
+            "h24": "8433041.89210007"
+          },
+          "reserve_in_usd": "2690845.9575"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83487.5232380893",
+          "base_token_price_native_currency": "32.5530570282569",
+          "quote_token_price_usd": "0.994967893702437",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "83909.7661005108",
+          "quote_token_price_base_token": "0.00001191756391",
+          "address": "0xb94b22332abf5f89877a14cc88f2abc48c34b3df",
+          "name": "cbBTC / USDC 0.01%",
+          "pool_created_at": "2024-09-13T06:47:43Z",
+          "token_price_usd": "83487.5232380893",
+          "fdv_usd": "3936787470.08988",
+          "market_cap_usd": "7910933713.23578",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.023",
+            "m30": "0.493",
+            "h1": "0.31",
+            "h6": "-0.3",
+            "h24": "-3.06"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 7,
+              "sells": 4,
+              "buyers": 7,
+              "sellers": 4
+            },
+            "m15": {
+              "buys": 26,
+              "sells": 22,
+              "buyers": 23,
+              "sellers": 22
+            },
+            "m30": {
+              "buys": 79,
+              "sells": 51,
+              "buyers": 62,
+              "sellers": 49
+            },
+            "h1": {
+              "buys": 128,
+              "sells": 124,
+              "buyers": 102,
+              "sellers": 104
+            },
+            "h6": {
+              "buys": 1436,
+              "sells": 1402,
+              "buyers": 549,
+              "sellers": 453
+            },
+            "h24": {
+              "buys": 9780,
+              "sells": 8638,
+              "buyers": 1703,
+              "sellers": 1535
+            }
+          },
+          "volume_usd": {
+            "m5": "7509.1362505258",
+            "m15": "25134.6147700366",
+            "m30": "62683.8297766163",
+            "h1": "118075.940067118",
+            "h6": "1411682.35987728",
+            "h24": "11489013.5648865"
+          },
+          "reserve_in_usd": "1735597.2368"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "pancakeswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xe2b8c33ae97658cead06afd47c7f3857e5851871",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "151.3482685757",
+          "base_token_price_native_currency": "0.0589996489574338597185346601929",
+          "quote_token_price_usd": "83489.476421511",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.001812415003",
+          "quote_token_price_base_token": "551.7500121355",
+          "address": "0xe2b8c33ae97658cead06afd47c7f3857e5851871",
+          "name": "JitoSOL / cbBTC 0.01%",
+          "pool_created_at": "2026-05-29T16:16:13Z",
+          "token_price_usd": "83489.476421511",
+          "fdv_usd": "3936879570.89397",
+          "market_cap_usd": "7911118788.84923",
+          "price_change_percentage": {
+            "m5": "-0.14",
+            "m15": "0.41",
+            "m30": "0.5",
+            "h1": "0.31",
+            "h6": "-0.23",
+            "h24": "-3.05"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 11,
+              "sells": 6,
+              "buyers": 11,
+              "sellers": 3
+            },
+            "m15": {
+              "buys": 22,
+              "sells": 19,
+              "buyers": 20,
+              "sellers": 9
+            },
+            "m30": {
+              "buys": 28,
+              "sells": 64,
+              "buyers": 24,
+              "sellers": 39
+            },
+            "h1": {
+              "buys": 74,
+              "sells": 100,
+              "buyers": 45,
+              "sellers": 56
+            },
+            "h6": {
+              "buys": 324,
+              "sells": 307,
+              "buyers": 110,
+              "sellers": 117
+            },
+            "h24": {
+              "buys": 1175,
+              "sells": 1152,
+              "buyers": 314,
+              "sellers": 304
+            }
+          },
+          "volume_usd": {
+            "m5": "5372.5543355692",
+            "m15": "9573.7323593494",
+            "m30": "20214.0100598918",
+            "h1": "41090.6210097362",
+            "h6": "199716.385325074",
+            "h24": "890672.85352037"
+          },
+          "reserve_in_usd": "15275604.1633"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x97be14dd8f994a5364573bc035d85309e7cb34de",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x12d76c5c8ec8edffd3c143995b0aa43fe44a6d71eb9113796272909e54b8e078",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83559.1399635515",
+          "base_token_price_native_currency": "31.3201103825412",
+          "quote_token_price_usd": "0.995824949776955",
+          "quote_token_price_native_currency": "0.000373019034885473",
+          "base_token_price_quote_token": "83963.8395186919",
+          "quote_token_price_base_token": "0.0000119098889",
+          "address": "0x12d76c5c8ec8edffd3c143995b0aa43fe44a6d71eb9113796272909e54b8e078",
+          "name": "cbBTC / USDC 0.05%",
+          "pool_created_at": "2025-01-29T22:05:51Z",
+          "token_price_usd": "83559.1399635515",
+          "fdv_usd": "3940164499.57301",
+          "market_cap_usd": "7917719819.06233",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0.584",
+            "h1": "0.44",
+            "h6": "-0.14",
+            "h24": "-2.97"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 3,
+              "sells": 0,
+              "buyers": 3,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 11,
+              "sells": 7,
+              "buyers": 10,
+              "sellers": 7
+            },
+            "h1": {
+              "buys": 11,
+              "sells": 33,
+              "buyers": 10,
+              "sellers": 26
+            },
+            "h6": {
+              "buys": 268,
+              "sells": 317,
+              "buyers": 158,
+              "sellers": 154
+            },
+            "h24": {
+              "buys": 1644,
+              "sells": 1705,
+              "buyers": 473,
+              "sellers": 430
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "3827.7355748484",
+            "m30": "14838.8296514495",
+            "h1": "32593.5872891595",
+            "h6": "380336.126718674",
+            "h24": "2551104.93048066"
+          },
+          "reserve_in_usd": "2471690.2069"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v4-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x2fbe93bf7177596c5d04675bdcef7bacaf98bd954dc26829fcda39f122239459",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2567.15",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "83271.0765039899",
+          "quote_token_price_native_currency": "31.3201103825412",
+          "base_token_price_quote_token": "0.03192836768",
+          "quote_token_price_base_token": "31.3201103825",
+          "address": "0x2fbe93bf7177596c5d04675bdcef7bacaf98bd954dc26829fcda39f122239459",
+          "name": "ETH / cbBTC 0.05%",
+          "pool_created_at": "2025-02-01T09:40:07Z",
+          "token_price_usd": "83271.0765039899",
+          "fdv_usd": "3926581097.23685",
+          "market_cap_usd": "7890424112.52546",
+          "price_change_percentage": {
+            "m5": "-0.03",
+            "m15": "0",
+            "m30": "0.17",
+            "h1": "-0.12",
+            "h6": "-0.5",
+            "h24": "-2.64"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 4,
+              "sells": 0,
+              "buyers": 4,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 10,
+              "sells": 0,
+              "buyers": 9,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 12,
+              "sells": 13,
+              "buyers": 11,
+              "sellers": 13
+            },
+            "h1": {
+              "buys": 24,
+              "sells": 13,
+              "buyers": 22,
+              "sellers": 13
+            },
+            "h6": {
+              "buys": 104,
+              "sells": 258,
+              "buyers": 84,
+              "sellers": 166
+            },
+            "h24": {
+              "buys": 884,
+              "sells": 1027,
+              "buyers": 384,
+              "sellers": 443
+            }
+          },
+          "volume_usd": {
+            "m5": "3449.5528011996",
+            "m15": "7845.737728159",
+            "m30": "18504.1413460383",
+            "h1": "23246.8282092703",
+            "h6": "385831.986066575",
+            "h24": "2519406.31024976"
+          },
+          "reserve_in_usd": "1905531.2663"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x0000000000000000000000000000000000000000",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v4-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xccfa472815563ff9eb2de95c7b2be1ccf91f7f31",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "116.1070378767",
+          "base_token_price_native_currency": "0.044893585046992966834042350048",
+          "quote_token_price_usd": "83487.5232380893",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.001379089681",
+          "quote_token_price_base_token": "725.1160047517",
+          "address": "0xccfa472815563ff9eb2de95c7b2be1ccf91f7f31",
+          "name": "SOL / cbBTC 0.008%",
+          "pool_created_at": "2026-04-16T04:45:00Z",
+          "token_price_usd": "83487.5232380893",
+          "fdv_usd": "3936787470.08988",
+          "market_cap_usd": "7910933713.23578",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.02",
+            "m30": "0.5",
+            "h1": "0.32",
+            "h6": "-0.3",
+            "h24": "-3.05"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 34,
+              "sells": 15,
+              "buyers": 21,
+              "sellers": 8
+            },
+            "m30": {
+              "buys": 65,
+              "sells": 74,
+              "buyers": 37,
+              "sellers": 33
+            },
+            "h1": {
+              "buys": 107,
+              "sells": 119,
+              "buyers": 72,
+              "sellers": 71
+            },
+            "h6": {
+              "buys": 628,
+              "sells": 668,
+              "buyers": 233,
+              "sellers": 220
+            },
+            "h24": {
+              "buys": 2637,
+              "sells": 2608,
+              "buyers": 502,
+              "sellers": 452
+            }
+          },
+          "volume_usd": {
+            "m5": "1609.6195261584",
+            "m15": "76738.9542722919",
+            "m30": "178115.800271505",
+            "h1": "269335.913787362",
+            "h6": "1720226.11760279",
+            "h24": "7204496.2250984"
+          },
+          "reserve_in_usd": "631425.4472"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x311935cd80b76769bf2ecc9d8ab7635b2139cf82",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x8bb9eaf3c5a906d20c4cc10ea2f73a3ac2d5d41a",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2940.5881462055",
+          "base_token_price_native_currency": "1.14121503890841",
+          "quote_token_price_usd": "83568.5803500897",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.03505707737",
+          "quote_token_price_base_token": "28.5249106596",
+          "address": "0x8bb9eaf3c5a906d20c4cc10ea2f73a3ac2d5d41a",
+          "name": "cbETH / cbBTC 0.05%",
+          "pool_created_at": "2026-01-12T21:00:22Z",
+          "token_price_usd": "83568.5803500897",
+          "fdv_usd": "3940609653.45943",
+          "market_cap_usd": "7918614351.19401",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.51",
+            "m30": "0.6",
+            "h1": "0.4",
+            "h6": "-0.17",
+            "h24": "-2.92"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 6,
+              "sells": 0,
+              "buyers": 5,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 14,
+              "sells": 8,
+              "buyers": 10,
+              "sellers": 5
+            },
+            "m30": {
+              "buys": 28,
+              "sells": 20,
+              "buyers": 17,
+              "sellers": 9
+            },
+            "h1": {
+              "buys": 37,
+              "sells": 29,
+              "buyers": 19,
+              "sellers": 11
+            },
+            "h6": {
+              "buys": 248,
+              "sells": 310,
+              "buyers": 136,
+              "sellers": 135
+            },
+            "h24": {
+              "buys": 1383,
+              "sells": 1303,
+              "buyers": 445,
+              "sellers": 417
+            }
+          },
+          "volume_usd": {
+            "m5": "5711.1553355907",
+            "m15": "31677.4762573445",
+            "m30": "59190.5498758711",
+            "h1": "83794.5466760135",
+            "h6": "619615.209788929",
+            "h24": "3153280.48685393"
+          },
+          "reserve_in_usd": "1073875.812"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-2",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xa44d3bb767d953711ea4bce8c0f01f4d7d299af6",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "83451.7952633373",
+          "base_token_price_native_currency": "32.459903523986787467285401",
+          "quote_token_price_usd": "83251.297089987",
+          "quote_token_price_native_currency": "32.3705769027331",
+          "base_token_price_quote_token": "1.0027595004",
+          "quote_token_price_base_token": "0.9972480934",
+          "address": "0xa44d3bb767d953711ea4bce8c0f01f4d7d299af6",
+          "name": "LBTC / cbBTC 0.01%",
+          "pool_created_at": "2024-11-26T15:41:13Z",
+          "token_price_usd": "83251.297089987",
+          "fdv_usd": "3925648414.76895",
+          "market_cap_usd": "7888549896.75052",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "-0.38",
+            "h24": "-3.28"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h6": {
+              "buys": 13,
+              "sells": 17,
+              "buyers": 7,
+              "sellers": 7
+            },
+            "h24": {
+              "buys": 56,
+              "sells": 95,
+              "buyers": 27,
+              "sellers": 37
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.0",
+            "h1": "0.0",
+            "h6": "801.9232572733",
+            "h24": "608636.680540928"
+          },
+          "reserve_in_usd": "4755107.9799"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xecac9c5f704e954931349da37f60e39f515c11c1",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x3f9b863ef4b295d6ba370215bcca3785fcc44f44",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "2567.15",
+          "base_token_price_native_currency": "1.0",
+          "quote_token_price_usd": "83257.17764181",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.03071908113",
+          "quote_token_price_base_token": "32.5530570283",
+          "address": "0x3f9b863ef4b295d6ba370215bcca3785fcc44f44",
+          "name": "WETH / cbBTC 0.05%",
+          "pool_created_at": "2025-07-09T07:31:10Z",
+          "token_price_usd": "83257.17764181",
+          "fdv_usd": "3925925707.4929",
+          "market_cap_usd": "7889107113.61197",
+          "price_change_percentage": {
+            "m5": "0.02",
+            "m15": "0.06",
+            "m30": "0.15",
+            "h1": "-0.04",
+            "h6": "-0.36",
+            "h24": "-2.7"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 0,
+              "buyers": 2,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 3,
+              "sells": 1,
+              "buyers": 3,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 6,
+              "sells": 3,
+              "buyers": 5,
+              "sellers": 1
+            },
+            "h1": {
+              "buys": 7,
+              "sells": 8,
+              "buyers": 6,
+              "sellers": 5
+            },
+            "h6": {
+              "buys": 76,
+              "sells": 101,
+              "buyers": 33,
+              "sellers": 21
+            },
+            "h24": {
+              "buys": 782,
+              "sells": 824,
+              "buyers": 285,
+              "sellers": 286
+            }
+          },
+          "volume_usd": {
+            "m5": "106.623193484",
+            "m15": "240.9301580717",
+            "m30": "515.5061622754",
+            "h1": "723.7208086671",
+            "h6": "10193.4991071004",
+            "h24": "899796.25106029"
+          },
+          "reserve_in_usd": "1185331.1964"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "hydrex-integral",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x47f9e291bb766fc307ad7bba4f29f3eab6a97101",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "6.5709791",
+          "base_token_price_native_currency": "0.00256272926415198",
+          "quote_token_price_usd": "83091.9380369039",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.00007872468819",
+          "quote_token_price_base_token": "12702.49553225",
+          "address": "0x47f9e291bb766fc307ad7bba4f29f3eab6a97101",
+          "name": "ZEN / cbBTC 0.25%",
+          "pool_created_at": "2025-07-23T13:35:47Z",
+          "token_price_usd": "83091.9380369039",
+          "fdv_usd": "3918133965.91372",
+          "market_cap_usd": "7873449689.47824",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "-0.02",
+            "h1": "-0.14",
+            "h6": "-0.79",
+            "h24": "-3.51"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 11,
+              "buyers": 0,
+              "sellers": 4
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 22,
+              "buyers": 0,
+              "sellers": 12
+            },
+            "h6": {
+              "buys": 229,
+              "sells": 215,
+              "buyers": 105,
+              "sellers": 89
+            },
+            "h24": {
+              "buys": 1237,
+              "sells": 971,
+              "buyers": 171,
+              "sellers": 155
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "3337.8935569244",
+            "h1": "6883.8655222216",
+            "h6": "96713.7648439979",
+            "h24": "568994.082964495"
+          },
+          "reserve_in_usd": "1699021.6251"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0xf43eb8de897fbc7f2502483b2bef7bb9ea179229",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "0x940181a94A35A4569E4529A3CDfB74e38FD98631": {
+    "ts": 1791411758.0156085,
+    "pools": [
+      {
+        "id": "base_0x6cdcb1c4a4d1c3c6d054b27ac5b77e89eafb971d",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7848278751",
+          "base_token_price_native_currency": "0.000306937803810180895802997840457900143662478",
+          "quote_token_price_usd": "0.994967893702437",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "0.7911723714",
+          "quote_token_price_base_token": "1.2639470691",
+          "address": "0x6cdcb1c4a4d1c3c6d054b27ac5b77e89eafb971d",
+          "name": "AERO / USDC",
+          "pool_created_at": "2023-09-07T22:50:55Z",
+          "token_price_usd": "0.7848278751",
+          "fdv_usd": "1564038719.34514",
+          "market_cap_usd": "784680585.273052",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.451",
+            "m30": "-0.471",
+            "h1": "-1.71",
+            "h6": "-2.09",
+            "h24": "-2.93"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 6,
+              "sells": 17,
+              "buyers": 4,
+              "sellers": 6
+            },
+            "m30": {
+              "buys": 8,
+              "sells": 64,
+              "buyers": 5,
+              "sellers": 16
+            },
+            "h1": {
+              "buys": 9,
+              "sells": 179,
+              "buyers": 6,
+              "sellers": 85
+            },
+            "h6": {
+              "buys": 185,
+              "sells": 972,
+              "buyers": 122,
+              "sellers": 190
+            },
+            "h24": {
+              "buys": 561,
+              "sells": 3965,
+              "buyers": 245,
+              "sellers": 408
+            }
+          },
+          "volume_usd": {
+            "m5": "0.5226816994",
+            "m15": "19972.6544590624",
+            "m30": "25434.9992204175",
+            "h1": "139324.0230204",
+            "h6": "785926.18856181",
+            "h24": "2767671.56080307"
+          },
+          "reserve_in_usd": "43289629.1198"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xdfe5f275020def30993f042174fc2d335678b626",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7948746637",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "83490.1274826516",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.000009400540879",
+          "quote_token_price_base_token": "106376.85776531",
+          "address": "0xdfe5f275020def30993f042174fc2d335678b626",
+          "name": "AERO / cbBTC 0.6%",
+          "pool_created_at": "2024-11-27T22:05:52Z",
+          "token_price_usd": "0.7948746637",
+          "fdv_usd": "1584060391.45187",
+          "market_cap_usd": "794725488.377135",
+          "price_change_percentage": {
+            "m5": "0.01",
+            "m15": "0.001",
+            "m30": "0.852",
+            "h1": "-0.08",
+            "h6": "-0.72",
+            "h24": "-2.64"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 0,
+              "buyers": 2,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 11,
+              "sells": 7,
+              "buyers": 10,
+              "sellers": 7
+            },
+            "m30": {
+              "buys": 31,
+              "sells": 20,
+              "buyers": 25,
+              "sellers": 16
+            },
+            "h1": {
+              "buys": 50,
+              "sells": 78,
+              "buyers": 38,
+              "sellers": 55
+            },
+            "h6": {
+              "buys": 499,
+              "sells": 615,
+              "buyers": 208,
+              "sellers": 262
+            },
+            "h24": {
+              "buys": 1863,
+              "sells": 2421,
+              "buyers": 432,
+              "sellers": 557
+            }
+          },
+          "volume_usd": {
+            "m5": "4276.7149881969",
+            "m15": "40941.7317771855",
+            "m30": "100924.102286385",
+            "h1": "274357.318518992",
+            "h6": "2253497.14281132",
+            "h24": "8433041.89210007"
+          },
+          "reserve_in_usd": "2690845.9575"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x4e506648d493c8870f55e870480f92f2f33ece51",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7920128167",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060163433",
+          "quote_token_price_base_token": "3267.7993244374",
+          "address": "0x4e506648d493c8870f55e870480f92f2f33ece51",
+          "name": "AERO / WETH 0.3%",
+          "pool_created_at": "2026-04-29T19:14:02Z",
+          "token_price_usd": "0.7920128167",
+          "fdv_usd": "1578357179.75558",
+          "market_cap_usd": "791864178.464263",
+          "price_change_percentage": {
+            "m5": "0.01",
+            "m15": "0.491",
+            "m30": "0.527",
+            "h1": "-0.44",
+            "h6": "-0.93",
+            "h24": "-2.16"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 3,
+              "sells": 0,
+              "buyers": 3,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 13,
+              "sells": 2,
+              "buyers": 13,
+              "sellers": 2
+            },
+            "m30": {
+              "buys": 29,
+              "sells": 6,
+              "buyers": 28,
+              "sellers": 4
+            },
+            "h1": {
+              "buys": 29,
+              "sells": 74,
+              "buyers": 28,
+              "sellers": 65
+            },
+            "h6": {
+              "buys": 276,
+              "sells": 408,
+              "buyers": 171,
+              "sellers": 233
+            },
+            "h24": {
+              "buys": 954,
+              "sells": 1303,
+              "buyers": 386,
+              "sellers": 469
+            }
+          },
+          "volume_usd": {
+            "m5": "3805.9889770525",
+            "m15": "20382.0238700348",
+            "m30": "80543.6541518842",
+            "h1": "172804.75641438",
+            "h6": "1154026.28437563",
+            "h24": "4402954.54200753"
+          },
+          "reserve_in_usd": "4008652.8302"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xbe00ff35af70e8415d0eb605a286d8a45466a4c1",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7817223001",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "0.995824949776955",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "0.7887971864",
+          "quote_token_price_base_token": "1.2677530007",
+          "address": "0xbe00ff35af70e8415d0eb605a286d8a45466a4c1",
+          "name": "AERO / USDC 1%",
+          "pool_created_at": "2024-05-29T14:38:57Z",
+          "token_price_usd": "0.7817223001",
+          "fdv_usd": "1557849796.01566",
+          "market_cap_usd": "781575593.10098",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "-0.536",
+            "h1": "-1.15",
+            "h6": "-1.07",
+            "h24": "-2.08"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 11,
+              "buyers": 0,
+              "sellers": 3
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 13,
+              "buyers": 0,
+              "sellers": 3
+            },
+            "h6": {
+              "buys": 35,
+              "sells": 40,
+              "buyers": 19,
+              "sellers": 14
+            },
+            "h24": {
+              "buys": 120,
+              "sells": 228,
+              "buyers": 45,
+              "sellers": 93
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.8762144234",
+            "m30": "43633.6368281377",
+            "h1": "46566.0986314684",
+            "h6": "122237.220155138",
+            "h24": "500808.913087499"
+          },
+          "reserve_in_usd": "4727921.3374"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x82321f3beb69f503380d6b233857d5c43562e2d0",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7928774193",
+          "base_token_price_native_currency": "0.000306016876846053009396352447008",
+          "quote_token_price_usd": "2567.18",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060168768",
+          "quote_token_price_base_token": "3267.7936272876",
+          "address": "0x82321f3beb69f503380d6b233857d5c43562e2d0",
+          "name": "AERO / WETH 1%",
+          "pool_created_at": "2024-05-08T21:46:47Z",
+          "token_price_usd": "0.7928774193",
+          "fdv_usd": "1580080196.97522",
+          "market_cap_usd": "792728618.802994",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.161",
+            "m30": "0.399",
+            "h1": "-0.28",
+            "h6": "-0.84",
+            "h24": "-2.59"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 14,
+              "sells": 1,
+              "buyers": 12,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 16,
+              "sells": 19,
+              "buyers": 14,
+              "sellers": 18
+            },
+            "h1": {
+              "buys": 20,
+              "sells": 55,
+              "buyers": 16,
+              "sellers": 47
+            },
+            "h6": {
+              "buys": 177,
+              "sells": 236,
+              "buyers": 130,
+              "sellers": 169
+            },
+            "h24": {
+              "buys": 667,
+              "sells": 712,
+              "buyers": 355,
+              "sellers": 362
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "7897.3639318714",
+            "m30": "34558.7181363618",
+            "h1": "68899.5375749974",
+            "h6": "364208.377241292",
+            "h24": "1283320.58199168"
+          },
+          "reserve_in_usd": "1121402.9358"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x3d5d143381916280ff91407febeb52f2b60f33cf",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7885416174",
+          "base_token_price_native_currency": "0.000306017857224039945994031591955",
+          "quote_token_price_usd": "2568.42",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060178572",
+          "quote_token_price_base_token": "3267.7831583792",
+          "address": "0x3d5d143381916280ff91407febeb52f2b60f33cf",
+          "name": "AERO / WETH 0.3%",
+          "pool_created_at": "2023-10-04T13:09:45Z",
+          "token_price_usd": "0.7885416174",
+          "fdv_usd": "1571439624.60749",
+          "market_cap_usd": "788393630.609453",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.431",
+            "m30": "-0.131",
+            "h1": "-0.82",
+            "h6": "-1.36",
+            "h24": "-2.59"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 13,
+              "sells": 10,
+              "buyers": 7,
+              "sellers": 4
+            },
+            "m30": {
+              "buys": 14,
+              "sells": 22,
+              "buyers": 7,
+              "sellers": 12
+            },
+            "h1": {
+              "buys": 14,
+              "sells": 82,
+              "buyers": 7,
+              "sellers": 19
+            },
+            "h6": {
+              "buys": 130,
+              "sells": 367,
+              "buyers": 46,
+              "sellers": 75
+            },
+            "h24": {
+              "buys": 572,
+              "sells": 1171,
+              "buyers": 148,
+              "sellers": 221
+            }
+          },
+          "volume_usd": {
+            "m5": "2.9307651986",
+            "m15": "4043.9050420709",
+            "m30": "13243.0881533911",
+            "h1": "24739.8574055077",
+            "h6": "124921.233485515",
+            "h24": "567616.277558789"
+          },
+          "reserve_in_usd": "1520253.9814"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xa4fdd479eda160671636e2ecf8f993cbf86258a8",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7875831283",
+          "base_token_price_native_currency": "0.00030601610519316039472450229139",
+          "quote_token_price_usd": "0.994998929953439",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "0.7887965725",
+          "quote_token_price_base_token": "1.2677539873",
+          "address": "0xa4fdd479eda160671636e2ecf8f993cbf86258a8",
+          "name": "AERO / USDC 0.05%",
+          "pool_created_at": "2025-08-12T23:55:05Z",
+          "token_price_usd": "0.7875831283",
+          "fdv_usd": "1569529506.33566",
+          "market_cap_usd": "787435321.390543",
+          "price_change_percentage": {
+            "m5": "-0.04",
+            "m15": "-0.134",
+            "m30": "-0.41",
+            "h1": "-1.58",
+            "h6": "-1.73",
+            "h24": "-3.32"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 4,
+              "sells": 1,
+              "buyers": 2,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 19,
+              "sells": 19,
+              "buyers": 3,
+              "sellers": 16
+            },
+            "m30": {
+              "buys": 36,
+              "sells": 42,
+              "buyers": 6,
+              "sellers": 34
+            },
+            "h1": {
+              "buys": 54,
+              "sells": 88,
+              "buyers": 20,
+              "sellers": 50
+            },
+            "h6": {
+              "buys": 638,
+              "sells": 875,
+              "buyers": 209,
+              "sellers": 310
+            },
+            "h24": {
+              "buys": 2935,
+              "sells": 4055,
+              "buyers": 601,
+              "sellers": 899
+            }
+          },
+          "volume_usd": {
+            "m5": "505.4181930546",
+            "m15": "4430.5612158452",
+            "m30": "8054.2732056643",
+            "h1": "20367.5189209149",
+            "h6": "200402.605206675",
+            "h24": "948883.309712168"
+          },
+          "reserve_in_usd": "786286.4479"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xcdbe19a6ef1b633be744920c93ee40521d5cf2a6",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7961931197",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "83569.5569418005",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.000009400540879",
+          "quote_token_price_base_token": "106376.85776531",
+          "address": "0xcdbe19a6ef1b633be744920c93ee40521d5cf2a6",
+          "name": "AERO / cbBTC 0.036%",
+          "pool_created_at": "2026-05-13T19:31:51Z",
+          "token_price_usd": "0.7961931197",
+          "fdv_usd": "1586687867.23246",
+          "market_cap_usd": "796043696.940516",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.071",
+            "m30": "0.925",
+            "h1": "0.23",
+            "h6": "-0.57",
+            "h24": "-2.21"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 14,
+              "sells": 1,
+              "buyers": 6,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 14,
+              "sells": 10,
+              "buyers": 6,
+              "sellers": 10
+            },
+            "h1": {
+              "buys": 14,
+              "sells": 42,
+              "buyers": 6,
+              "sellers": 36
+            },
+            "h6": {
+              "buys": 148,
+              "sells": 181,
+              "buyers": 65,
+              "sellers": 66
+            },
+            "h24": {
+              "buys": 442,
+              "sells": 519,
+              "buyers": 157,
+              "sellers": 151
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "10324.1655484012",
+            "m30": "15344.7156959089",
+            "h1": "31055.49334237",
+            "h6": "156586.478211643",
+            "h24": "470685.586890562"
+          },
+          "reserve_in_usd": "651226.2849"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-3",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xbbf71aad6e1f8d180d3b1d898528654c1d18b2ff",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.02377775202",
+          "base_token_price_native_currency": "0.0000092667188988305932213881042345",
+          "quote_token_price_usd": "0.78806205713152",
+          "quote_token_price_native_currency": "0.000307125314069955213528271101906",
+          "base_token_price_quote_token": "0.03017243605",
+          "quote_token_price_base_token": "33.1428326922",
+          "address": "0xbbf71aad6e1f8d180d3b1d898528654c1d18b2ff",
+          "name": "fBOMB / AERO",
+          "pool_created_at": "2023-09-01T11:23:00Z",
+          "token_price_usd": "0.78806205713152",
+          "fdv_usd": "1570483936.29422",
+          "market_cap_usd": "787914160.340769",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "-1.19",
+            "h24": "-2.34"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "h6": {
+              "buys": 5,
+              "sells": 7,
+              "buyers": 5,
+              "sellers": 2
+            },
+            "h24": {
+              "buys": 49,
+              "sells": 44,
+              "buyers": 33,
+              "sellers": 23
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.004591056766",
+            "h1": "0.004591056766",
+            "h6": "3368.0811553967",
+            "h24": "41983.2601230679"
+          },
+          "reserve_in_usd": "4729994.5557"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x74ccbe53f77b08632ce0cb91d3a545bf6b8e0979",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x20cb8f872ae894f7c9e32e621c186e5afce82fd0",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7911273813",
+          "base_token_price_native_currency": "0.000306016343329823779708988956065",
+          "quote_token_price_usd": "2564.84",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060163433",
+          "quote_token_price_base_token": "3267.7993244374",
+          "address": "0x20cb8f872ae894f7c9e32e621c186e5afce82fd0",
+          "name": "AERO / WETH 0.05%",
+          "pool_created_at": "2024-07-15T07:31:11Z",
+          "token_price_usd": "0.7911273813",
+          "fdv_usd": "1576592646.03677",
+          "market_cap_usd": "790978909.235255",
+          "price_change_percentage": {
+            "m5": "-0.06",
+            "m15": "-0.139",
+            "m30": "0.233",
+            "h1": "-0.8",
+            "h6": "-1.03",
+            "h24": "-2.36"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 2,
+              "sells": 5,
+              "buyers": 2,
+              "sellers": 5
+            },
+            "m15": {
+              "buys": 14,
+              "sells": 32,
+              "buyers": 12,
+              "sellers": 19
+            },
+            "m30": {
+              "buys": 43,
+              "sells": 86,
+              "buyers": 26,
+              "sellers": 43
+            },
+            "h1": {
+              "buys": 79,
+              "sells": 235,
+              "buyers": 47,
+              "sellers": 76
+            },
+            "h6": {
+              "buys": 618,
+              "sells": 1771,
+              "buyers": 228,
+              "sellers": 351
+            },
+            "h24": {
+              "buys": 2844,
+              "sells": 8832,
+              "buyers": 613,
+              "sellers": 962
+            }
+          },
+          "volume_usd": {
+            "m5": "554.8826582142",
+            "m15": "2998.2514420617",
+            "m30": "8488.6835767456",
+            "h1": "18279.0643993644",
+            "h6": "162546.978256274",
+            "h24": "853904.747562763"
+          },
+          "reserve_in_usd": "163907.6771"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "pancakeswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x7f670f78b17dec44d5ef68a48740b6f8849cc2e6",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7851036056",
+          "base_token_price_native_currency": "0.00030601610519316039472450229139",
+          "quote_token_price_usd": "2564.66",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003060161052",
+          "quote_token_price_base_token": "3267.8018673847",
+          "address": "0x7f670f78b17dec44d5ef68a48740b6f8849cc2e6",
+          "name": "AERO / WETH",
+          "pool_created_at": "2023-09-01T11:21:43Z",
+          "token_price_usd": "0.7851036056",
+          "fdv_usd": "1564588206.93571",
+          "market_cap_usd": "784956264.026295",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.136",
+            "m30": "-0.079",
+            "h1": "-0.27",
+            "h6": "-0.21",
+            "h24": "-1.67"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 7,
+              "buyers": 0,
+              "sellers": 3
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 21,
+              "buyers": 0,
+              "sellers": 7
+            },
+            "h6": {
+              "buys": 6,
+              "sells": 83,
+              "buyers": 6,
+              "sellers": 17
+            },
+            "h24": {
+              "buys": 111,
+              "sells": 304,
+              "buyers": 97,
+              "sellers": 46
+            }
+          },
+          "volume_usd": {
+            "m5": "0.3511692301",
+            "m15": "0.702814176",
+            "m30": "74.331486459",
+            "h1": "715.0560323717",
+            "h6": "1650.5403547881",
+            "h24": "40005.9678654036"
+          },
+          "reserve_in_usd": "3341216.9919"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xe5b5f522e98b5a2baae212d4da66b865b781db97",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7874490443",
+          "base_token_price_native_currency": "0.00030601610519316039472450229139",
+          "quote_token_price_usd": "0.994967893702437",
+          "quote_token_price_native_currency": "0.000387953137531851",
+          "base_token_price_quote_token": "0.7887965725",
+          "quote_token_price_base_token": "1.2677539873",
+          "address": "0xe5b5f522e98b5a2baae212d4da66b865b781db97",
+          "name": "AERO / USDC 0.05%",
+          "pool_created_at": "2024-03-25T19:59:43Z",
+          "token_price_usd": "0.7874490443",
+          "fdv_usd": "1569262297.97788",
+          "market_cap_usd": "787301262.554289",
+          "price_change_percentage": {
+            "m5": "-0.03",
+            "m15": "-0.081",
+            "m30": "-0.393",
+            "h1": "-1.64",
+            "h6": "-1.77",
+            "h24": "-2.75"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 3,
+              "sells": 2,
+              "buyers": 3,
+              "sellers": 2
+            },
+            "m15": {
+              "buys": 10,
+              "sells": 13,
+              "buyers": 8,
+              "sellers": 12
+            },
+            "m30": {
+              "buys": 32,
+              "sells": 32,
+              "buyers": 12,
+              "sellers": 30
+            },
+            "h1": {
+              "buys": 49,
+              "sells": 76,
+              "buyers": 20,
+              "sellers": 59
+            },
+            "h6": {
+              "buys": 555,
+              "sells": 856,
+              "buyers": 179,
+              "sellers": 311
+            },
+            "h24": {
+              "buys": 2714,
+              "sells": 3908,
+              "buyers": 543,
+              "sellers": 806
+            }
+          },
+          "volume_usd": {
+            "m5": "350.814764898",
+            "m15": "1403.5048799252",
+            "m30": "3001.0973163734",
+            "h1": "7013.4994794185",
+            "h6": "74668.4130777284",
+            "h24": "367402.694052411"
+          },
+          "reserve_in_usd": "273043.4493"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0xccd9cc53b63662088c738b8bc06e9078fb8d9ad4",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7898439563",
+          "base_token_price_native_currency": "0.000306018105292895718038559862206",
+          "quote_token_price_usd": "0.995824949776955",
+          "quote_token_price_native_currency": "0.000387953873484121",
+          "base_token_price_quote_token": "0.7888002317",
+          "quote_token_price_base_token": "1.2677481063",
+          "address": "0xccd9cc53b63662088c738b8bc06e9078fb8d9ad4",
+          "name": "AERO / USDC 0.3%",
+          "pool_created_at": "2025-09-15T14:47:21Z",
+          "token_price_usd": "0.7898439563",
+          "fdv_usd": "1574034981.53853",
+          "market_cap_usd": "789695725.097554",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.378",
+            "m30": "0.123",
+            "h1": "-0.45",
+            "h6": "-1.48",
+            "h24": "-2.92"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 7,
+              "sells": 0,
+              "buyers": 4,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 7,
+              "sells": 3,
+              "buyers": 4,
+              "sellers": 3
+            },
+            "h1": {
+              "buys": 7,
+              "sells": 42,
+              "buyers": 4,
+              "sellers": 7
+            },
+            "h6": {
+              "buys": 123,
+              "sells": 214,
+              "buyers": 36,
+              "sellers": 36
+            },
+            "h24": {
+              "buys": 456,
+              "sells": 723,
+              "buyers": 112,
+              "sellers": 164
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "1183.1107120781",
+            "m30": "2950.0448640769",
+            "h1": "8789.6699499633",
+            "h6": "53821.5540433509",
+            "h24": "199726.392623998"
+          },
+          "reserve_in_usd": "204914.8014"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x565aecf84b5d30a6e79a5cef3f0da0fc4280debc",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.8036149057",
+          "base_token_price_native_currency": "0.00030724937578069082071042168895",
+          "quote_token_price_usd": "3207.59036674721",
+          "quote_token_price_native_currency": "1.24563716547754",
+          "base_token_price_quote_token": "0.0002466604115",
+          "quote_token_price_base_token": "4054.1568630123",
+          "address": "0x565aecf84b5d30a6e79a5cef3f0da0fc4280debc",
+          "name": "AERO / wstETH 1%",
+          "pool_created_at": "2024-05-06T05:14:53Z",
+          "token_price_usd": "0.8036149057",
+          "fdv_usd": "1601478321.34217",
+          "market_cap_usd": "803464090.082782",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "0",
+            "h24": "-0.38"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h6": {
+              "buys": 3,
+              "sells": 0,
+              "buyers": 3,
+              "sellers": 0
+            },
+            "h24": {
+              "buys": 109,
+              "sells": 21,
+              "buyers": 53,
+              "sellers": 17
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.0",
+            "h1": "0.0",
+            "h6": "184.5378206568",
+            "h24": "11986.5738516452"
+          },
+          "reserve_in_usd": "236105.0914"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x8b49c7ec53cb4ca3666bb16727fc5c5f6d12226f",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7554071547",
+          "base_token_price_native_currency": "0.000294259063432231",
+          "quote_token_price_usd": "0.781684455272448",
+          "quote_token_price_native_currency": "0.00030786152554158694291105302928",
+          "base_token_price_quote_token": "0.9558162973",
+          "quote_token_price_base_token": "1.0462261449",
+          "address": "0x8b49c7ec53cb4ca3666bb16727fc5c5f6d12226f",
+          "name": "VIRTUAL / AERO",
+          "pool_created_at": "2024-04-14T01:04:46Z",
+          "token_price_usd": "0.781684455272448",
+          "fdv_usd": "1557774377.21684",
+          "market_cap_usd": "781537755.375824",
+          "price_change_percentage": {
+            "m5": "0.58",
+            "m15": "0.15",
+            "m30": "0.72",
+            "h1": "-1.8",
+            "h6": "-2.1",
+            "h24": "-3.02"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 1,
+              "sells": 1,
+              "buyers": 1,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 5,
+              "sells": 1,
+              "buyers": 5,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 5,
+              "sells": 3,
+              "buyers": 5,
+              "sellers": 2
+            },
+            "h1": {
+              "buys": 5,
+              "sells": 11,
+              "buyers": 5,
+              "sellers": 3
+            },
+            "h6": {
+              "buys": 35,
+              "sells": 69,
+              "buyers": 9,
+              "sellers": 18
+            },
+            "h24": {
+              "buys": 216,
+              "sells": 236,
+              "buyers": 68,
+              "sellers": 47
+            }
+          },
+          "volume_usd": {
+            "m5": "1.1296722048",
+            "m15": "52.5300330954",
+            "m30": "86.6299889634",
+            "h1": "212.2240947702",
+            "h6": "2031.232432568",
+            "h24": "10219.1465557614"
+          },
+          "reserve_in_usd": "170456.2005"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x0b3e328455c4059eeb9e3f84b5543f74e24e7e1b",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x2223f9fe624f69da4d8256a7bcc9104fba7f8f75",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7833706107",
+          "base_token_price_native_currency": "0.000307862225935598463291549430564",
+          "quote_token_price_usd": "0.995589389164794",
+          "quote_token_price_native_currency": "0.000387997283352804",
+          "base_token_price_quote_token": "0.7934649008",
+          "quote_token_price_base_token": "1.2602951927",
+          "address": "0x2223f9fe624f69da4d8256a7bcc9104fba7f8f75",
+          "name": "AERO / USDbC",
+          "pool_created_at": "2023-09-01T11:21:26Z",
+          "token_price_usd": "0.7833706107",
+          "fdv_usd": "1561134620.21941",
+          "market_cap_usd": "783223594.360053",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "-0.065",
+            "m30": "-0.218",
+            "h1": "-0.77",
+            "h6": "0.07",
+            "h24": "-1.81"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 9,
+              "buyers": 0,
+              "sellers": 7
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 13,
+              "buyers": 0,
+              "sellers": 9
+            },
+            "h6": {
+              "buys": 15,
+              "sells": 34,
+              "buyers": 15,
+              "sellers": 16
+            },
+            "h24": {
+              "buys": 59,
+              "sells": 137,
+              "buyers": 42,
+              "sellers": 45
+            }
+          },
+          "volume_usd": {
+            "m5": "0.6121022947",
+            "m15": "1.2262260297",
+            "m30": "165.7613445557",
+            "h1": "202.6960128795",
+            "h6": "1123.905135053",
+            "h24": "4893.0888996421"
+          },
+          "reserve_in_usd": "282252.3379"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x0d5959a52e7004b601f0be70618d01ac3cdce976",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.785313301",
+          "base_token_price_native_currency": "0.000307107517201487630338717091878",
+          "quote_token_price_usd": "2566.35",
+          "quote_token_price_native_currency": "1.0",
+          "base_token_price_quote_token": "0.0003071075172",
+          "quote_token_price_base_token": "3256.1886114429",
+          "address": "0x0d5959a52e7004b601f0be70618d01ac3cdce976",
+          "name": "AERO / WETH 1%",
+          "pool_created_at": "2023-08-31T15:06:19Z",
+          "token_price_usd": "0.785313301",
+          "fdv_usd": "1565006096.94099",
+          "market_cap_usd": "785165920.072444",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "-0.09",
+            "h1": "-0.09",
+            "h6": "-2.37",
+            "h24": "1.5"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 2,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "h6": {
+              "buys": 4,
+              "sells": 2,
+              "buyers": 3,
+              "sellers": 1
+            },
+            "h24": {
+              "buys": 79,
+              "sells": 23,
+              "buyers": 24,
+              "sellers": 3
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "78.5697223139",
+            "h1": "78.5697223139",
+            "h6": "132.057254917",
+            "h24": "2052.7561248807"
+          },
+          "reserve_in_usd": "530277.1266"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x4200000000000000000000000000000000000006",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x714f049cac863036f207a8bd6b283f822f61d079",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.7961022393",
+          "base_token_price_native_currency": "0.000306016876846053009396352447008",
+          "quote_token_price_usd": "83570.2080029411",
+          "quote_token_price_native_currency": "32.5530570282569",
+          "base_token_price_quote_token": "0.000009400557268",
+          "quote_token_price_base_token": "106376.672305669",
+          "address": "0x714f049cac863036f207a8bd6b283f822f61d079",
+          "name": "AERO / cbBTC 0.3%",
+          "pool_created_at": "2025-04-07T12:28:51Z",
+          "token_price_usd": "0.7961022393",
+          "fdv_usd": "1586506756.86553",
+          "market_cap_usd": "795952833.596177",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0.053",
+            "m30": "0.885",
+            "h1": "0.23",
+            "h6": "-0.56",
+            "h24": "-2.17"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 3,
+              "sells": 0,
+              "buyers": 2,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 3,
+              "sells": 10,
+              "buyers": 2,
+              "sellers": 9
+            },
+            "h1": {
+              "buys": 3,
+              "sells": 29,
+              "buyers": 2,
+              "sellers": 22
+            },
+            "h6": {
+              "buys": 70,
+              "sells": 98,
+              "buyers": 46,
+              "sellers": 59
+            },
+            "h24": {
+              "buys": 201,
+              "sells": 256,
+              "buyers": 75,
+              "sellers": 114
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "84.2244322069",
+            "m30": "542.9493088091",
+            "h1": "1071.8948578588",
+            "h6": "6276.4324711519",
+            "h24": "18841.3104368249"
+          },
+          "reserve_in_usd": "30691.6272"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "uniswap-v3-base",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x95180496adabc8380fca36ec81bae131ca97cd3b",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.001318851982",
+          "base_token_price_native_currency": "0.000000513169980814354485790183663305373550590518653",
+          "quote_token_price_usd": "0.787013627990911",
+          "quote_token_price_native_currency": "0.000306229792098439479131541530827",
+          "base_token_price_quote_token": "0.001675767656",
+          "quote_token_price_base_token": "596.7414376275",
+          "address": "0x95180496adabc8380fca36ec81bae131ca97cd3b",
+          "name": "AEROSTRAT / AERO 0.05%",
+          "pool_created_at": "2025-11-05T04:12:20Z",
+          "token_price_usd": "0.787013627990911",
+          "fdv_usd": "1568394581.64408",
+          "market_cap_usd": "786865927.960433",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "0",
+            "h24": "0"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h6": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            },
+            "h24": {
+              "buys": 0,
+              "sells": 1,
+              "buyers": 0,
+              "sellers": 1
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.0",
+            "h1": "0.0",
+            "h6": "424.8027609485",
+            "h24": "424.8027609485"
+          },
+          "reserve_in_usd": "575475.0811"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x1a85b97f8b0e1cee4d5500e093f5970a2aeb3fb8",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-slipstream-2",
+              "type": "dex"
+            }
+          }
+        }
+      },
+      {
+        "id": "base_0x82a0c1a0d4ef0c0ca3cfda3ad1aa78309cc6139b",
+        "type": "pool",
+        "attributes": {
+          "base_token_price_usd": "0.8071831751",
+          "base_token_price_native_currency": "0.000313461890265827",
+          "quote_token_price_usd": "3207.59038250799",
+          "quote_token_price_native_currency": "1.24563714340947",
+          "base_token_price_quote_token": "0.0002516478349",
+          "quote_token_price_base_token": "3973.8072859611",
+          "address": "0x82a0c1a0d4ef0c0ca3cfda3ad1aa78309cc6139b",
+          "name": "AERO / wstETH",
+          "pool_created_at": "2023-11-07T19:08:54Z",
+          "token_price_usd": "0.8071831751",
+          "fdv_usd": "1608589321.95736",
+          "market_cap_usd": "807031689.8203",
+          "price_change_percentage": {
+            "m5": "0",
+            "m15": "0",
+            "m30": "0",
+            "h1": "0",
+            "h6": "0.07",
+            "h24": "3.15"
+          },
+          "transactions": {
+            "m5": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m15": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "m30": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h1": {
+              "buys": 0,
+              "sells": 0,
+              "buyers": 0,
+              "sellers": 0
+            },
+            "h6": {
+              "buys": 2,
+              "sells": 0,
+              "buyers": 2,
+              "sellers": 0
+            },
+            "h24": {
+              "buys": 54,
+              "sells": 14,
+              "buyers": 32,
+              "sellers": 13
+            }
+          },
+          "volume_usd": {
+            "m5": "0.0",
+            "m15": "0.0",
+            "m30": "0.0",
+            "h1": "0.0",
+            "h6": "49.3077229114",
+            "h24": "1514.4371612829"
+          },
+          "reserve_in_usd": "145081.9558"
+        },
+        "relationships": {
+          "base_token": {
+            "data": {
+              "id": "base_0x940181a94a35a4569e4529a3cdfb74e38fd98631",
+              "type": "token"
+            }
+          },
+          "quote_token": {
+            "data": {
+              "id": "base_0xc1cba3fcea344f92d9239c08c0568f6f2f0ee452",
+              "type": "token"
+            }
+          },
+          "dex": {
+            "data": {
+              "id": "aerodrome-base",
+              "type": "dex"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

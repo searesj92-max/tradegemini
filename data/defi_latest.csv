@@ -1,20 +1,20 @@
 ﻿PLANILHA DE TESOURARIA DEFI — BOTRADE,,,
-Atualizado em: 2026-10-07 14:27:57 UTC,,,
+Atualizado em: 2026-10-07 14:29:01 UTC,,,
 ,,,
 METRICA PATRIMONIAL,VALOR (USD),VALOR (BRL),DETALHE / BASE COMPARATIVA
-Patrimonio Total Alocado,"$11,101.18","R$ 55,357.14",Deposito #7732601 (4.3322 WETH + 0.00 USDC)
+Patrimonio Total Alocado,"$11,097.06","R$ 55,336.60",Deposito #7732601 (4.3322 WETH + 0.00 USDC)
 Aporte Inicial de Capital,"$11,568.85","R$ 57,689.23","2.1138 WETH + 5,871.09 USDC (06/10/2026)"
-Variacao Patrimonial (PnL),-467.67,"R$ -2,332.08",-4.04% vs Capital Inicial
-Rendimento Real Acumulado,+$24.92,+R$ 124.26,12.11 AERO + $15.39 Taxas (14.6h ativas)
+Variacao Patrimonial (PnL),-471.79,"R$ -2,352.63",-4.08% vs Capital Inicial
+Rendimento Real Acumulado,+$24.92,+R$ 124.24,12.11 AERO + $15.39 Taxas (14.6h ativas)
 Referencia Fechamento Anterior,+$21.09,+R$ 105.17,~23.8 AERO (Rendimento Real 24h Anterior)
 Cotacao Dolar Base (USD/BRL),R$ 4.9866,,Cotacao em tempo real (AwesomeAPI/Binance)
 ,,,
 RADAR DA FAIXA DE LIQUIDEZ,VALOR,STATUS,SEGURANCA / PROXIMIDADE
 Par de Negociacao,WETH / USDC (Slipstream 50),ATIVO,Base Network • Aerodrome Finance
 ID do Deposito,Deposit #7732601,STAKED,NFT Travado no Gauge de Emissoes
-Preco Atual do ETH,"$2,562.51 USDC",,Variacao 24h: -5.46%
-Faixa de Preco Minima (Piso),"$2,596.73 USDC",-1.34%,Rompido: -$34.22
-Faixa de Preco Maxima (Teto),"$2,798.98 USDC",+9.23%,Margem: $236.47
+Preco Atual do ETH,"$2,561.56 USDC",,Variacao 24h: -5.49%
+Faixa de Preco Minima (Piso),"$2,596.73 USDC",-1.37%,Rompido: -$35.17
+Faixa de Preco Maxima (Teto),"$2,798.98 USDC",+9.27%,Margem: $237.42
 Largura da Faixa,$202.25 USDC,,Faixa concentrada conservadora (~$202)
 Status da Faixa,🔴 FORA DA FAIXA,OUT_OF_RANGE,Fora da faixa (100% em WETH)
 Saidas da Faixa (Out of Range),1 vezes,1 ocorrencia(s),Contador persistente oficial de rompimentos
@@ -23,4 +23,4 @@ Cotacao Token AERO,$0.7865 USD,,Token de recompensa emitido pelo Gauge
 ,,,
 TABELA DE DADOS BRUTOS (PARA FORMULAS E INDICES),,,
 Data_Hora_UTC,Par,Patrimonio_USD,Patrimonio_BRL,Aporte_Inicial_USD,Variacao_USD,Variacao_Pct,Rendimento_Acumulado_USD,Rendimento_Acumulado_BRL,Rendimento_Dia_Anterior_USD,Preco_ETH,Faixa_Min,Faixa_Max,Dist_Piso_Pct,Dist_Teto_Pct,Status_Faixa,Saidas_Range_Count
-2026-10-07 14:27:57 UTC,WETH/USDC,11101.18,55357.14,11568.85,-467.67,-4.04%,24.92,124.26,21.09,2562.51,2596.73,2798.98,-1.34%,9.23%,OUT_OF_RANGE,1
+2026-10-07 14:29:01 UTC,WETH/USDC,11097.06,55336.60,11568.85,-471.79,-4.08%,24.92,124.24,21.09,2561.56,2596.73,2798.98,-1.37%,9.27%,OUT_OF_RANGE,1

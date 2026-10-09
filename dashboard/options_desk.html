@@ -513,10 +513,11 @@
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
         const cushionColor = o.cushion_pct >= 0 ? 'text-emerald-400' : 'text-amber-400';
 
-        const targetMarg = 240; // use ~82% of $292 safely
-        const rawContr = targetMarg / (o.margin || 1);
-        const suggestedContr = o.currency === 'BTC' ? Math.max(0.01, Math.round(rawContr * 100) / 100) : Math.max(0.05, Math.round(rawContr * 10) / 10);
-        const userMarg = (o.margin * suggestedContr).toFixed(1);
+        const spreadWidth = Math.abs(o.short_strike - o.long_strike) || 5000;
+        const targetMarg = 250; // use ~85% of $292 safely
+        const rawContr = targetMarg / spreadWidth;
+        const suggestedContr = o.currency === 'BTC' ? Math.max(0.01, Math.floor(rawContr * 100) / 100) : Math.max(0.05, Math.floor((targetMarg / (o.margin || 1)) * 10) / 10);
+        const userMarg = (spreadWidth * suggestedContr).toFixed(1);
         const userCred = (o.net_credit * suggestedContr).toFixed(1);
 
         return `

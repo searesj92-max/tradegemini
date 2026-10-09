@@ -1,0 +1,31 @@
+[
+  {
+    "timestamp": "2026-10-09 20:14:48",
+    "action": "POSITION_OPENED_REAL",
+    "details": {
+      "id": "pos-btc-75000-70000-20261127-1791587688",
+      "currency": "BTC",
+      "expiry": "20261127",
+      "short_strike": 75000.0,
+      "long_strike": 70000.0,
+      "contracts": 0.05,
+      "initial_credit_per_contract": 645.0,
+      "initial_credit_total": 32.25,
+      "initial_margin_total": 217.75,
+      "opened_at": "2026-10-09",
+      "status": "active",
+      "target_take_profit_pct": 80.0,
+      "auto_roll_enabled": true,
+      "auto_roll_trigger_dte": 3,
+      "auto_roll_max_cost_pct": 35.0,
+      "is_live_order": true,
+      "live_details": {
+        "short_order_id": "submitted",
+        "long_order_id": "submitted",
+        "short_price": 1406.0,
+        "long_price": 761.0
+      },
+      "roll_count": 0
+    }
+  }
+]

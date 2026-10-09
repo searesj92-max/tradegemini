@@ -176,16 +176,17 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             target_l = max(l_min, min(l_max, target_l))
         target_l = round(target_l, 1)
         
-        # 1. Sell Short Put (receive credit)
-        res_short = client.orders.create(
-            amount=Decimal(str(contracts)),
-            direction=Direction.sell,
-            instrument_name=short_inst,
-            limit_price=Decimal(str(target_s)),
-            order_type=OrderType.limit
-        )
-        
-        # 2. Buy Long Put (wing hedge)
+        # Validar e ajustar contratos de acordo com o saldo real da subconta
+        acct = get_derive_account_info()
+        balance_usdc = float(acct.get('balance_usdc', 292.04))
+        spread_width = abs(float(short_strike) - float(long_strike))
+        if spread_width > 0:
+            max_safe = round((balance_usdc * 0.88) / spread_width, 2)
+            if max_safe > 0 and contracts > max_safe:
+                print(f"[DERIVE SIZING] Ajustando contratos de {contracts} para {max_safe} para caber no saldo de ${balance_usdc:.2f}")
+                contracts = max_safe
+
+        # 1. Buy Long Put FIRST (wing hedge - garante o colateral e define a perda máxima antes de vender)
         res_long = client.orders.create(
             amount=Decimal(str(contracts)),
             direction=Direction.buy,
@@ -194,11 +195,24 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             order_type=OrderType.limit
         )
         
+        # Pausa para o livro e estado da subconta reconhecerem a perna de proteção
+        time.sleep(1.5)
+
+        # 2. Sell Short Put SECOND (crédito adiantado - agora totalmente coberta pela perna longa!)
+        res_short = client.orders.create(
+            amount=Decimal(str(contracts)),
+            direction=Direction.sell,
+            instrument_name=short_inst,
+            limit_price=Decimal(str(target_s)),
+            order_type=OrderType.limit
+        )
+        
         return {
             'success': True,
+            'contracts': contracts,
             'short_order_id': getattr(res_short, 'order_id', 'submitted'),
             'long_order_id': getattr(res_long, 'order_id', 'submitted'),
-            'message': f"Ordens de trava enviadas com sucesso à Derive! Vendida: {short_inst} @ ${target_s} | Comprada: {long_inst} @ ${target_l}"
+            'message': f"Ordens de trava enviadas com sucesso à Derive! Vendida: {short_inst} @ ${target_s} | Comprada: {long_inst} @ ${target_l} ({contracts} contratos)"
         }
     except Exception as e:
         return {'success': False, 'error': f"Erro ao enviar ordem na Derive: {str(e)}"}

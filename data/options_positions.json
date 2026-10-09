@@ -1,0 +1,38 @@
+[
+  {
+    "id": "pos-btc-elidio-86-82",
+    "currency": "BTC",
+    "expiry": "20261030",
+    "short_strike": 86000.0,
+    "long_strike": 82000.0,
+    "contracts": 0.2,
+    "initial_credit_per_contract": 2049.0,
+    "initial_credit_total": 409.80,
+    "initial_margin_total": 390.20,
+    "opened_at": "2026-10-09",
+    "status": "active",
+    "target_take_profit_pct": 80.0,
+    "auto_roll_enabled": true,
+    "auto_roll_trigger_dte": 3,
+    "auto_roll_max_cost_pct": 35.0,
+    "roll_count": 0
+  },
+  {
+    "id": "pos-btc-conservadora-80-76",
+    "currency": "BTC",
+    "expiry": "20261030",
+    "short_strike": 80000.0,
+    "long_strike": 76000.0,
+    "contracts": 0.2,
+    "initial_credit_per_contract": 765.0,
+    "initial_credit_total": 153.00,
+    "initial_margin_total": 647.00,
+    "opened_at": "2026-10-09",
+    "status": "active",
+    "target_take_profit_pct": 80.0,
+    "auto_roll_enabled": false,
+    "auto_roll_trigger_dte": 3,
+    "auto_roll_max_cost_pct": 35.0,
+    "roll_count": 0
+  }
+]

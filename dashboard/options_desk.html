@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Options Desk — Terminal Quant de Opções (OpsBit & Derive)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #080d1a;
+      color: #e2e8f0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .card-glass {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .card-glow:hover {
+      border-color: rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.18);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header / Ticker Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <i class="fa-solid fa-chart-line text-white text-lg"></i>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="font-bold text-lg text-white tracking-tight">OPTIONS DESK</h1>
+            <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-semibold border border-indigo-500/30">OpsBit & Derive.xyz</span>
+            <span id="session-badge" class="text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span id="session-text">Derive Mainnet: Ancap</span>
+            </span>
+            <span class="text-[11px] px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700">
+              Subconta <b id="subacct-id" class="text-white">#116270</b> • Saldo: <b id="subacct-balance" class="text-emerald-400">$292.04</b> USDC
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Trava de Alta com Puts (Elídio Carvalho) • Matriz de Decisão Quant • Rolagem Dupla</p>
+        </div>
+      </div>
+
+      <!-- Live Spot Tickers & Open Interest Walls -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700/60">
+          <span class="text-amber-400 font-bold text-xs"><i class="fa-brands fa-bitcoin mr-1"></i>BTC</span>
+          <span id="spot-btc" class="mono font-semibold text-sm text-white">Carregando...</span>
+        </div>
+        <div class="flex items-center space-x-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700/60">
+          <span class="text-blue-400 font-bold text-xs"><i class="fa-brands fa-ethereum mr-1"></i>ETH</span>
+          <span id="spot-eth" class="mono font-semibold text-sm text-white">Carregando...</span>
+        </div>
+        <button onclick="refreshAll()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1.5">
+          <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i>
+          <span class="hidden sm:inline">Atualizar</span>
+        </button>
+        <a href="/" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1.5" title="Ir para Cockpit Geral">
+          <i class="fa-solid fa-gauge"></i>
+          <span class="hidden sm:inline">Cockpit</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="border-b border-slate-800 bg-slate-900/60">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap gap-2 sm:gap-6">
+      <button onclick="switchTab('decision')" id="tab-btn-decision" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-indigo-500 text-indigo-400">
+        <i class="fa-solid fa-brain"></i>
+        <span>O que Montar Agora (Matriz)</span>
+      </button>
+      <button onclick="switchTab('positions')" id="tab-btn-positions" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-wallet"></i>
+        <span>Minhas Operações (<span id="active-count">0</span>)</span>
+      </button>
+      <button onclick="switchTab('roller')" id="tab-btn-roller" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-repeat"></i>
+        <span>Simulador de Rolagem</span>
+      </button>
+      <button onclick="switchTab('audit')" id="tab-btn-audit" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+        <span>Histórico de Rolagens</span>
+      </button>
+      <button onclick="openNewModal()" class="py-3 px-1 font-medium text-sm text-emerald-400 hover:text-emerald-300 ml-auto flex items-center space-x-1.5">
+        <i class="fa-solid fa-plus-circle"></i>
+        <span>Registrar Trava</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+
+    <!-- ================= TAB 0: MATRIZ DE DECISÃO QUANTITATIVA ================= -->
+    <div id="tab-decision" class="space-y-6">
+      
+      <!-- Top Quant Banner & Market Cross Filter -->
+      <div class="card-glass rounded-2xl p-5 border border-slate-800 space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-crosshairs text-indigo-400"></i>
+              Cruzamento de Dados & Risco x Retorno: O que está interessante montar hoje?
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">
+              Filtro quantitativo que cruza Volatilidade Implícita (IV), Probabilidade Estatística (PoP), Breakeven com Margem de Segurança e Colchão para Rolagens Futuras.
+            </p>
+          </div>
+
+          <!-- Currency & Profile Filter -->
+          <div class="flex items-center space-x-3">
+            <div class="flex rounded-lg bg-slate-800 p-1 border border-slate-700">
+              <button onclick="setMatrixCurrency('BTC')" id="matrix-curr-btc" class="px-3 py-1 rounded text-xs font-semibold bg-indigo-600 text-white">BTC</button>
+              <button onclick="setMatrixCurrency('ETH')" id="matrix-curr-eth" class="px-3 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white">ETH</button>
+            </div>
+            <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
+              <option value="ALL">Todos os Perfis</option>
+              <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
+              <option value="CONSERVATIVE">🟢 Alta Probabilidade (Conservador)</option>
+              <option value="BALANCED">🟡 Equilibrado (Risco x Retorno)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Institutional Wall Banner -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800 text-xs">
+          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
+            <span class="text-slate-400 block font-medium">Suporte Institucional (Put Wall)</span>
+            <span id="wall-put" class="mono font-bold text-emerald-400 text-sm mt-0.5 block">Carregando...</span>
+            <span class="text-[11px] text-slate-500">Maior concentração de puts abertas</span>
+          </div>
+          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
+            <span class="text-slate-400 block font-medium">Resistência Institucional (Call Wall)</span>
+            <span id="wall-call" class="mono font-bold text-rose-400 text-sm mt-0.5 block">Carregando...</span>
+            <span class="text-[11px] text-slate-500">Teto de open interest do mercado</span>
+          </div>
+          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
+            <span class="text-slate-400 block font-medium">Regime de Volatilidade (IV)</span>
+            <span id="market-iv-status" class="mono font-bold text-indigo-400 text-sm mt-0.5 block">Moderada (~35% - 45%)</span>
+            <span class="text-[11px] text-slate-500">Prêmios em níveis atrativos p/ venda</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Opportunities Grid (Categorized Cards) -->
+      <div id="matrix-cards-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Dynamically injected -->
+        <div class="col-span-2 text-center py-16 text-slate-500">
+          <i class="fa-solid fa-spinner fa-spin text-2xl mb-3 block"></i>
+          Processando livros de ordens e matriz quantitativa da Derive.xyz...
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 1: MINHAS POSIÇÕES ATIVAS ================= -->
+    <div id="tab-positions" class="hidden space-y-6">
+      
+      <!-- Top Metrics Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card-glass rounded-xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 uppercase font-medium">Margem Total Alocada</div>
+          <div id="kpi-margin" class="mono text-2xl font-bold text-white mt-1">$0.00</div>
+          <div class="text-xs text-slate-500 mt-1">Risco máximo estrutural</div>
+        </div>
+        <div class="card-glass rounded-xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 uppercase font-medium">Crédito Adiantado Total</div>
+          <div id="kpi-credit" class="mono text-2xl font-bold text-emerald-400 mt-1">$0.00</div>
+          <div class="text-xs text-emerald-500/80 mt-1">Dinheiro recebido no bolso</div>
+        </div>
+        <div class="card-glass rounded-xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 uppercase font-medium">Lucro Líquido Atual</div>
+          <div id="kpi-pnl" class="mono text-2xl font-bold text-indigo-400 mt-1">$0.00</div>
+          <div class="text-xs text-slate-500 mt-1">Marcado a mercado Derive</div>
+        </div>
+        <div class="card-glass rounded-xl p-4 border border-slate-800">
+          <div class="text-xs text-slate-400 uppercase font-medium">Alertas / Ações Necessárias</div>
+          <div id="kpi-alerts" class="mono text-2xl font-bold text-amber-400 mt-1">0</div>
+          <div class="text-xs text-slate-500 mt-1">Sugeridas pela IA</div>
+        </div>
+      </div>
+
+      <!-- Active Positions List -->
+      <div class="space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-indigo-400"></i>
+            Trava de Alta com Puts — Posições em Aberto
+          </h2>
+          <span class="text-xs text-slate-400">Monitorando em tempo real com gatilhos de rolagem</span>
+        </div>
+
+        <div id="positions-list" class="space-y-4">
+          <div class="text-center py-12 text-slate-500">Carregando suas operações...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 2: SIMULADOR DE ROLAGEM ================= -->
+    <div id="tab-roller" class="hidden space-y-6">
+      <div class="card-glass rounded-xl p-6 border border-slate-800">
+        <div class="flex flex-wrap justify-between items-start gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-repeat text-indigo-400"></i>
+              Mecanismo de Rolagem (Roll Forward)
+            </h2>
+            <p class="text-sm text-slate-400 mt-1">
+              Como o Elídio ensina: se o ativo não atingir o strike alvo até a semana do vencimento, você fecha a trava atual e reabre nos próximos meses.
+              O custo da rolagem sai diretamente do crédito que você já recebeu, mantendo você no jogo sem precisar de dinheiro novo.
+            </p>
+          </div>
+          <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-xs text-indigo-300">
+            <span class="font-bold block">Duas Formas de Rolar:</span>
+            <span>1. <b>Manual (Assistida):</b> Clique no botão abaixo e confirme.<br>2. <b>Automática:</b> Ative o interruptor na aba "Minhas Operações".</span>
+          </div>
+        </div>
+
+        <!-- Selector -->
+        <div class="mt-6 flex flex-wrap items-center gap-4">
+          <label class="text-xs uppercase font-medium text-slate-400">Escolha a Trava para Rolar:</label>
+          <select id="roll-pos-select" onchange="runRollSimulation()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+
+        <!-- Simulation Output -->
+        <div id="roll-sim-output" class="mt-6 space-y-4">
+          <div class="text-slate-500 text-sm py-4">Selecione uma posição acima para simular os custos de rolagem para os próximos meses.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 3: HISTÓRICO DE AUDITORIA ================= -->
+    <div id="tab-audit" class="hidden space-y-6">
+      <div class="card-glass rounded-xl p-6 border border-slate-800">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-400"></i>
+          Registro de Auditoria de Rolagens & Ações
+        </h2>
+        <p class="text-sm text-slate-400 mt-1">
+          Histórico completo de rolagens manuais e automáticas executadas pelo robô em segundo plano.
+        </p>
+
+        <div class="mt-6 overflow-x-auto custom-scroll">
+          <table class="w-full text-left text-xs">
+            <thead class="text-slate-400 uppercase border-b border-slate-800">
+              <tr>
+                <th class="py-2.5">Data/Hora</th>
+                <th class="py-2.5">Ação</th>
+                <th class="py-2.5">Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody" class="divide-y divide-slate-800 text-slate-300">
+              <tr><td colspan="3" class="py-6 text-center text-slate-500">Nenhum evento registrado ainda.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= MODAL: REGISTRAR NOVA TRAVA ================= -->
+  <div id="new-pos-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+          <i class="fa-solid fa-plus-circle text-emerald-400"></i>
+          Registrar Trava de Alta
+        </h3>
+        <button onclick="closeNewModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="new-pos-form" onsubmit="submitNewPosition(event)" class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 uppercase font-medium">Ativo</label>
+          <select id="inp-currency" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <option value="BTC">Bitcoin (BTC)</option>
+            <option value="ETH">Ethereum (ETH)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-400 uppercase font-medium">Vencimento (YYYYMMDD, ex: 20261030)</label>
+          <input type="text" id="inp-expiry" required placeholder="20261030" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 uppercase font-medium">Strike Venda (Put)</label>
+            <input type="number" id="inp-short" required placeholder="86000" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 uppercase font-medium">Strike Compra (Put)</label>
+            <input type="number" id="inp-long" required placeholder="82000" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 uppercase font-medium">Contratos</label>
+            <input type="number" step="0.01" id="inp-contracts" required value="0.2" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 uppercase font-medium">Crédito Unitário ($)</label>
+            <input type="number" step="0.1" id="inp-credit" required placeholder="2049" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-white">Rolagem 100% Automática</span>
+            <input type="checkbox" id="inp-autoroll" class="w-4 h-4 text-indigo-600 rounded">
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span class="text-slate-400 block text-[11px]">Gatilho (DTE &le; X dias)</span>
+              <input type="number" id="inp-trigger-dte" value="3" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white mt-0.5">
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">Custo Máx Rolagem (%)</span>
+              <input type="number" id="inp-max-cost" value="35" class="w-full bg-slate-900 border border-slate-700 rounded p-1 text-white mt-0.5">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-400 uppercase font-medium">Meta Take Profit (%)</label>
+          <input type="number" id="inp-tp" required value="80" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+        </div>
+
+        <div>
+          <label class="text-xs text-slate-400 uppercase font-medium">Destino da Operação</label>
+          <div class="grid grid-cols-2 gap-2 mt-1">
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-indigo-950/60 border border-indigo-500/50 cursor-pointer">
+              <input type="radio" name="exec-mode" id="exec-mode-live" value="live" checked class="text-indigo-600">
+              <div>
+                <span class="text-xs font-bold text-white block">⚡ Ordem Real Derive</span>
+                <span class="text-[10px] text-slate-400 block">Envia via Session Key</span>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded-lg bg-slate-800/60 border border-slate-700 cursor-pointer">
+              <input type="radio" name="exec-mode" id="exec-mode-sim" value="sim" class="text-slate-400">
+              <div>
+                <span class="text-xs font-bold text-slate-300 block">👁️ Simulado / Monitor</span>
+                <span class="text-[10px] text-slate-400 block">Apenas rastrear risco</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button type="submit" id="btn-submit-spread" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-sm transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Confirmar e Montar Trava</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script>
+    let matrixCurrency = 'BTC';
+    let positionsCache = [];
+    let matrixDataCache = null;
+
+    async function init() {
+      await loadMarket();
+      await loadDecisionMatrix();
+      await loadPositions();
+      setInterval(loadMarket, 15000);
+    }
+
+    async function refreshAll() {
+      const icon = document.getElementById('refresh-icon');
+      icon.classList.add('fa-spin');
+      await loadMarket();
+      await loadDecisionMatrix();
+      await loadPositions();
+      if (!document.getElementById('tab-audit').classList.contains('hidden')) {
+        await loadAuditLogs();
+      }
+      setTimeout(() => icon.classList.remove('fa-spin'), 600);
+    }
+
+    async function loadMarket() {
+      try {
+        const res = await fetch('/api/market');
+        const data = await res.json();
+        document.getElementById('spot-btc').textContent = `$${Number(data.btc_spot).toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 1})}`;
+        document.getElementById('spot-eth').textContent = `$${Number(data.eth_spot).toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 1})}`;
+        
+        if (data.subaccount_id) document.getElementById('subacct-id').textContent = '#' + data.subaccount_id;
+        if (data.real_balance !== undefined) document.getElementById('subacct-balance').textContent = `$${Number(data.real_balance).toFixed(2)}`;
+        if (data.has_session_key) {
+          const sessionText = document.getElementById('session-text');
+          if (sessionText) sessionText.textContent = `Derive Mainnet: ${data.session_label || 'Ancap'}`;
+        }
+      } catch (e) {
+        console.error("Market fetch error:", e);
+      }
+    }
+
+    async function loadDecisionMatrix() {
+      try {
+        const res = await fetch(`/api/decision_matrix?currency=${matrixCurrency}`);
+        matrixDataCache = await res.json();
+        
+        if (matrixDataCache.walls) {
+          document.getElementById('wall-put').textContent = `$${Number(matrixDataCache.walls.put_wall).toLocaleString('en-US')}`;
+          document.getElementById('wall-call').textContent = `$${Number(matrixDataCache.walls.call_wall).toLocaleString('en-US')}`;
+        }
+        renderDecisionMatrix();
+      } catch (e) {
+        console.error("Decision matrix fetch error:", e);
+      }
+    }
+
+    function renderDecisionMatrix() {
+      const container = document.getElementById('matrix-cards-container');
+      if (!matrixDataCache || !matrixDataCache.all_opportunities) {
+        container.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-500">Nenhuma oportunidade carregada.</div>';
+        return;
+      }
+
+      const selectedProfile = document.getElementById('matrix-filter-profile').value;
+      let opps = matrixDataCache.all_opportunities;
+      if (selectedProfile !== 'ALL') {
+        opps = opps.filter(o => o.profile === selectedProfile);
+      }
+
+      if (opps.length === 0) {
+        container.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-500">Nenhuma trava atendeu ao filtro de perfil selecionado.</div>';
+        return;
+      }
+
+      container.innerHTML = opps.slice(0, 12).map(o => {
+        let badgeBg = "bg-purple-900/30 text-purple-300 border-purple-500/40";
+        let barColor = "from-purple-500 to-indigo-500";
+        if (o.profile === 'CONSERVATIVE') {
+          badgeBg = "bg-emerald-900/30 text-emerald-300 border-emerald-500/40";
+          barColor = "from-emerald-500 to-teal-500";
+        } else if (o.profile === 'BALANCED') {
+          badgeBg = "bg-amber-900/30 text-amber-300 border-amber-500/40";
+          barColor = "from-amber-500 to-yellow-500";
+        }
+
+        const cushionSign = o.cushion_pct >= 0 ? '+' : '';
+        const cushionColor = o.cushion_pct >= 0 ? 'text-emerald-400' : 'text-amber-400';
+
+        return `
+          <div class="card-glass rounded-2xl p-5 border border-slate-800 card-glow transition space-y-4 flex flex-col justify-between">
+            <div>
+              <!-- Header -->
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <span class="text-xs px-2.5 py-1 rounded-md font-bold border ${badgeBg}">
+                    ${o.profile_label}
+                  </span>
+                  <div class="mt-2 flex items-center space-x-2">
+                    <span class="font-bold text-white text-base mono">Vende ${o.short_strike}P / Compra ${o.long_strike}P</span>
+                  </div>
+                  <span class="text-xs text-slate-400">Vencimento: <b>${o.expiry_formatted}</b> (${o.dte} dias restantes)</span>
+                </div>
+
+                <div class="text-right">
+                  <div class="text-xs text-slate-400">Pontuação Quant</div>
+                  <div class="mono text-lg font-bold text-indigo-400">${o.conviction.toFixed(0)} <span class="text-xs text-slate-500">/100</span></div>
+                </div>
+              </div>
+
+              <!-- Metrics Grid -->
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 border-y border-slate-800/80 my-3 text-xs">
+                <div>
+                  <span class="text-slate-500 block">Crédito Unitário</span>
+                  <span class="font-bold text-emerald-400 mono text-sm">+$${o.net_credit.toFixed(0)}</span>
+                  <span class="text-slate-400 block text-[10px]">por contrato</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block">Margem (Risco)</span>
+                  <span class="font-bold text-slate-200 mono text-sm">$${o.margin.toFixed(0)}</span>
+                  <span class="text-slate-400 block text-[10px]">RoM: <b>${o.rom.toFixed(1)}%</b></span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block">Breakeven</span>
+                  <span class="font-bold text-slate-200 mono text-sm">$${o.breakeven.toFixed(0)}</span>
+                  <span class="${cushionColor} font-semibold block text-[10px]">${cushionSign}${o.cushion_pct.toFixed(1)}% de folga</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block">Probabilidade (PoP)</span>
+                  <span class="font-bold text-indigo-300 mono text-sm">${o.pop.toFixed(1)}%</span>
+                  <span class="text-slate-400 block text-[10px]">Delta: ${o.short_delta.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <!-- Thesis / Justification Box -->
+              <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 text-xs">
+                <span class="font-bold text-slate-300 flex items-center gap-1.5 mb-1">
+                  <i class="fa-solid fa-lightbulb text-amber-400"></i> Racional de Entrada & Cruzamento:
+                </span>
+                <p class="text-slate-400 leading-relaxed">${o.thesis}</p>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="pt-2 flex justify-between items-center text-xs">
+              <span class="text-slate-500">Theta Diário: <b class="text-slate-300">+$${o.net_theta_daily.toFixed(1)}/dia</b></span>
+              <button onclick="adoptOpportunity('${o.currency}', '${o.expiry}', ${o.short_strike}, ${o.long_strike}, ${o.net_credit})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition shadow-md shadow-indigo-600/25 flex items-center gap-1.5">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Montar Esta Trava</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setMatrixCurrency(curr) {
+      matrixCurrency = curr;
+      document.getElementById('matrix-curr-btc').className = curr === 'BTC' ? 'px-3 py-1 rounded text-xs font-semibold bg-indigo-600 text-white' : 'px-3 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white';
+      document.getElementById('matrix-curr-eth').className = curr === 'ETH' ? 'px-3 py-1 rounded text-xs font-semibold bg-indigo-600 text-white' : 'px-3 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white';
+      loadDecisionMatrix();
+    }
+
+    async function loadPositions() {
+      try {
+        const res = await fetch('/api/positions');
+        const data = await res.json();
+        positionsCache = data.positions || [];
+        renderPositions(positionsCache);
+        updateKPIs(positionsCache);
+        populateRollSelector(positionsCache);
+      } catch (e) {
+        console.error("Positions fetch error:", e);
+      }
+    }
+
+    function updateKPIs(positions) {
+      let totalMargin = 0;
+      let totalCredit = 0;
+      let totalPnl = 0;
+      let totalAlerts = 0;
+
+      positions.forEach(p => {
+        totalMargin += p.initial_margin_total || 0;
+        totalCredit += p.initial_credit_total || 0;
+        totalPnl += p.current_pnl_total || 0;
+        if (p.recommendation && (p.recommendation.type === 'ROLL_TRIGGER' || p.recommendation.type === 'TAKE_PROFIT')) {
+          totalAlerts++;
+        }
+      });
+
+      document.getElementById('kpi-margin').textContent = `$${totalMargin.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      document.getElementById('kpi-credit').textContent = `$${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      
+      const pnlEl = document.getElementById('kpi-pnl');
+      pnlEl.textContent = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      pnlEl.className = `mono text-2xl font-bold mt-1 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+      document.getElementById('kpi-alerts').textContent = totalAlerts;
+      document.getElementById('active-count').textContent = positions.length;
+    }
+
+    function renderPositions(positions) {
+      const container = document.getElementById('positions-list');
+      if (!positions || positions.length === 0) {
+        container.innerHTML = `
+          <div class="card-glass rounded-xl p-10 text-center border border-slate-800">
+            <i class="fa-solid fa-inbox text-4xl text-slate-600 mb-3"></i>
+            <h3 class="text-slate-300 font-semibold">Nenhuma trava de alta ativa no momento</h3>
+            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Vá na aba "O que Montar Agora (Matriz)" para adotar uma trava recomendada.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = positions.map(p => {
+        const pnl = p.current_pnl_total;
+        const pnlSign = pnl >= 0 ? '+' : '';
+        const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const progress = Math.min(100, Math.max(0, p.profit_captured_pct));
+        
+        let badgeColor = 'bg-slate-700 text-slate-300';
+        let alertBg = 'bg-slate-800/60 border-slate-700/50';
+        if (p.recommendation.type === 'TAKE_PROFIT') {
+          badgeColor = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+          alertBg = 'bg-emerald-950/30 border-emerald-500/40';
+        } else if (p.recommendation.type === 'ROLL_TRIGGER') {
+          badgeColor = 'bg-rose-500/20 text-rose-300 border border-rose-500/40';
+          alertBg = 'bg-rose-950/30 border-rose-500/40';
+        } else if (p.recommendation.type === 'WATCH_RISK') {
+          badgeColor = 'bg-amber-500/20 text-amber-300 border border-amber-500/40';
+          alertBg = 'bg-amber-950/30 border-amber-500/40';
+        }
+
+        return `
+          <div class="card-glass rounded-2xl p-6 border border-slate-800 card-glow transition space-y-4">
+            <!-- Header Row -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center space-x-3">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-md ${p.currency === 'BTC' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}">
+                  ${p.currency}
+                </span>
+                <span class="font-bold text-white text-base">
+                  Vende ${p.short_strike}P / Compra ${p.long_strike}P
+                </span>
+                <span class="text-xs text-slate-400">(${p.contracts} contratos)</span>
+                ${p.roll_count > 0 ? `<span class="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded">Rolada ${p.roll_count}x</span>` : ''}
+              </div>
+
+              <div class="flex items-center space-x-3">
+                <span class="text-xs px-2.5 py-1 rounded-md font-semibold ${badgeColor}">
+                  ${p.recommendation.badge}
+                </span>
+                <button onclick="deletePosition('${p.id}')" class="text-slate-500 hover:text-rose-400 text-xs p-1" title="Encerrar/Remover">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 py-2 border-y border-slate-800/70 text-xs">
+              <div>
+                <span class="text-slate-500 block">Vencimento</span>
+                <span class="font-semibold text-slate-200 mono">${p.expiry_formatted}</span>
+                <span class="text-slate-400 block text-[11px]">${p.dte} dias restantes</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Crédito Inicial</span>
+                <span class="font-semibold text-emerald-400 mono">+$${p.initial_credit_total.toFixed(2)}</span>
+                <span class="text-slate-400 block text-[11px]">$${p.initial_credit_per_contract.toFixed(1)}/unid</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Custo p/ Fechar Hoje</span>
+                <span class="font-semibold text-slate-300 mono">$${p.cost_to_close_total.toFixed(2)}</span>
+                <span class="text-slate-400 block text-[11px]">(débito de saída)</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Lucro Líquido Atual</span>
+                <span class="font-bold ${pnlColor} mono text-sm">${pnlSign}$${pnl.toFixed(2)}</span>
+                <span class="text-slate-400 block text-[11px]">${progress.toFixed(1)}% do crédito</span>
+              </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-400">Progresso do Lucro Capturado (Meta: ${p.target_take_profit_pct}%)</span>
+                <span class="font-bold ${progress >= p.target_take_profit_pct ? 'text-emerald-400' : 'text-slate-300'} mono">${progress.toFixed(1)}%</span>
+              </div>
+              <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700/50">
+                <div class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-2 rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+              </div>
+            </div>
+
+            <!-- Tolerância de Queda Sem Perder Dinheiro (Breakeven Cushion) -->
+            <div class="rounded-xl p-3 border ${p.is_cushion_positive ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-indigo-950/40 border-indigo-500/40'} flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg ${p.is_cushion_positive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'} flex items-center justify-center font-bold text-sm shrink-0">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                  <span class="font-bold text-white block">Até onde o ${p.currency} pode cair sem você perder dinheiro:</span>
+                  ${p.is_cushion_positive ? 
+                    `<span class="text-emerald-300">O ${p.currency} pode cair até <b>$${p.breakeven_price.toLocaleString('en-US')}</b> (tolerância de <b>-${p.max_tolerated_drop_usd.toLocaleString('en-US', {maximumFractionDigits: 0})} / -${p.max_tolerated_drop_pct}%</b>) e você ainda fica no lucro!</span>` :
+                    `<span class="text-indigo-300">Breakeven em <b>$${p.breakeven_price.toLocaleString('en-US')}</b>. Modelo Elídio: o crédito de +$${p.initial_credit_total.toFixed(0)} já está no seu bolso para bancar rolagens caso ele não rompa o strike.</span>`
+                  }
+                </div>
+              </div>
+              <div class="text-right whitespace-nowrap ml-auto">
+                <span class="text-slate-400 block text-[11px]">Ponto de Equilíbrio (Breakeven)</span>
+                <span class="font-bold text-white mono text-sm">$${p.breakeven_price.toLocaleString('en-US')}</span>
+              </div>
+            </div>
+
+            <!-- Auto-Roll & Take Profit Controls -->
+            <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div class="flex items-center space-x-3">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" ${p.auto_roll_enabled ? 'checked' : ''} onchange="toggleAutoRoll('${p.id}', this.checked)" class="sr-only peer">
+                  <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+                <div>
+                  <span class="font-bold text-white block">Rolagem 100% Automática (Bot em Segundo Plano)</span>
+                  <span class="text-[11px] text-slate-400">Rola sozinho se DTE &le; ${p.auto_roll_trigger_dte}d e ${p.currency} &lt; ${p.short_strike} (Teto de custo: ${p.auto_roll_max_cost_pct}%)</span>
+                </div>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <button onclick="earlyClosePosition('${p.id}', ${p.current_pnl_total}, ${progress})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap flex items-center gap-1.5">
+                  <i class="fa-solid fa-hand-holding-dollar"></i>
+                  <span>Encerrar Posição (${progress.toFixed(0)}% do Lucro)</span>
+                </button>
+                <button onclick="quickRoll('${p.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-lg font-semibold text-xs transition whitespace-nowrap">
+                  <i class="fa-solid fa-repeat mr-1"></i> Rolar Manualmente
+                </button>
+              </div>
+            </div>
+
+            <!-- AI Market Advisor Box -->
+            <div class="rounded-xl p-3 border ${alertBg} flex items-start space-x-3 text-xs">
+              <i class="fa-solid fa-robot text-indigo-400 text-sm mt-0.5"></i>
+              <div class="flex-1">
+                <span class="font-bold text-white block">Diagnóstico da IA & Consultor de Mercado:</span>
+                <p class="text-slate-300 mt-0.5 leading-relaxed">${p.recommendation.text}</p>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function toggleAutoRoll(posId, isEnabled) {
+      try {
+        await fetch('/api/toggle_auto_roll', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({position_id: posId, enabled: isEnabled, trigger_dte: 3, max_cost_pct: 35.0})
+        });
+        await loadPositions();
+      } catch (e) {
+        alert('Erro ao atualizar configuração de rolagem automática: ' + e.message);
+      }
+    }
+
+    async function earlyClosePosition(posId, pnl, progress) {
+      if (!confirm(`Deseja realmente encerrar essa trava agora a mercado e embolsar o lucro atual (${progress.toFixed(1)}% do crédito inicial alcançado)?`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/close_position', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({position_id: posId})
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message);
+          await loadPositions();
+        } else {
+          alert('Erro: ' + (data.error || 'Falha ao encerrar'));
+        }
+      } catch (e) {
+        alert('Erro ao encerrar posição: ' + e.message);
+      }
+    }
+
+    function populateRollSelector(positions) {
+      const select = document.getElementById('roll-pos-select');
+      select.innerHTML = positions.map(p => `
+        <option value="${p.id}">
+          ${p.currency} ${p.short_strike}P/${p.long_strike}P — Venc: ${p.expiry_formatted} (${p.dte}d)
+        </option>
+      `).join('');
+    }
+
+    function quickRoll(posId) {
+      switchTab('roller');
+      document.getElementById('roll-pos-select').value = posId;
+      runRollSimulation();
+    }
+
+    async function runRollSimulation() {
+      const posId = document.getElementById('roll-pos-select').value;
+      const container = document.getElementById('roll-sim-output');
+      if (!posId) {
+        container.innerHTML = '<div class="text-slate-500 text-sm">Nenhuma posição selecionada.</div>';
+        return;
+      }
+
+      container.innerHTML = '<div class="text-slate-400 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Simulando livro de ofertas dos próximos vencimentos na Derive.xyz...</div>';
+
+      try {
+        const res = await fetch(`/api/roll_simulation?position_id=${posId}`);
+        const data = await res.json();
+        const pos = data.position;
+        const options = data.roll_options || [];
+
+        if (options.length === 0) {
+          container.innerHTML = '<div class="text-amber-400 text-sm">Não há vencimentos futuros com liquidez suficiente para rolar essa posição no momento.</div>';
+          return;
+        }
+
+        container.innerHTML = `
+          <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-4">
+            <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-3">
+              <div>
+                <span class="text-slate-400">Posição Atual:</span>
+                <span class="font-bold text-white mono ml-1">${pos.currency} ${pos.short_strike}P / ${pos.long_strike}P</span>
+                <span class="text-slate-400 ml-2">Vence em ${pos.expiry_formatted} (${pos.dte} dias)</span>
+              </div>
+              <div>
+                <span class="text-slate-400">Crédito Original Recebido:</span>
+                <span class="font-bold text-emerald-400 mono ml-1">$${pos.initial_credit_total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scroll">
+              <table class="w-full text-left text-xs">
+                <thead class="text-slate-400 uppercase border-b border-slate-800">
+                  <tr>
+                    <th class="py-2.5">Novo Vencimento</th>
+                    <th class="py-2.5">Dias (DTE)</th>
+                    <th class="py-2.5 text-right">Débito Fechamento</th>
+                    <th class="py-2.5 text-right">Novo Crédito</th>
+                    <th class="py-2.5 text-right">Custo Líquido Rolagem</th>
+                    <th class="py-2.5 text-right">Lucro Preservado</th>
+                    <th class="py-2.5 text-center">Ação Manual (1 Clique)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800 text-slate-200">
+                  ${options.map(opt => `
+                    <tr class="hover:bg-slate-800/40">
+                      <td class="py-3 font-semibold mono text-white">${opt.target_expiry_formatted}</td>
+                      <td class="py-3 mono text-slate-400">${opt.target_dte}d</td>
+                      <td class="py-3 text-right mono text-rose-400">-$${opt.close_cost_total.toFixed(2)}</td>
+                      <td class="py-3 text-right mono text-emerald-400">+$${opt.new_credit_total.toFixed(2)}</td>
+                      <td class="py-3 text-right mono font-bold text-amber-400">$${opt.net_roll_cost.toFixed(2)}</td>
+                      <td class="py-3 text-right mono font-bold text-emerald-400">
+                        $${opt.remaining_profit.toFixed(2)}
+                        <span class="text-[10px] text-slate-400 block">${opt.pct_profit_preserved}% retido</span>
+                      </td>
+                      <td class="py-3 text-center">
+                        <button onclick="confirmExecuteRoll('${pos.id}', '${opt.target_expiry}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-semibold text-xs shadow-md shadow-indigo-600/20 transition">
+                          Rolar Agora
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="p-3 bg-slate-800/50 rounded-lg text-slate-400 text-xs flex items-center gap-2">
+              <i class="fa-solid fa-circle-info text-indigo-400"></i>
+              <span>O custo líquido da rolagem é descontado do crédito que você já recebeu. Você não precisa enviar dinheiro novo!</span>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        container.innerHTML = `<div class="text-rose-400 text-sm">Erro ao simular rolagem: ${e.message}</div>`;
+      }
+    }
+
+    async function confirmExecuteRoll(posId, targetExpiry) {
+      if (!confirm(`Deseja confirmar a rolagem dessa posição para o vencimento ${targetExpiry}?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/roll_execute', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({position_id: posId, target_expiry: targetExpiry})
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message);
+          await loadPositions();
+          switchTab('positions');
+        } else {
+          alert('Erro: ' + (data.error || 'Falha ao rolar'));
+        }
+      } catch (e) {
+        alert('Erro ao executar rolagem: ' + e.message);
+      }
+    }
+
+    async function loadAuditLogs() {
+      try {
+        const res = await fetch('/api/roll_logs');
+        const data = await res.json();
+        const tbody = document.getElementById('audit-tbody');
+        const logs = data.logs || [];
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3" class="py-6 text-center text-slate-500">Nenhum evento registrado ainda.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = logs.map(l => `
+          <tr>
+            <td class="py-2.5 mono text-slate-400">${l.timestamp}</td>
+            <td class="py-2.5 font-bold ${l.action.includes('ROLL') ? 'text-indigo-400' : 'text-emerald-400'}">${l.action}</td>
+            <td class="py-2.5 text-slate-300 mono">${JSON.stringify(l.details)}</td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error("Audit log error:", e);
+      }
+    }
+
+    async function deletePosition(posId) {
+      if (!confirm('Deseja realmente encerrar/remover essa posição da sua carteira?')) return;
+      try {
+        await fetch(`/api/positions/${posId}`, {method: 'DELETE'});
+        await loadPositions();
+      } catch (e) {
+        alert('Erro ao excluir: ' + e.message);
+      }
+    }
+
+    function adoptOpportunity(curr, exp, shortS, longS, credit) {
+      document.getElementById('inp-currency').value = curr;
+      document.getElementById('inp-expiry').value = exp;
+      document.getElementById('inp-short').value = shortS;
+      document.getElementById('inp-long').value = longS;
+      document.getElementById('inp-credit').value = credit;
+      document.getElementById('inp-contracts').value = curr === 'BTC' ? '0.02' : '0.5';
+      openNewModal();
+    }
+
+    function openNewModal() {
+      document.getElementById('new-pos-modal').classList.remove('hidden');
+    }
+
+    function closeNewModal() {
+      document.getElementById('new-pos-modal').classList.add('hidden');
+    }
+
+    async function submitNewPosition(e) {
+      e.preventDefault();
+      const isLive = document.getElementById('exec-mode-live').checked;
+      const currency = document.getElementById('inp-currency').value;
+      const expiry = document.getElementById('inp-expiry').value;
+      const shortStrike = parseFloat(document.getElementById('inp-short').value);
+      const longStrike = parseFloat(document.getElementById('inp-long').value);
+      const contracts = parseFloat(document.getElementById('inp-contracts').value);
+      const credit = parseFloat(document.getElementById('inp-credit').value);
+
+      if (isLive) {
+        const marginReq = (shortStrike - longStrike - credit) * contracts;
+        const totalCred = credit * contracts;
+        const conf = confirm(
+          `⚡ CONFIRMAÇÃO DE EXECUÇÃO REAL DERIVE:\n\n` +
+          `• Ativo: ${currency}\n` +
+          `• Vende: ${shortStrike}P / Compra: ${longStrike}P\n` +
+          `• Quantidade: ${contracts} contratos\n` +
+          `• Margem de Risco: ~$${marginReq.toFixed(2)} USDC (Saldo disponível: $292.04)\n` +
+          `• Crédito Adiantado: +$${totalCred.toFixed(2)} USDC\n\n` +
+          `Deseja enviar a ordem para a Derive com a Session Key Ancap?`
+        );
+        if (!conf) return;
+      }
+
+      const btn = document.getElementById('btn-submit-spread');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Processando ordem...';
+
+      const payload = {
+        currency: currency,
+        expiry: expiry,
+        short_strike: shortStrike,
+        long_strike: longStrike,
+        contracts: contracts,
+        credit_per_contract: credit,
+        short_price: credit * 1.25,
+        long_price: credit * 0.25,
+        tp_pct: parseFloat(document.getElementById('inp-tp').value),
+        auto_roll_enabled: document.getElementById('inp-autoroll').checked,
+        auto_roll_trigger_dte: parseInt(document.getElementById('inp-trigger-dte').value),
+        auto_roll_max_cost_pct: parseFloat(document.getElementById('inp-max-cost').value),
+        is_live: isLive
+      };
+
+      try {
+        const res = await fetch('/api/open_spread', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message);
+          closeNewModal();
+          await loadPositions();
+          switchTab('positions');
+        } else {
+          alert('Erro ao montar trava: ' + (data.error || 'Falha na execução'));
+        }
+      } catch (err) {
+        alert('Erro de conexão com o servidor local: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i>Confirmar e Montar Trava';
+      }
+    }
+
+    function switchTab(tab) {
+      const tabs = ['decision', 'positions', 'roller', 'audit'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = 'py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200';
+      });
+
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tab}`).className = 'py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-indigo-500 text-indigo-400';
+
+      if (tab === 'decision') loadDecisionMatrix();
+      if (tab === 'roller') runRollSimulation();
+      if (tab === 'audit') loadAuditLogs();
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

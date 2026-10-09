@@ -172,6 +172,30 @@ def get_cached_btc_macro_regime() -> dict:
         }
 
 
+def proxy_to_options_desk(handler, method="GET", body=None):
+    try:
+        import urllib.request
+        url = f"http://127.0.0.1:8766{handler.path}"
+        req = urllib.request.Request(url, data=body, method=method)
+        req.add_header("Content-Type", "application/json")
+        req.add_header("User-Agent", "Mozilla/5.0")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = resp.read()
+            handler.send_response(resp.status)
+            handler.send_header("Content-Type", "application/json; charset=utf-8")
+            handler.send_header("Access-Control-Allow-Origin", "*")
+            handler.send_header("Cache-Control", "no-cache, no-store")
+            handler.send_header("Content-Length", str(len(data)))
+            handler.end_headers()
+            handler.wfile.write(data)
+    except Exception as e:
+        handler.send_response(500)
+        handler.send_header("Content-Type", "application/json; charset=utf-8")
+        handler.send_header("Access-Control-Allow-Origin", "*")
+        handler.end_headers()
+        handler.wfile.write(json.dumps({"status": "error", "error": f"Options desk proxy: {e}"}).encode("utf-8"))
+
+
 class BotradeDashboardHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(DASHBOARD_DIR), **kwargs)
@@ -190,10 +214,23 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def do_DELETE(self):
+        if self.path.startswith("/api/positions/"):
+            proxy_to_options_desk(self, method="DELETE")
+            return
+        self.send_response(404)
+        self.end_headers()
+
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+
+        if path in ("/api/open_spread", "/api/positions", "/api/toggle_auto_roll", "/api/roll_execute", "/api/close_position"):
+            content_len = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_len) if content_len > 0 else b"{}"
+            proxy_to_options_desk(self, method="POST", body=body)
+            return
 
         if path == "/api/close":
             coin = query.get("coin", ["SOL"])[0].upper()
@@ -359,6 +396,24 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(content)
                 return
+
+        # OPTIONS DESK (Derive.xyz / Elídio Carvalho Bull Put Spreads 24/7)
+        if clean_path in ("/options", "/options.html", "/desk", "/opcoes"):
+            options_path = DASHBOARD_DIR / "options_desk.html"
+            if options_path.exists():
+                content = options_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        # OPTIONS DESK APIS (Proxied to local 24/7 Daemon)
+        if clean_path in ("/api/market", "/api/decision_matrix", "/api/positions", "/api/roll_simulation", "/api/roll_logs") or clean_path.startswith(("/api/decision_matrix", "/api/roll_simulation")):
+            proxy_to_options_desk(self, method="GET")
+            return
 
         # MOBILE SPREADSHEET DASHBOARD (100% Mobile Responsive for Smartphone)
         if clean_path in ("/planilha", "/planilha.html", "/sheets", "/mobile"):

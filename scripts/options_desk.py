@@ -41,10 +41,11 @@ def load_env():
     return env_vars
 
 ENV = load_env()
-DERIVE_SESSION_KEY = ENV.get('DERIVE_SESSION_KEY', '')
-DERIVE_WALLET = ENV.get('DERIVE_WALLET', '')
-DERIVE_SUBACCOUNT_ID = ENV.get('DERIVE_SUBACCOUNT_ID', '')
-DERIVE_ENV = ENV.get('DERIVE_ENV', 'mainnet')
+DERIVE_SESSION_KEY = os.environ.get('DERIVE_SESSION_KEY') or ENV.get('DERIVE_SESSION_KEY', '')
+DERIVE_WALLET = os.environ.get('DERIVE_WALLET') or ENV.get('DERIVE_WALLET', '')
+DERIVE_SUBACCOUNT_ID = os.environ.get('DERIVE_SUBACCOUNT_ID') or ENV.get('DERIVE_SUBACCOUNT_ID', '116270')
+DERIVE_ENV = os.environ.get('DERIVE_ENV') or ENV.get('DERIVE_ENV', 'mainnet')
+DERIVE_ETH_CHAIN = os.environ.get('DERIVE_ETH_CHAIN') or ENV.get('DERIVE_ETH_CHAIN', 'ETHEREUM')
 
 def send_telegram_alert(message):
     token = os.environ.get('TELEGRAM_BOT_TOKEN') or ENV.get('TELEGRAM_BOT_TOKEN')
@@ -64,15 +65,15 @@ def send_telegram_alert(message):
         print(f"[TELEGRAM ERROR] {e}")
 
 def get_derive_account_info():
-    env = load_env()
-    sub_id = int(env.get('DERIVE_SUBACCOUNT_ID', 116270))
-    wallet = env.get('DERIVE_WALLET', '0xbeA1443321572d2DF7a87011a9755739A40574FF')
-    has_key = bool(env.get('DERIVE_SESSION_KEY'))
+    sub_id = int(DERIVE_SUBACCOUNT_ID) if str(DERIVE_SUBACCOUNT_ID).isdigit() else 116270
+    wallet = DERIVE_WALLET or '0xbeA1443321572d2DF7a87011a9755739A40574FF'
+    has_key = bool(DERIVE_SESSION_KEY)
     if has_key:
         try:
             from pathlib import Path
             from derive_py._clients.rest.http.client import load_client_config, HTTPClient
-            config = load_client_config(env_file=Path(ENV_FILE))
+            env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
+            config = load_client_config(env_file=env_p)
             client = HTTPClient(config)
             sub = client.fetch_subaccount(sub_id)
             collaterals = sub.state.collaterals
@@ -108,7 +109,8 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         from derive_py._clients.rest.http.client import load_client_config, HTTPClient
         from derive_py.data_types import Direction, OrderType
         
-        config = load_client_config(env_file=Path(ENV_FILE))
+        env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
+        config = load_client_config(env_file=env_p)
         client = HTTPClient(config)
         
         short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"

@@ -143,6 +143,12 @@
               <option value="BALANCED">🟡 Equilibrado (Risco x Retorno)</option>
               <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
             </select>
+            <select id="matrix-filter-dte" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
+              <option value="ALL">⏱️ Todos os Prazos</option>
+              <option value="WEEKLY">⚡ Semanal (7 a 14 dias)</option>
+              <option value="MONTHLY">📅 Mensal (15 a 45 dias)</option>
+              <option value="LONG">🛡️ Longo Prazo (&gt;45 dias)</option>
+            </select>
           </div>
         </div>
 
@@ -449,17 +455,39 @@
       }
 
       const selectedProfile = document.getElementById('matrix-filter-profile').value;
-      let opps = matrixDataCache.all_opportunities;
+      const selectedDte = document.getElementById('matrix-filter-dte') ? document.getElementById('matrix-filter-dte').value : 'ALL';
+      let opps = matrixDataCache.all_opportunities || [];
       if (selectedProfile !== 'ALL') {
         opps = opps.filter(o => o.profile === selectedProfile);
       }
 
+      if (selectedDte === 'WEEKLY') {
+        opps = opps.filter(o => o.dte <= 15);
+      } else if (selectedDte === 'MONTHLY') {
+        opps = opps.filter(o => o.dte > 15 && o.dte <= 45);
+      } else if (selectedDte === 'LONG') {
+        opps = opps.filter(o => o.dte > 45);
+      } else {
+        // Interleave short, medium, and long so all horizons are immediately visible
+        const shorts = opps.filter(o => o.dte <= 15);
+        const meds = opps.filter(o => o.dte > 15 && o.dte <= 45);
+        const longs = opps.filter(o => o.dte > 45);
+        const interleaved = [];
+        const maxLen = Math.max(shorts.length, meds.length, longs.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (i < shorts.length) interleaved.push(shorts[i]);
+          if (i < meds.length) interleaved.push(meds[i]);
+          if (i < longs.length) interleaved.push(longs[i]);
+        }
+        opps = interleaved;
+      }
+
       if (opps.length === 0) {
-        container.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-500">Nenhuma trava atendeu ao filtro de perfil selecionado.</div>';
+        container.innerHTML = '<div class="col-span-2 text-center py-10 text-slate-500">Nenhuma trava atendeu aos filtros selecionados.</div>';
         return;
       }
 
-      container.innerHTML = opps.slice(0, 12).map(o => {
+      container.innerHTML = opps.slice(0, 24).map(o => {
         let badgeBg = "bg-purple-900/30 text-purple-300 border-purple-500/40";
         let barColor = "from-purple-500 to-indigo-500";
         if (o.profile === 'ULTRA_CONSERVATIVE') {
@@ -471,6 +499,15 @@
         } else if (o.profile === 'BALANCED') {
           badgeBg = "bg-amber-900/30 text-amber-300 border-amber-500/40";
           barColor = "from-amber-500 to-yellow-500";
+        }
+
+        let dteBadge = '';
+        if (o.dte <= 15) {
+          dteBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"><i class="fa-solid fa-bolt mr-1"></i>Semanal (${o.dte}d)</span>`;
+        } else if (o.dte <= 45) {
+          dteBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40"><i class="fa-solid fa-calendar mr-1"></i>Mensal (${o.dte}d)</span>`;
+        } else {
+          dteBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-slate-700/60 text-slate-300 border border-slate-600/40"><i class="fa-solid fa-shield mr-1"></i>Longo (${o.dte}d)</span>`;
         }
 
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
@@ -488,9 +525,12 @@
               <!-- Header -->
               <div class="flex justify-between items-start gap-2">
                 <div>
-                  <span class="text-xs px-2.5 py-1 rounded-md font-bold border ${badgeBg}">
-                    ${o.profile_label}
-                  </span>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs px-2.5 py-1 rounded-md font-bold border ${badgeBg}">
+                      ${o.profile_label}
+                    </span>
+                    ${dteBadge}
+                  </div>
                   <div class="mt-2 flex items-center space-x-2">
                     <span class="font-bold text-white text-base mono">Vende ${o.short_strike}P / Compra ${o.long_strike}P</span>
                   </div>

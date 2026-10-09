@@ -442,11 +442,19 @@ def scan_decision_matrix(currency="BTC"):
     # Sort by conviction score
     matrix.sort(key=lambda x: x['conviction'], reverse=True)
     
-    # Highlight top recommendations per profile (ultra sorted by cushion to highlight >30% safety)
+    # Highlight top recommendations per profile
     top_ultra = sorted([m for m in matrix if m['profile'] == 'ULTRA_CONSERVATIVE'], key=lambda x: x['cushion_pct'], reverse=True)[:8]
     top_elidio = [m for m in matrix if m['profile'] == 'ELIDIO_GROWTH'][:5]
     top_conservative = [m for m in matrix if m['profile'] == 'CONSERVATIVE'][:5]
     top_balanced = [m for m in matrix if m['profile'] == 'BALANCED'][:5]
+    top_weekly = sorted([m for m in matrix if m['dte'] <= 15 and m['profile'] in ('CONSERVATIVE', 'BALANCED')], key=lambda x: x['rom'], reverse=True)[:8]
+    
+    # Balanced pool across short (7-14d), medium (21-49d), and long (>49d) horizons
+    short_opps = sorted([m for m in matrix if m['dte'] <= 15], key=lambda x: (x['conviction'] + (x['rom'] * 2.0)), reverse=True)[:60]
+    med_opps = sorted([m for m in matrix if 15 < m['dte'] <= 49], key=lambda x: x['conviction'], reverse=True)[:60]
+    long_opps = sorted([m for m in matrix if m['dte'] > 49], key=lambda x: (x['conviction'] + (x['cushion_pct'] * 1.5)), reverse=True)[:60]
+    
+    combined_opps = short_opps + med_opps + long_opps
     
     return {
         'currency': currency,
@@ -455,12 +463,13 @@ def scan_decision_matrix(currency="BTC"):
         'scanned_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'total_evaluated': len(matrix),
         'top_picks': {
+            'weekly': top_weekly,
             'ultra_conservative': top_ultra,
             'elidio': top_elidio,
             'conservative': top_conservative,
             'balanced': top_balanced
         },
-        'all_opportunities': matrix[:60]
+        'all_opportunities': combined_opps
     }
 
 # ----------------- Positions Management & Evaluation -----------------

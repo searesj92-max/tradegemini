@@ -64,7 +64,40 @@ def send_telegram_alert(message):
     except Exception as e:
         print(f"[TELEGRAM ERROR] {e}")
 
+def ensure_derive_data():
+    """Ensure derive_py ABI contracts and data exist, copying from bundled derive_data if missing."""
+    try:
+        from pathlib import Path
+        import shutil
+        import derive_py
+        pkg_dir = Path(derive_py.__file__).parent
+        target_contracts = pkg_dir / "data" / "abis" / "ethereum" / "contracts.json"
+        
+        repo_root = Path(__file__).resolve().parent.parent
+        src_data = repo_root / "derive_data"
+        
+        if not target_contracts.exists() and src_data.exists():
+            dest_data = pkg_dir / "data"
+            dest_data.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(src_data, dest_data, dirs_exist_ok=True)
+            print(f"[DERIVE PATCH] Bundled derive_data copied to {dest_data}")
+            
+        if src_data.exists():
+            import derive_py.config
+            import derive_py.config.constants
+            used_data = src_data if not target_contracts.exists() else (pkg_dir / "data")
+            derive_py.config.DATA_DIR = used_data
+            derive_py.config.ABI_DATA_DIR = used_data / "abis"
+            derive_py.config.constants.DATA_DIR = used_data
+            derive_py.config.constants.ABI_DATA_DIR = used_data / "abis"
+    except Exception as e:
+        print(f"[DERIVE DATA ENSURE ERROR] {e}")
+
+# Ensure ABIs on module load
+ensure_derive_data()
+
 def get_derive_account_info():
+    ensure_derive_data()
     sub_id = int(DERIVE_SUBACCOUNT_ID) if str(DERIVE_SUBACCOUNT_ID).isdigit() else 116270
     wallet = DERIVE_WALLET or '0xbeA1443321572d2DF7a87011a9755739A40574FF'
     has_key = bool(DERIVE_SESSION_KEY)
@@ -104,6 +137,7 @@ def get_derive_account_info():
 
 def place_derive_spread_order(currency, expiry, short_strike, long_strike, contracts, short_price, long_price):
     try:
+        ensure_derive_data()
         from pathlib import Path
         from decimal import Decimal
         from derive_py._clients.rest.http.client import load_client_config, HTTPClient

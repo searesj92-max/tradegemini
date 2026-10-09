@@ -1,42 +1,38 @@
 #!/usr/bin/env python3
 """
 Setup helper to ensure derive_py has the required Ethereum ABIs on cloud deployment.
+Copies directly from the repository's bundled derive_data directory.
 """
 import os
-import urllib.request
-import json
+import shutil
+from pathlib import Path
 
 def setup_abis():
     try:
         import derive_py
-        pkg_dir = os.path.dirname(derive_py.__file__)
-        target_dir = os.path.join(pkg_dir, "data", "abis", "ethereum")
-        os.makedirs(target_dir, exist_ok=True)
+        pkg_dir = Path(derive_py.__file__).parent
+        target_dir = pkg_dir / "data"
+        target_dir.mkdir(parents=True, exist_ok=True)
         
-        manifest_file = os.path.join(target_dir, "contracts.json")
-        if os.path.exists(manifest_file):
-            print("[ABIs] Ethereum ABIs already present.")
-            return
-
-        print("[ABIs] Downloading missing Ethereum ABIs from GitHub...")
-        raw_base = "https://raw.githubusercontent.com/derivexyz/derive-py/main/"
-        req = urllib.request.Request(
-            "https://api.github.com/repos/derivexyz/derive-py/git/trees/main?recursive=1",
-            headers={"User-Agent": "Mozilla/5.0"}
-        )
-        tree = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
-        eth_files = [item["path"] for item in tree.get("tree", []) if item["path"].startswith("derive_py/data/abis/ethereum/")]
-
-        for fpath in eth_files:
-            fname = os.path.basename(fpath)
-            dest = os.path.join(target_dir, fname)
-            url = raw_base + fpath
-            content = urllib.request.urlopen(url, timeout=15).read()
-            with open(dest, "wb") as f:
-                f.write(content)
-        print(f"[ABIs] {len(eth_files)} ABI files installed successfully.")
+        manifest_file = target_dir / "abis" / "ethereum" / "contracts.json"
+        
+        repo_root = Path(__file__).resolve().parent.parent
+        src_data = repo_root / "derive_data"
+        
+        if src_data.exists():
+            print(f"[ABIs] Copying bundled derive_data from {src_data} to {target_dir}...")
+            shutil.copytree(src_data, target_dir, dirs_exist_ok=True)
+            print("[ABIs] Bundled ABIs installed successfully.")
+        else:
+            print("[ABIs Warning] Local derive_data folder not found!")
+            
+        if manifest_file.exists():
+            print(f"[ABIs] Verified: {manifest_file} is present and ready.")
+        else:
+            print(f"[ABIs Warning] contracts.json is still missing at {manifest_file}")
+            
     except Exception as e:
-        print(f"[ABIs Warning] Failed to download ABIs: {e}")
+        print(f"[ABIs Error] Failed to setup ABIs: {e}")
 
 if __name__ == "__main__":
     setup_abis()

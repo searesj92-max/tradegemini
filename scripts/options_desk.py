@@ -150,12 +150,38 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"
         long_inst = f"{currency}-{expiry}-{int(long_strike)}-P"
         
+        # Obter cotacao em tempo real para respeitar rigorosamente a banda de precos (bandwidth) da Derive
+        t_short = api_post("get_ticker", {"instrument_name": short_inst})
+        t_long = api_post("get_ticker", {"instrument_name": long_inst})
+        
+        # Perna vendida (Short Put): preferir Best Bid, senao Mark Price, e respeitar banda [minp, maxp]
+        s_bid = float(t_short.get('b', 0) or 0)
+        s_mark = float(t_short.get('M', 0) or 0)
+        s_min = float(t_short.get('minp', 0) or 0)
+        s_max = float(t_short.get('maxp', 999999) or 999999)
+        
+        target_s = s_bid if s_bid > 0 else (s_mark if s_mark > 0 else float(short_price or 0))
+        if s_min > 0:
+            target_s = max(s_min, min(s_max, target_s))
+        target_s = round(target_s, 1)
+        
+        # Perna comprada (Long Put): preferir Best Ask, senao Mark Price, e respeitar banda [minp, maxp]
+        l_ask = float(t_long.get('a', 0) or 0)
+        l_mark = float(t_long.get('M', 0) or 0)
+        l_min = float(t_long.get('minp', 0) or 0)
+        l_max = float(t_long.get('maxp', 999999) or 999999)
+        
+        target_l = l_ask if l_ask > 0 else (l_mark if l_mark > 0 else float(long_price or 0))
+        if l_min > 0:
+            target_l = max(l_min, min(l_max, target_l))
+        target_l = round(target_l, 1)
+        
         # 1. Sell Short Put (receive credit)
         res_short = client.orders.create(
             amount=Decimal(str(contracts)),
             direction=Direction.sell,
             instrument_name=short_inst,
-            limit_price=Decimal(str(short_price)),
+            limit_price=Decimal(str(target_s)),
             order_type=OrderType.limit
         )
         
@@ -164,7 +190,7 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             amount=Decimal(str(contracts)),
             direction=Direction.buy,
             instrument_name=long_inst,
-            limit_price=Decimal(str(long_price)),
+            limit_price=Decimal(str(target_l)),
             order_type=OrderType.limit
         )
         
@@ -172,7 +198,7 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             'success': True,
             'short_order_id': getattr(res_short, 'order_id', 'submitted'),
             'long_order_id': getattr(res_long, 'order_id', 'submitted'),
-            'message': f"Ordens de trava enviadas à Derive! Vendida: {short_inst} @ ${short_price} | Comprada: {long_inst} @ ${long_price}"
+            'message': f"Ordens de trava enviadas com sucesso à Derive! Vendida: {short_inst} @ ${target_s} | Comprada: {long_inst} @ ${target_l}"
         }
     except Exception as e:
         return {'success': False, 'error': f"Erro ao enviar ordem na Derive: {str(e)}"}

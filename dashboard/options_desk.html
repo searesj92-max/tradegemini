@@ -138,7 +138,7 @@
             </div>
             <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
               <option value="ALL">Todos os Perfis</option>
-              <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico (Ultra-Seguro &gt;15% Folga)</option>
+              <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico (&gt;25% a 40% de Folga)</option>
               <option value="CONSERVATIVE">🟢 Alta Probabilidade (Conservador)</option>
               <option value="BALANCED">🟡 Equilibrado (Risco x Retorno)</option>
               <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
@@ -476,6 +476,12 @@
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
         const cushionColor = o.cushion_pct >= 0 ? 'text-emerald-400' : 'text-amber-400';
 
+        const targetMarg = 240; // use ~82% of $292 safely
+        const rawContr = targetMarg / (o.margin || 1);
+        const suggestedContr = o.currency === 'BTC' ? Math.max(0.01, Math.round(rawContr * 100) / 100) : Math.max(0.05, Math.round(rawContr * 10) / 10);
+        const userMarg = (o.margin * suggestedContr).toFixed(1);
+        const userCred = (o.net_credit * suggestedContr).toFixed(1);
+
         return `
           <div class="card-glass rounded-2xl p-5 border border-slate-800 card-glow transition space-y-4 flex flex-col justify-between">
             <div>
@@ -528,12 +534,24 @@
                 </span>
                 <p class="text-slate-400 leading-relaxed">${o.thesis}</p>
               </div>
+
+              <!-- Capital Sizing Recommendation for $292 Balance -->
+              <div class="mt-2.5 py-2 px-3 rounded-xl bg-indigo-950/40 border border-indigo-700/50 text-[11px] flex flex-wrap justify-between items-center gap-1.5 text-slate-300">
+                <div class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-calculator text-indigo-400"></i>
+                  <span>Para seu saldo (~$292 USDC): opere <b>${suggestedContr} ${o.currency}</b></span>
+                </div>
+                <div>
+                  <span class="text-slate-400">Margem: <b class="text-white mono">$${userMarg}</b></span> | 
+                  <span class="text-emerald-400">Crédito: <b class="mono">+$${userCred}</b></span>
+                </div>
+              </div>
             </div>
 
             <!-- Action Button -->
             <div class="pt-2 flex justify-between items-center text-xs">
               <span class="text-slate-500">Theta Diário: <b class="text-slate-300">+$${o.net_theta_daily.toFixed(1)}/dia</b></span>
-              <button onclick="adoptOpportunity('${o.currency}', '${o.expiry}', ${o.short_strike}, ${o.long_strike}, ${o.net_credit})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition shadow-md shadow-indigo-600/25 flex items-center gap-1.5">
+              <button onclick="adoptOpportunity('${o.currency}', '${o.expiry}', ${o.short_strike}, ${o.long_strike}, ${o.net_credit}, ${suggestedContr})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition shadow-md shadow-indigo-600/25 flex items-center gap-1.5">
                 <i class="fa-solid fa-plus-circle"></i>
                 <span>Montar Esta Trava</span>
               </button>
@@ -926,13 +944,13 @@
       }
     }
 
-    function adoptOpportunity(curr, exp, shortS, longS, credit) {
+    function adoptOpportunity(curr, exp, shortS, longS, credit, suggestedContr) {
       document.getElementById('inp-currency').value = curr;
       document.getElementById('inp-expiry').value = exp;
       document.getElementById('inp-short').value = shortS;
       document.getElementById('inp-long').value = longS;
       document.getElementById('inp-credit').value = credit;
-      document.getElementById('inp-contracts').value = curr === 'BTC' ? '0.02' : '0.5';
+      document.getElementById('inp-contracts').value = suggestedContr || (curr === 'BTC' ? '0.02' : '0.5');
       openNewModal();
     }
 

@@ -241,12 +241,12 @@ def scan_decision_matrix(currency="BTC"):
     
     matrix = []
     
-    # Analyze expiries between 7 days and 60 days
+    # Analyze expiries between 5 days and 200 days
     for exp in expiries:
         try:
             exp_date = datetime.datetime.strptime(exp, "%Y%m%d").date()
             dte = (exp_date - today).days
-            if dte < 5 or dte > 60:
+            if dte < 5 or dte > 200:
                 continue
         except:
             continue
@@ -264,7 +264,7 @@ def scan_decision_matrix(currency="BTC"):
                     delta = float(pricing.get('d', 0))
                     theta = float(pricing.get('t', 0))
                     iv = float(pricing.get('i', 0))
-                    if bid > 0 and ask > 0:
+                    if bid > 0 or ask > 0:
                         puts[strike] = {
                             'bid': bid, 'ask': ask, 'mark': mark,
                             'delta': delta, 'theta': theta, 'iv': iv,
@@ -275,23 +275,29 @@ def scan_decision_matrix(currency="BTC"):
                     
         strikes = sorted(list(puts.keys()))
         width_min = 1000 if currency == "BTC" else 50
-        width_max = 15000 if currency == "BTC" else 800
+        width_max = 20000 if currency == "BTC" else 1000
         
         for s_sell in strikes:
             p_sell = puts[s_sell]
-            # Broaden deltas to include deep OTM strikes (e.g. 50k, 60k) up to deep ITM
-            if not (-0.85 <= p_sell['delta'] <= -0.015):
+            if p_sell['bid'] <= 0:
+                continue
+            # Broaden deltas to include deep OTM strikes (e.g. 40k, 50k, 55k, 60k) up to deep ITM
+            if not (-0.85 <= p_sell['delta'] <= -0.005):
                 continue
                 
             for s_buy in strikes:
+                if s_buy >= s_sell:
+                    continue
+                p_buy = puts[s_buy]
+                if p_buy['ask'] <= 0:
+                    continue
                 width = s_sell - s_buy
                 if width_min <= width <= width_max:
-                    p_buy = puts[s_buy]
                     net_credit = p_sell['bid'] - p_buy['ask']
                     if net_credit > 0 and net_credit < width:
                         margin = width - net_credit
                         rom = (net_credit / margin) * 100
-                        if rom < 0.6:
+                        if rom < 0.5:
                             continue
                             
                         # 1. Breakeven & Safety Cushion
@@ -307,17 +313,17 @@ def scan_decision_matrix(currency="BTC"):
                         theta_yield_daily = (net_theta / margin) * 100 if margin > 0 else 0
                         
                         # 4. Profile Categorization
-                        # Ultra-Conservative (Fundo Histórico / Deep OTM): Cushion >= 14%, PoP >= 84%
-                        if cushion_pct >= 14.0 and pop >= 84.0:
+                        # Ultra-Conservative (Fundo Histórico / Deep OTM): Cushion >= 18%, PoP >= 84%
+                        if cushion_pct >= 18.0 and pop >= 84.0:
                             profile = "ULTRA_CONSERVATIVE"
-                            profile_label = "🛡️ Fundo Histórico (Ultra-Seguro)"
+                            profile_label = "🛡️ Fundo Histórico (>20% a 40% Folga)"
                             thesis = (
                                 f"Máxima proteção de patrimônio: o {currency} precisa desabar mais de {cushion_pct:+.1f}% "
                                 f"(abaixo de ${breakeven:,.0f}) para começar a gerar qualquer perda no vencimento. "
                                 f"PoP de {pop}% com strike de venda em ${s_sell:,.0f} em suporte profundo/fundo histórico. "
                                 f"Risco 100% delimitado na margem de ${margin:,.0f}."
                             )
-                            conviction = min(100.0, max(50.0, (pop * 0.55) + (cushion_pct * 1.5) + (rom * 2.5)))
+                            conviction = min(100.0, max(60.0, (pop * 0.45) + (cushion_pct * 1.5) + (rom * 2.0)))
                         # Elídio Growth: RoM > 85%, ITM/ATM, high credit upfront to fund future rolls
                         elif rom >= 85.0 and p_sell['delta'] <= -0.55:
                             profile = "ELIDIO_GROWTH"
@@ -376,8 +382,8 @@ def scan_decision_matrix(currency="BTC"):
     # Sort by conviction score
     matrix.sort(key=lambda x: x['conviction'], reverse=True)
     
-    # Highlight top recommendations per profile
-    top_ultra = [m for m in matrix if m['profile'] == 'ULTRA_CONSERVATIVE'][:5]
+    # Highlight top recommendations per profile (ultra sorted by cushion to highlight >30% safety)
+    top_ultra = sorted([m for m in matrix if m['profile'] == 'ULTRA_CONSERVATIVE'], key=lambda x: x['cushion_pct'], reverse=True)[:8]
     top_elidio = [m for m in matrix if m['profile'] == 'ELIDIO_GROWTH'][:5]
     top_conservative = [m for m in matrix if m['profile'] == 'CONSERVATIVE'][:5]
     top_balanced = [m for m in matrix if m['profile'] == 'BALANCED'][:5]

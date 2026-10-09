@@ -138,9 +138,10 @@
             </div>
             <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
               <option value="ALL">Todos os Perfis</option>
-              <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
+              <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico (Ultra-Seguro &gt;15% Folga)</option>
               <option value="CONSERVATIVE">🟢 Alta Probabilidade (Conservador)</option>
               <option value="BALANCED">🟡 Equilibrado (Risco x Retorno)</option>
+              <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
             </select>
           </div>
         </div>
@@ -461,7 +462,10 @@
       container.innerHTML = opps.slice(0, 12).map(o => {
         let badgeBg = "bg-purple-900/30 text-purple-300 border-purple-500/40";
         let barColor = "from-purple-500 to-indigo-500";
-        if (o.profile === 'CONSERVATIVE') {
+        if (o.profile === 'ULTRA_CONSERVATIVE') {
+          badgeBg = "bg-cyan-950/80 text-cyan-300 border-cyan-400/60 shadow-sm shadow-cyan-500/10";
+          barColor = "from-cyan-500 to-blue-500";
+        } else if (o.profile === 'CONSERVATIVE') {
           badgeBg = "bg-emerald-900/30 text-emerald-300 border-emerald-500/40";
           barColor = "from-emerald-500 to-teal-500";
         } else if (o.profile === 'BALANCED') {

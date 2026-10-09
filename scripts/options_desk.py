@@ -275,12 +275,12 @@ def scan_decision_matrix(currency="BTC"):
                     
         strikes = sorted(list(puts.keys()))
         width_min = 1000 if currency == "BTC" else 50
-        width_max = 6000 if currency == "BTC" else 400
+        width_max = 15000 if currency == "BTC" else 800
         
         for s_sell in strikes:
             p_sell = puts[s_sell]
-            # Focus on deltas between -0.20 and -0.85
-            if not (-0.85 <= p_sell['delta'] <= -0.20):
+            # Broaden deltas to include deep OTM strikes (e.g. 50k, 60k) up to deep ITM
+            if not (-0.85 <= p_sell['delta'] <= -0.015):
                 continue
                 
             for s_buy in strikes:
@@ -291,7 +291,7 @@ def scan_decision_matrix(currency="BTC"):
                     if net_credit > 0 and net_credit < width:
                         margin = width - net_credit
                         rom = (net_credit / margin) * 100
-                        if rom < 15.0:
+                        if rom < 0.6:
                             continue
                             
                         # 1. Breakeven & Safety Cushion
@@ -307,8 +307,19 @@ def scan_decision_matrix(currency="BTC"):
                         theta_yield_daily = (net_theta / margin) * 100 if margin > 0 else 0
                         
                         # 4. Profile Categorization
-                        # Elídio Growth: RoM > 90%, ITM/ATM, high credit upfront to fund future rolls
-                        if rom >= 85.0 and p_sell['delta'] <= -0.55:
+                        # Ultra-Conservative (Fundo Histórico / Deep OTM): Cushion >= 14%, PoP >= 84%
+                        if cushion_pct >= 14.0 and pop >= 84.0:
+                            profile = "ULTRA_CONSERVATIVE"
+                            profile_label = "🛡️ Fundo Histórico (Ultra-Seguro)"
+                            thesis = (
+                                f"Máxima proteção de patrimônio: o {currency} precisa desabar mais de {cushion_pct:+.1f}% "
+                                f"(abaixo de ${breakeven:,.0f}) para começar a gerar qualquer perda no vencimento. "
+                                f"PoP de {pop}% com strike de venda em ${s_sell:,.0f} em suporte profundo/fundo histórico. "
+                                f"Risco 100% delimitado na margem de ${margin:,.0f}."
+                            )
+                            conviction = min(100.0, max(50.0, (pop * 0.55) + (cushion_pct * 1.5) + (rom * 2.5)))
+                        # Elídio Growth: RoM > 85%, ITM/ATM, high credit upfront to fund future rolls
+                        elif rom >= 85.0 and p_sell['delta'] <= -0.55:
                             profile = "ELIDIO_GROWTH"
                             profile_label = "🟣 Modelo Elídio (Crédito Gordo)"
                             thesis = (
@@ -316,6 +327,7 @@ def scan_decision_matrix(currency="BTC"):
                                 f"Gera colchão financeiro suficiente para bancar até 3 a 4 meses de rolagens "
                                 f"caso o {currency} atrase para romper ${s_sell:,.0f}. Risco de margem travado em ${margin:,.0f}."
                             )
+                            conviction = min(100.0, max(10.0, (pop * 0.45) + (min(200.0, rom) * 0.35) + (cushion_pct * 3.0) + (p_sell['iv'] * 20.0)))
                         # Conservative: PoP >= 65%, positive cushion
                         elif pop >= 65.0 and cushion_pct >= 2.0:
                             profile = "CONSERVATIVE"
@@ -324,6 +336,7 @@ def scan_decision_matrix(currency="BTC"):
                                 f"Margem de segurança elevada: o {currency} pode cair até {cushion_pct:+.1f}% e a trava "
                                 f"ainda encerra com lucro máximo. PoP de {pop}% e breakeven protegido em ${breakeven:,.0f}."
                             )
+                            conviction = min(100.0, max(10.0, (pop * 0.45) + (min(200.0, rom) * 0.35) + (cushion_pct * 3.0) + (p_sell['iv'] * 20.0)))
                         else:
                             profile = "BALANCED"
                             profile_label = "🟡 Equilibrado (Risco x Retorno)"
@@ -331,11 +344,8 @@ def scan_decision_matrix(currency="BTC"):
                                 f"Ponto ótimo de equilíbrio: captura ${net_credit:,.0f} (RoM de {rom:.1f}%) "
                                 f"com PoP de {pop}%. Decaimento de Theta rende {theta_yield_daily:.2f}% ao dia sobre a margem."
                             )
+                            conviction = min(100.0, max(10.0, (pop * 0.45) + (min(200.0, rom) * 0.35) + (cushion_pct * 3.0) + (p_sell['iv'] * 20.0)))
                             
-                        # Conviction Score (0 to 100)
-                        # Balances RoM, Cushion, PoP and IV
-                        conviction = min(100.0, max(10.0, (pop * 0.45) + (min(200.0, rom) * 0.35) + (cushion_pct * 3.0) + (p_sell['iv'] * 20.0)))
-                        
                         matrix.append({
                             'currency': currency,
                             'expiry': exp,
@@ -367,6 +377,7 @@ def scan_decision_matrix(currency="BTC"):
     matrix.sort(key=lambda x: x['conviction'], reverse=True)
     
     # Highlight top recommendations per profile
+    top_ultra = [m for m in matrix if m['profile'] == 'ULTRA_CONSERVATIVE'][:5]
     top_elidio = [m for m in matrix if m['profile'] == 'ELIDIO_GROWTH'][:5]
     top_conservative = [m for m in matrix if m['profile'] == 'CONSERVATIVE'][:5]
     top_balanced = [m for m in matrix if m['profile'] == 'BALANCED'][:5]
@@ -378,11 +389,12 @@ def scan_decision_matrix(currency="BTC"):
         'scanned_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'total_evaluated': len(matrix),
         'top_picks': {
+            'ultra_conservative': top_ultra,
             'elidio': top_elidio,
             'conservative': top_conservative,
             'balanced': top_balanced
         },
-        'all_opportunities': matrix[:40]
+        'all_opportunities': matrix[:60]
     }
 
 # ----------------- Positions Management & Evaluation -----------------
@@ -966,12 +978,22 @@ if __name__ == '__main__':
         print(f" 🧠 MATRIZ DE DECISÃO QUANTITATIVA - {args.matrix}")
         print(f"===============================================================")
         print(f"Spot: ${res['spot_price']:,.2f} | Put Wall: ${res['walls']['put_wall']:,.0f} | Call Wall: ${res['walls']['call_wall']:,.0f}\n")
-        for pick in res['top_picks']['elidio'][:3]:
-            print(f"🟣 {pick['profile_label']} [{pick['expiry_formatted']} - {pick['dte']}d]")
-            print(f"   Venda {pick['short_strike']}P / Compra {pick['long_strike']}P")
-            print(f"   Crédito: ${pick['net_credit']:,.0f} | Margem: ${pick['margin']:,.0f} | RoM: {pick['rom']:.1f}% | PoP: {pick['pop']:.1f}%")
-            print(f"   Breakeven: ${pick['breakeven']:,.0f} (Cushion: {pick['cushion_pct']:+.1f}%)")
-            print(f"   Racional: {pick['thesis']}\n")
+        if res['top_picks'].get('ultra_conservative'):
+            print("🛡️ RECOMENDAÇÃO ULTRA-CONSERVADORA (FUNDO HISTÓRICO / ALTA PROTEÇÃO):")
+            for pick in res['top_picks']['ultra_conservative'][:2]:
+                print(f"  • {pick['profile_label']} [{pick['expiry_formatted']} - {pick['dte']}d]")
+                print(f"    Venda {pick['short_strike']:,.0f}P / Compra {pick['long_strike']:,.0f}P")
+                print(f"    Crédito: +${pick['net_credit']:,.0f} | Margem: ${pick['margin']:,.0f} | RoM: {pick['rom']:.1f}% | PoP: {pick['pop']:.1f}%")
+                print(f"    Breakeven: ${pick['breakeven']:,.0f} (Folga/Cushion: {pick['cushion_pct']:+.1f}% abaixo do spot)")
+                print(f"    Racional: {pick['thesis']}\n")
+                
+        print("🟣 RECOMENDAÇÃO MODELO ELÍDIO (ALTO CRÉDITO INICIAL):")
+        for pick in res['top_picks']['elidio'][:2]:
+            print(f"  • {pick['profile_label']} [{pick['expiry_formatted']} - {pick['dte']}d]")
+            print(f"    Venda {pick['short_strike']:,.0f}P / Compra {pick['long_strike']:,.0f}P")
+            print(f"    Crédito: +${pick['net_credit']:,.0f} | Margem: ${pick['margin']:,.0f} | RoM: {pick['rom']:.1f}% | PoP: {pick['pop']:.1f}%")
+            print(f"    Breakeven: ${pick['breakeven']:,.0f} (Folga/Cushion: {pick['cushion_pct']:+.1f}%)")
+            print(f"    Racional: {pick['thesis']}\n")
     elif args.positions:
         raw = load_positions()
         evaluated = [evaluate_position(p) for p in raw if p.get('status') == 'active']

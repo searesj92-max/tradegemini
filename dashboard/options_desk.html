@@ -400,6 +400,7 @@
       await loadDecisionMatrix();
       await loadPositions();
       setInterval(loadMarket, 15000);
+      setInterval(loadPositions, 30000);
     }
 
     async function refreshAll() {

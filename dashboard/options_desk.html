@@ -693,6 +693,7 @@
                   Vende ${p.short_strike}P / Compra ${p.long_strike}P
                 </span>
                 <span class="text-xs text-slate-400">(${p.contracts} contratos)</span>
+                ${p.is_live_order ? `<span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold px-2 py-0.5 rounded shadow-sm shadow-emerald-500/10">⚡ REAL DERIVE</span>` : `<span class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded">👁️ SIMULADO / DEMO</span>`}
                 ${p.roll_count > 0 ? `<span class="text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-1.5 py-0.5 rounded">Rolada ${p.roll_count}x</span>` : ''}
               </div>
 

@@ -112,11 +112,17 @@ def get_derive_account_info():
             collaterals = sub.state.collaterals
             usdc = next((c for c in collaterals if c.asset_name == 'USDC'), None)
             balance = float(usdc.amount) if usdc else 292.04
+            init_m = float(getattr(sub.state, 'initial_margin', 0.0))
+            sub_val = float(getattr(sub.state, 'subaccount_value', balance))
+            free_m = max(0.0, balance - init_m)
             return {
                 'connected': True,
                 'subaccount_id': sub_id,
                 'wallet': str(config.wallet),
                 'balance_usdc': round(balance, 2),
+                'initial_margin': round(init_m, 2),
+                'subaccount_value': round(sub_val, 2),
+                'free_margin': round(free_m, 2),
                 'margin_type': getattr(sub.state, 'margin_type', 'SM'),
                 'positions_count': len(getattr(sub.state, 'positions', [])),
                 'session_label': 'Ancap (Ativa)',
@@ -129,6 +135,9 @@ def get_derive_account_info():
         'subaccount_id': sub_id,
         'wallet': wallet,
         'balance_usdc': 292.04,
+        'initial_margin': 0.0,
+        'subaccount_value': 292.04,
+        'free_margin': 292.04,
         'margin_type': 'SM',
         'positions_count': 0,
         'session_label': 'Ancap (Ativa)',
@@ -176,15 +185,24 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             target_l = max(l_min, min(l_max, target_l))
         target_l = round(target_l, 1)
         
-        # Validar e ajustar contratos de acordo com o saldo real da subconta
+        # Validar e ajustar contratos de acordo com a Margem Livre Real (Free Margin)
+        import math
         acct = get_derive_account_info()
-        balance_usdc = float(acct.get('balance_usdc', 292.04))
+        free_margin = float(acct.get('free_margin', 292.04))
         spread_width = abs(float(short_strike) - float(long_strike))
         if spread_width > 0:
-            max_safe = round((balance_usdc * 0.88) / spread_width, 2)
-            if max_safe > 0 and contracts > max_safe:
-                print(f"[DERIVE SIZING] Ajustando contratos de {contracts} para {max_safe} para caber no saldo de ${balance_usdc:.2f}")
+            max_safe = math.floor(((free_margin * 0.85) / spread_width) * 100) / 100
+            if max_safe < 0.01:
+                return {'success': False, 'error': f"Margem livre insuficiente (${free_margin:.2f} livres). Mínimo necessário: ${(spread_width * 0.01):.2f} USDC"}
+            if contracts > max_safe:
+                print(f"[DERIVE SIZING] Ajustando contratos de {contracts} para {max_safe} para respeitar a margem livre de ${free_margin:.2f}")
                 contracts = max_safe
+
+        # Pre-Flight Depth Check (Verificar se há liquidez no livro)
+        s_depth = float(t_short.get('B', 0) or 0)
+        l_depth = float(t_long.get('A', 0) or 0)
+        if s_depth < contracts:
+            print(f"[DERIVE PRE-FLIGHT] Atenção: Profundidade de compra na 75k ({s_depth}) é menor que {contracts}. Pode requerer taker parcial.")
 
         # 1. Buy Long Put FIRST (wing hedge - garante o colateral e define a perda máxima antes de vender)
         res_long = client.orders.create(
@@ -199,13 +217,28 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         time.sleep(1.5)
 
         # 2. Sell Short Put SECOND (crédito adiantado - agora totalmente coberta pela perna longa!)
-        res_short = client.orders.create(
-            amount=Decimal(str(contracts)),
-            direction=Direction.sell,
-            instrument_name=short_inst,
-            limit_price=Decimal(str(target_s)),
-            order_type=OrderType.limit
-        )
+        try:
+            res_short = client.orders.create(
+                amount=Decimal(str(contracts)),
+                direction=Direction.sell,
+                instrument_name=short_inst,
+                limit_price=Decimal(str(target_s)),
+                order_type=OrderType.limit
+            )
+        except Exception as e_short:
+            # Auto-Rollback de Emergência: se a venda falhou, desmontar a compra para não deixar perna órfã
+            print(f"[DERIVE ROLLBACK] Venda da perna curta falhou ({e_short}). Executando desarme de segurança da perna longa...")
+            try:
+                client.orders.create(
+                    amount=Decimal(str(contracts)),
+                    direction=Direction.sell,
+                    instrument_name=long_inst,
+                    limit_price=Decimal(str(max(l_min, target_l * 0.95))),
+                    order_type=OrderType.limit
+                )
+                return {'success': False, 'error': f"Falha na perna curta ({e_short}). Perna longa desarmada com sucesso (Rollback 100% concluído)."}
+            except Exception as e_rb:
+                return {'success': False, 'error': f"Falha na perna curta ({e_short}). Perna longa ativa (Rollback manual requerido: {e_rb})"}
         
         return {
             'success': True,
@@ -216,6 +249,80 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         }
     except Exception as e:
         return {'success': False, 'error': f"Erro ao enviar ordem na Derive: {str(e)}"}
+
+def close_derive_spread_order(currency, expiry, short_strike, long_strike, contracts):
+    """
+    Encerra uma trava de alta na Derive de forma segura e atômica on-chain:
+    1. Recompra a Short Put (Direction.buy) no Best Ask para liquidar a obrigação.
+    2. Vende a Long Put (Direction.sell) no Best Bid para recolher o valor residual da proteção.
+    """
+    try:
+        ensure_derive_data()
+        from pathlib import Path
+        from decimal import Decimal
+        from derive_py._clients.rest.http.client import load_client_config, HTTPClient
+        from derive_py.data_types import Direction, OrderType
+        
+        env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
+        config = load_client_config(env_file=env_p)
+        client = HTTPClient(config)
+        
+        short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"
+        long_inst = f"{currency}-{expiry}-{int(long_strike)}-P"
+        
+        t_short = api_post("get_ticker", {"instrument_name": short_inst})
+        t_long = api_post("get_ticker", {"instrument_name": long_inst})
+        
+        # 1. Recompra da Perna Curta (Short Put): preferir Best Ask, clamping a [minp, maxp]
+        s_ask = float(t_short.get('a', 0) or 0)
+        s_mark = float(t_short.get('M', 0) or 0)
+        s_min = float(t_short.get('minp', 0) or 0)
+        s_max = float(t_short.get('maxp', 999999) or 999999)
+        close_short_px = s_ask if s_ask > 0 else s_mark
+        if s_min > 0:
+            close_short_px = max(s_min, min(s_max, close_short_px))
+        close_short_px = round(close_short_px, 1)
+        
+        # 2. Venda da Perna Longa (Long Put): preferir Best Bid, clamping a [minp, maxp]
+        l_bid = float(t_long.get('b', 0) or 0)
+        l_mark = float(t_long.get('M', 0) or 0)
+        l_min = float(t_long.get('minp', 0) or 0)
+        l_max = float(t_long.get('maxp', 999999) or 999999)
+        close_long_px = l_bid if l_bid > 0 else l_mark
+        if l_min > 0:
+            close_long_px = max(l_min, min(l_max, close_long_px))
+        close_long_px = round(close_long_px, 1)
+        
+        # Etapa 1: Recomprar a Short Put (eliminar obrigação)
+        res_short = client.orders.create(
+            amount=Decimal(str(contracts)),
+            direction=Direction.buy,
+            instrument_name=short_inst,
+            limit_price=Decimal(str(close_short_px)),
+            order_type=OrderType.limit
+        )
+        
+        time.sleep(1.5)
+        
+        # Etapa 2: Vender a Long Put (recolher valor da proteção)
+        res_long = client.orders.create(
+            amount=Decimal(str(contracts)),
+            direction=Direction.sell,
+            instrument_name=long_inst,
+            limit_price=Decimal(str(close_long_px)),
+            order_type=OrderType.limit
+        )
+        
+        cost_to_close_total = (close_short_px - close_long_px) * contracts
+        return {
+            'success': True,
+            'cost_to_close_total': round(cost_to_close_total, 2),
+            'short_close_order_id': getattr(res_short, 'order_id', 'submitted'),
+            'long_close_order_id': getattr(res_long, 'order_id', 'submitted'),
+            'message': f"Trava encerrada com sucesso na Derive! Recompra {short_inst} @ ${close_short_px} | Venda {long_inst} @ ${close_long_px}"
+        }
+    except Exception as e:
+        return {'success': False, 'error': f"Erro ao encerrar trava na Derive: {str(e)}"}
 
 def api_post(endpoint, payload):
     url = f"{DERIVE_API_BASE}/{endpoint}"
@@ -708,6 +815,43 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
             msg = f"Rolagem automática abortada: Custo líquido (${target_option['net_roll_cost']:.2f}) excede o limite de ${max_cost_limit:.2f} ({pos.get('auto_roll_max_cost_pct')}%)"
             log_audit("AUTO_ROLL_ABORTED", {'pos_id': pos_id, 'reason': msg})
             return {'success': False, 'error': msg}
+
+    is_live = bool(pos.get('is_live_order', False))
+    close_live_res = None
+    open_live_res = None
+    
+    # Execução on-chain se for uma ordem real na Derive
+    if is_live:
+        print(f"[DERIVE ROLL ON-CHAIN] Iniciando rolagem da posição real {pos_id}...")
+        # 1. Fechar a trava atual (recompra Short Put + venda Long Put)
+        close_live_res = close_derive_spread_order(
+            currency=pos['currency'],
+            expiry=str(pos['expiry']),
+            short_strike=float(pos['short_strike']),
+            long_strike=float(pos['long_strike']),
+            contracts=float(pos['contracts'])
+        )
+        if not close_live_res.get('success'):
+            return {'success': False, 'error': f"Falha ao fechar trava antiga na Derive para rolagem: {close_live_res.get('error')}"}
+            
+        time.sleep(2.0)
+        
+        # 2. Abrir a nova trava no vencimento alvo
+        open_live_res = place_derive_spread_order(
+            currency=pos['currency'],
+            expiry=str(target_expiry),
+            short_strike=float(pos['short_strike']),
+            long_strike=float(pos['long_strike']),
+            contracts=float(pos['contracts']),
+            short_price=float(target_option.get('bid_new_short', 0)),
+            long_price=float(target_option.get('ask_new_long', 0))
+        )
+        if not open_live_res.get('success'):
+            # Trava antiga fechada, mas nova falhou: salvar estado como fechado para segurança
+            positions = [p for p in positions if p.get('id') != pos_id]
+            save_positions(positions)
+            log_audit("ROLL_OPEN_FAILED", {'pos_id': pos_id, 'close_res': close_live_res, 'open_error': open_live_res.get('error')})
+            return {'success': False, 'error': f"Trava antiga encerrada com sucesso na Derive, porém abertura da nova falhou: {open_live_res.get('error')}. Margem e capital preservados na subconta."}
             
     # Create new position
     new_pos = {
@@ -726,6 +870,9 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
         'auto_roll_enabled': pos.get('auto_roll_enabled', False),
         'auto_roll_trigger_dte': pos.get('auto_roll_trigger_dte', 3),
         'auto_roll_max_cost_pct': pos.get('auto_roll_max_cost_pct', 35.0),
+        'is_live_order': is_live,
+        'live_details': open_live_res,
+        'close_old_details': close_live_res,
         'roll_count': pos.get('roll_count', 0) + 1,
         'rolled_from': pos.get('expiry')
     }
@@ -739,12 +886,13 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
         'to_expiry': target_expiry,
         'net_roll_cost': target_option['net_roll_cost'],
         'remaining_profit': target_option['remaining_profit'],
-        'is_automated': is_automated
+        'is_automated': is_automated,
+        'is_live': is_live
     }
     log_audit("ROLL_EXECUTED", audit_data)
     
     tg_msg = (
-        f"🔄 <b>ROLAGEM DE TRAVA {'AUTOMÁTICA 🤖' if is_automated else 'MANUAL 👤'}</b>\n\n"
+        f"🔄 <b>ROLAGEM DE TRAVA {'AUTOMÁTICA 🤖' if is_automated else 'MANUAL 👤'} ({'ON-CHAIN DERIVE ⚡' if is_live else 'SIMULADA'})</b>\n\n"
         f"• Ativo: {new_pos['currency']}\n"
         f"• Strikes: {new_pos['short_strike']}P / {new_pos['long_strike']}P\n"
         f"• Novo Vencimento: {target_option['target_expiry_formatted']} ({target_option['target_dte']}d)\n"
@@ -756,7 +904,7 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
     
     return {
         'success': True,
-        'message': f"Rolagem executada ({'Automática' if is_automated else 'Manual'}) para {target_option['target_expiry_formatted']}! Custo líquido: ${target_option['net_roll_cost']:,.2f}. Lucro preservado: ${target_option['remaining_profit']:,.2f}.",
+        'message': f"Rolagem executada ({'Automática' if is_automated else 'Manual'}{' on-chain Derive' if is_live else ''}) para {target_option['target_expiry_formatted']}! Custo líquido: ${target_option['net_roll_cost']:,.2f}. Lucro preservado: ${target_option['remaining_profit']:,.2f}.",
         'new_position': new_pos
     }
 
@@ -777,13 +925,31 @@ def auto_roll_worker():
                     
                     # Trigger condition: DTE <= trigger_dte AND spot < short_strike
                     if dte <= trigger_dte and spot < s_sell:
-                        print(f"[AUTO-ROLL TRIGGERED] Posição {p['id']} atingiu gatilho (DTE: {dte}d <= {trigger_dte}d | Spot: ${spot:,.0f} < Strike: ${s_sell:,.0f})")
-                        sim = simulate_roll(p['id'])
-                        options = sim.get('roll_options', [])
-                        if options:
-                            best_target = options[0]['target_expiry'] # First forward expiry (next monthly)
-                            res = execute_roll(p['id'], best_target, is_automated=True)
-                            print(f"[AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
+                        is_live = bool(p.get('is_live_order', False))
+                        if is_live:
+                            # Regra Institucional de Segurança: Ordens reais requerem confirmação humana antes de envio on-chain
+                            alert_key = f"alert_roll_notified_{p['id']}_{dte}"
+                            if not p.get(alert_key):
+                                p[alert_key] = True
+                                save_positions(positions)
+                                tg_msg = (
+                                    f"🚨 <b>ALERTA CRÍTICO DE ROLAGEM URGENTE (DERIVE REAL)</b> 🚨\n\n"
+                                    f"A trava real <code>{p['id']}</code> atingiu o gatilho de defesa!\n"
+                                    f"• DTE Atual: <b>{dte} dias</b> (Gatilho: <= {trigger_dte}d)\n"
+                                    f"• Spot BTC: <b>${spot:,.0f}</b> abaixo do Strike Vendido <b>${s_sell:,.0f}</b>\n"
+                                    f"• Ação Necessária: Acesse o painel para autorizar a Rolagem de Proteção imediata!\n\n"
+                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel e Autorizar Rolagem</a>"
+                                )
+                                send_telegram_alert(tg_msg)
+                                log_audit("AUTO_ROLL_HUMAN_APPROVAL_REQUESTED", {'pos_id': p['id'], 'dte': dte, 'spot': spot})
+                        else:
+                            print(f"[AUTO-ROLL TRIGGERED] Posição simulada {p['id']} atingiu gatilho (DTE: {dte}d <= {trigger_dte}d | Spot: ${spot:,.0f} < Strike: ${s_sell:,.0f})")
+                            sim = simulate_roll(p['id'])
+                            options = sim.get('roll_options', [])
+                            if options:
+                                best_target = options[0]['target_expiry'] # First forward expiry (next monthly)
+                                res = execute_roll(p['id'], best_target, is_automated=True)
+                                print(f"[AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
         except Exception as e:
             print(f"[AUTO-ROLL ERROR]: {e}")
 
@@ -967,6 +1133,21 @@ class DeskHandler(BaseHTTPRequestHandler):
             positions = load_positions()
             pos = next((p for p in positions if p.get('id') == pos_id), None)
             if pos:
+                is_live = bool(pos.get('is_live_order', False))
+                close_res = None
+                if is_live:
+                    print(f"[DERIVE CLOSE ON-CHAIN] Executando encerramento real da trava {pos_id} na Derive...")
+                    close_res = close_derive_spread_order(
+                        currency=pos.get('currency', 'BTC'),
+                        expiry=str(pos.get('expiry')),
+                        short_strike=float(pos.get('short_strike')),
+                        long_strike=float(pos.get('long_strike')),
+                        contracts=float(pos.get('contracts', 0.05))
+                    )
+                    if not close_res.get('success'):
+                        self.send_json({'success': False, 'error': f"Falha ao encerrar ordem real na Derive: {close_res.get('error')}"})
+                        return
+
                 eval_p = evaluate_position(pos)
                 positions = [p for p in positions if p.get('id') != pos_id]
                 save_positions(positions)
@@ -974,23 +1155,27 @@ class DeskHandler(BaseHTTPRequestHandler):
                     'pos_id': pos_id,
                     'realized_pnl': eval_p.get('current_pnl_total', 0),
                     'profit_captured_pct': eval_p.get('profit_captured_pct', 0),
-                    'initial_credit': eval_p.get('initial_credit_total', 0)
+                    'initial_credit': eval_p.get('initial_credit_total', 0),
+                    'is_live': is_live,
+                    'close_details': close_res
                 }
                 log_audit("POSITION_EARLY_CLOSED", audit_info)
                 
                 tg_msg = (
-                    f"🎯 <b>TRAVA ENCERRADA ANTECIPADAMENTE!</b>\n\n"
+                    f"🎯 <b>TRAVA ENCERRADA ANTECIPADAMENTE! ({'ON-CHAIN DERIVE ⚡' if is_live else 'MODO MONITOR'})</b>\n\n"
                     f"• Posição: {pos_id}\n"
                     f"• Lucro Líquido Embolsado: <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC</b>\n"
-                    f"• % do Crédito Capturado: {eval_p.get('profit_captured_pct', 0):.1f}%\n\n"
+                    f"• % do Crédito Capturado: {eval_p.get('profit_captured_pct', 0):.1f}%\n"
+                    f"{('• Execução On-Chain: Recompra Short + Venda Long concluídas!' if is_live else '')}\n\n"
                     f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Options Desk</a>"
                 )
                 send_telegram_alert(tg_msg)
                 
                 self.send_json({
                     'success': True,
-                    'message': f"Posição encerrada com sucesso! Lucro líquido embolsado: ${eval_p.get('current_pnl_total', 0):,.2f} ({eval_p.get('profit_captured_pct', 0):.1f}% do crédito inicial).",
-                    'pnl': eval_p.get('current_pnl_total', 0)
+                    'message': f"Posição encerrada com sucesso{(' na Derive (on-chain)' if is_live else '')}! Lucro líquido embolsado: ${eval_p.get('current_pnl_total', 0):,.2f} ({eval_p.get('profit_captured_pct', 0):.1f}% do crédito inicial).",
+                    'pnl': eval_p.get('current_pnl_total', 0),
+                    'close_details': close_res
                 })
             else:
                 self.send_json({'success': False, 'error': 'Posição não encontrada'})

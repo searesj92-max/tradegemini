@@ -202,7 +202,23 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         s_depth = float(t_short.get('B', 0) or 0)
         l_depth = float(t_long.get('A', 0) or 0)
         if s_depth < contracts:
-            print(f"[DERIVE PRE-FLIGHT] Atenção: Profundidade de compra na 75k ({s_depth}) é menor que {contracts}. Pode requerer taker parcial.")
+            print(f"[DERIVE PRE-FLIGHT] Atenção: Profundidade de compra no strike ({s_depth}) é menor que {contracts}. Pode requerer taker parcial.")
+
+        # Check 1: Livro Ilíquido (Sem Bid na ponta vendedora ou Sem Ask na ponta compradora)
+        if s_bid <= 0:
+            return {'success': False, 'error': f"Livro ilíquido: não há compradores (Bid zerado) na Derive para a opção vendida {short_inst}. Operação bloqueada para segurança."}
+        if l_ask <= 0:
+            return {'success': False, 'error': f"Livro ilíquido: não há vendedores (Ask zerado) na Derive para a opção comprada {long_inst}. Operação bloqueada para segurança."}
+
+        # Check 2: Trava de Crédito Líquido Real (Anti-Preço Distorcido / Spread Invertido)
+        real_net_credit = target_s - target_l
+        if real_net_credit <= 0:
+            return {'success': False, 'error': f"Preço distorcido no livro: crédito líquido seria nulo ou negativo (${real_net_credit:.2f}). Trava a débito proibida pela estratégia."}
+
+        # Check 3: Trava de Slippage Máximo (Slippage Tolerance de no máximo 25%)
+        expected_credit = float(short_price or 0) - float(long_price or 0)
+        if expected_credit > 0 and real_net_credit < (expected_credit * 0.75):
+            return {'success': False, 'error': f"Slippage excessivo detectado: crédito real do livro (${real_net_credit:.2f}) é inferior a 75% do cotado em tela (${expected_credit:.2f}). Abortado para evitar execução desfavorável."}
 
         # 1. Buy Long Put FIRST (wing hedge - garante o colateral e define a perda máxima antes de vender)
         res_long = client.orders.create(

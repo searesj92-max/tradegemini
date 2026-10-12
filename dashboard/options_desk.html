@@ -525,36 +525,57 @@
       <form id="new-pos-form" onsubmit="submitNewPosition(event)" class="space-y-4">
         <div>
           <label class="text-xs text-slate-400 uppercase font-medium">Ativo</label>
-          <select id="inp-currency" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          <select id="inp-currency" onchange="onModalCurrencyChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
             <option value="BTC">Bitcoin (BTC)</option>
             <option value="ETH">Ethereum (ETH)</option>
           </select>
         </div>
 
         <div>
-          <label class="text-xs text-slate-400 uppercase font-medium">Vencimento (YYYYMMDD, ex: 20261030)</label>
-          <input type="text" id="inp-expiry" required placeholder="20261030" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          <div class="flex justify-between items-center">
+            <label class="text-xs text-slate-400 uppercase font-medium">Vencimento da Derive (com Liquidez)</label>
+            <span id="expiry-liquidity-tag" class="text-[11px] text-emerald-400 font-semibold"></span>
+          </div>
+          <select id="inp-expiry" required onchange="onExpirySelected()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <option value="">Carregando datas do livro de ofertas...</option>
+          </select>
+          <p id="expiry-book-desc" class="text-[11px] text-slate-400 mt-1 italic"></p>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs text-slate-400 uppercase font-medium">Strike Venda (Put)</label>
-            <input type="number" id="inp-short" required placeholder="86000" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <input type="number" id="inp-short" required placeholder="55000" oninput="updateCreditPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
           </div>
           <div>
             <label class="text-xs text-slate-400 uppercase font-medium">Strike Compra (Put)</label>
-            <input type="number" id="inp-long" required placeholder="82000" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <input type="number" id="inp-long" required placeholder="40000" oninput="updateCreditPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="text-xs text-slate-400 uppercase font-medium">Contratos</label>
-            <input type="number" step="0.01" id="inp-contracts" required value="0.2" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <label class="text-xs text-slate-400 uppercase font-medium">Contratos (Fração BTC)</label>
+            <input type="number" step="0.01" id="inp-contracts" required value="0.2" oninput="updateCreditPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
           </div>
           <div>
             <label class="text-xs text-slate-400 uppercase font-medium">Crédito Unitário ($)</label>
-            <input type="number" step="0.1" id="inp-credit" required placeholder="2049" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <input type="number" step="0.1" id="inp-credit" required placeholder="350" oninput="updateCreditPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+          </div>
+        </div>
+
+        <!-- Box de Cálculo Imediato e Explicação de Crédito Unitário -->
+        <div class="p-3 bg-emerald-950/40 rounded-xl border border-emerald-500/30 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-300 font-medium">💰 Crédito Total no Bolso:</span>
+            <span id="preview-credit-total" class="text-sm font-bold text-emerald-400">+$70.00 USDC (~R$ 392,00)</span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span>🛡️ Risco Máx (Colateral):</span>
+            <span id="preview-margin-total" class="font-semibold text-slate-300">~$2,930.00 USDC</span>
+          </div>
+          <div class="text-[10px] text-slate-400 pt-1 border-t border-emerald-500/20 leading-tight">
+            ℹ️ <b>Crédito Unitário</b> é o prêmio cotado por 1 BTC cheio. O dinheiro real que entra na sua conta é: <span class="text-emerald-300 font-mono">Contratos × Crédito Unitário</span>.
           </div>
         </div>
 
@@ -620,6 +641,7 @@
       await loadMarket();
       await loadDecisionMatrix();
       await loadPositions();
+      loadModalExpiries('BTC');
       setInterval(loadMarket, 15000);
       setInterval(loadPositions, 30000);
     }
@@ -1284,17 +1306,99 @@
       }
     }
 
-    function adoptOpportunity(curr, exp, shortS, longS, credit, suggestedContr) {
+    let expiriesCache = {};
+
+    async function loadModalExpiries(curr = 'BTC', preselect = '') {
+      const select = document.getElementById('inp-expiry');
+      if (!select) return;
+      try {
+        if (!expiriesCache[curr]) {
+          const res = await fetch(`/api/expiries?currency=${curr}`);
+          const data = await res.json();
+          expiriesCache[curr] = data;
+        }
+        const data = expiriesCache[curr];
+        const list = data.expiries || [];
+        select.innerHTML = '';
+        list.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.expiry;
+          opt.textContent = `${item.date_formatted} (${item.dte}d) — ${item.badge} [${item.total_oi} BTC OI]`;
+          select.appendChild(opt);
+        });
+
+        if (preselect && list.some(x => x.expiry === preselect)) {
+          select.value = preselect;
+        } else if (data.recommended_expiry) {
+          select.value = data.recommended_expiry;
+        }
+        onExpirySelected();
+      } catch (err) {
+        console.error("Erro ao carregar vencimentos:", err);
+      }
+    }
+
+    function onExpirySelected() {
+      const curr = document.getElementById('inp-currency').value;
+      const select = document.getElementById('inp-expiry');
+      const val = select.value;
+      const tag = document.getElementById('expiry-liquidity-tag');
+      const desc = document.getElementById('expiry-book-desc');
+      if (!expiriesCache[curr] || !expiriesCache[curr].expiries) return;
+
+      const found = expiriesCache[curr].expiries.find(x => x.expiry === val);
+      if (found) {
+        if (tag) tag.textContent = `${found.badge} (${found.total_oi} BTC)`;
+        if (desc) desc.textContent = `📅 Vencimento ${found.date_formatted} (${found.dte} dias) • Livro: ${found.puts_with_bid} strikes de Put com compradores ativos na Derive.`;
+      }
+    }
+
+    async function onModalCurrencyChange() {
+      const curr = document.getElementById('inp-currency').value;
+      await loadModalExpiries(curr);
+      updateCreditPreview();
+    }
+
+    function updateCreditPreview() {
+      const shortStrike = parseFloat(document.getElementById('inp-short').value) || 0;
+      const longStrike = parseFloat(document.getElementById('inp-long').value) || 0;
+      const contracts = parseFloat(document.getElementById('inp-contracts').value) || 0;
+      const credit = parseFloat(document.getElementById('inp-credit').value) || 0;
+
+      const totalCredit = contracts * credit;
+      const totalCreditBRL = totalCredit * 5.60;
+      const spreadWidth = Math.max(0, shortStrike - longStrike);
+      const marginReq = Math.max(0, (spreadWidth - credit) * contracts);
+
+      const elCredit = document.getElementById('preview-credit-total');
+      const elMargin = document.getElementById('preview-margin-total');
+
+      if (elCredit) {
+        elCredit.textContent = `+$${totalCredit.toFixed(2)} USDC (~R$ ${totalCreditBRL.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})})`;
+      }
+      if (elMargin) {
+        elMargin.textContent = `~$${marginReq.toFixed(2)} USDC`;
+      }
+    }
+
+    async function adoptOpportunity(curr, exp, shortS, longS, credit, suggestedContr) {
       document.getElementById('inp-currency').value = curr;
-      document.getElementById('inp-expiry').value = exp;
+      await loadModalExpiries(curr, exp);
       document.getElementById('inp-short').value = shortS;
       document.getElementById('inp-long').value = longS;
       document.getElementById('inp-credit').value = credit;
       document.getElementById('inp-contracts').value = suggestedContr || (curr === 'BTC' ? '0.02' : '0.5');
+      updateCreditPreview();
       openNewModal();
     }
 
-    function openNewModal() {
+    async function openNewModal() {
+      const curr = document.getElementById('inp-currency').value;
+      const select = document.getElementById('inp-expiry');
+      if (select && select.children.length <= 1) {
+        await loadModalExpiries(curr);
+      }
+      updateCreditPreview();
       document.getElementById('new-pos-modal').classList.remove('hidden');
     }
 

@@ -390,6 +390,82 @@ def get_tickers_for_expiry(currency, expiry):
         return res['tickers']
     return res if isinstance(res, dict) else {}
 
+_EXPIRIES_SUMMARY_CACHE = {}
+
+def get_liquid_expiries_summary(currency="BTC"):
+    now = time.time()
+    cache_entry = _EXPIRIES_SUMMARY_CACHE.get(currency)
+    if cache_entry and (now - cache_entry['ts'] < 120):
+        return cache_entry['data']
+        
+    expiries = get_live_expiries(currency)
+    today = datetime.datetime.now().date()
+    month_names = {
+        '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun',
+        '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez'
+    }
+    summary_list = []
+    for e in expiries:
+        try:
+            ed = datetime.datetime.strptime(e, "%Y%m%d").date()
+            dte = (ed - today).days
+            if dte < 0:
+                continue
+            month_str = month_names.get(e[4:6], e[4:6])
+            date_fmt = f"{e[6:8]}/{month_str}/{e[0:4]}"
+            
+            tickers = get_tickers_for_expiry(currency, e)
+            total_oi = sum(float(v.get('stats', {}).get('oi', 0) or 0) for v in tickers.values())
+            puts_with_bid = sum(1 for k, v in tickers.items() if k.endswith('-P') and float(v.get('b', 0) or 0) > 0)
+            
+            if total_oi >= 1000:
+                tier = "ALTA"
+                badge = "🔥 Alta Liquidez"
+            elif total_oi >= 150:
+                tier = "BOA"
+                badge = "🟢 Boa Liquidez"
+            elif total_oi >= 20:
+                tier = "MODERADA"
+                badge = "🟡 Moderada"
+            else:
+                tier = "BAIXA"
+                badge = "⚪ Baixa"
+                
+            label = f"{date_fmt} ({dte}d) — {badge} [{total_oi:,.0f} BTC OI]"
+            
+            # Principais strikes de Put com compradores (bid > 0)
+            puts = []
+            for k, v in tickers.items():
+                if k.endswith('-P'):
+                    try:
+                        s = float(k.split('-')[2])
+                        bid = float(v.get('b', 0) or 0)
+                        ask = float(v.get('a', 0) or 0)
+                        oi = float(v.get('stats', {}).get('oi', 0) or 0)
+                        if bid > 0 or oi > 0:
+                            puts.append({'strike': s, 'bid': bid, 'ask': ask, 'oi': round(oi, 2)})
+                    except:
+                        pass
+            puts.sort(key=lambda x: (x['oi'], x['bid']), reverse=True)
+            
+            summary_list.append({
+                'expiry': e,
+                'date_formatted': date_fmt,
+                'dte': dte,
+                'total_oi': round(total_oi, 1),
+                'puts_with_bid': puts_with_bid,
+                'tier': tier,
+                'badge': badge,
+                'label': label,
+                'top_puts': puts[:6]
+            })
+        except Exception as ex:
+            continue
+            
+    # Ordena mantendo prioridade para as datas padrão da Derive
+    _EXPIRIES_SUMMARY_CACHE[currency] = {'ts': now, 'data': summary_list}
+    return summary_list
+
 def get_market_walls(currency="BTC", expiry=None):
     if not expiry:
         expiries = get_live_expiries(currency)
@@ -1180,6 +1256,19 @@ class DeskHandler(BaseHTTPRequestHandler):
             currency = "BTC" if "currency=BTC" in url or "currency=" not in url else "ETH"
             res = get_iv_regime(currency)
             self.send_json(res)
+        elif url.startswith('/api/expiries'):
+            currency = "BTC" if "currency=BTC" in url or "currency=" not in url else "ETH"
+            summary = get_liquid_expiries_summary(currency)
+            rec = "20261030"
+            for item in summary:
+                if item.get('tier') == 'ALTA':
+                    rec = item['expiry']
+                    break
+            self.send_json({
+                'currency': currency,
+                'expiries': summary,
+                'recommended_expiry': rec
+            })
         elif url.startswith('/api/simulate_capital'):
             import urllib.parse
             parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)

@@ -412,7 +412,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # OPTIONS DESK APIS (Proxied to local 24/7 Daemon)
-        if clean_path in ("/api/market", "/api/decision_matrix", "/api/positions", "/api/roll_simulation", "/api/roll_logs", "/api/iv_regime", "/api/simulate_capital") or clean_path.startswith(("/api/decision_matrix", "/api/roll_simulation", "/api/simulate_capital", "/api/iv_regime")):
+        if clean_path in ("/api/market", "/api/decision_matrix", "/api/positions", "/api/roll_simulation", "/api/roll_logs", "/api/iv_regime", "/api/simulate_capital", "/api/expiries") or clean_path.startswith(("/api/decision_matrix", "/api/roll_simulation", "/api/simulate_capital", "/api/iv_regime", "/api/expiries")):
             proxy_to_options_desk(self, method="GET")
             return
 

@@ -100,6 +100,10 @@
         <i class="fa-solid fa-repeat"></i>
         <span>🔄 Simulador de Rolagem</span>
       </button>
+      <button onclick="switchTab('sim')" id="tab-btn-sim" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
+        <i class="fa-solid fa-calculator"></i>
+        <span>🧮 Simulador de Capital</span>
+      </button>
       <button onclick="switchTab('audit')" id="tab-btn-audit" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-clock-rotate-left"></i>
         <span>📋 Histórico</span>
@@ -117,6 +121,27 @@
     <!-- ================= TAB 0: MATRIZ DE DECISÃO QUANTITATIVA ================= -->
     <div id="tab-decision" class="space-y-4 sm:space-y-6">
       
+      <!-- Volatility & IV Regime Gauge Banner -->
+      <div id="iv-gauge-banner" class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg shadow-indigo-950/30">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 text-indigo-400 text-lg">
+            <i class="fa-solid fa-temperature-three-quarters"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs font-bold text-white uppercase tracking-wider">Termômetro de Volatilidade BTC</span>
+              <span id="iv-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Carregando...</span>
+              <span class="text-[11px] text-slate-400 font-mono">IV ATM: <b id="iv-atm-val" class="text-white">--%</b> | IV Rank: <b id="iv-rank-val" class="text-indigo-400">--%</b> | Put Skew: <b id="iv-skew-val" class="text-emerald-400">--%</b></span>
+            </div>
+            <p id="iv-advice" class="text-xs text-slate-300 mt-1">Analisando regime de volatilidade e prêmios na Derive.xyz...</p>
+          </div>
+        </div>
+        <button onclick="switchTab('sim')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition self-stretch md:self-auto justify-center flex-shrink-0">
+          <i class="fa-solid fa-calculator"></i>
+          <span>Simulador de Capital ($1k - $10k)</span>
+        </button>
+      </div>
+
       <!-- Top Quant Banner & Market Cross Filter -->
       <div class="card-glass rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3 sm:space-y-4">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
@@ -292,6 +317,170 @@
       </div>
     </div>
 
+    <!-- ================= TAB 4: SIMULADOR DE CAPITAL & PAYOFF ================= -->
+    <div id="tab-sim" class="hidden space-y-6">
+      
+      <!-- Top Header / Explainer -->
+      <div class="card-glass rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-2">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-emerald-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">
+            <i class="fa-solid fa-calculator"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white">Calculadora Quant de Capital & Payoff ("Modelo Elídio")</h2>
+            <p class="text-xs text-slate-400">Simule exatamente quanto entra no bolso e qual o risco matemático caso você aloque $1.000, $5.000 ou $10.000.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulator Interactive Controls Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Controls Column (1/3) -->
+        <div class="card-glass rounded-2xl p-5 border border-slate-800 space-y-5">
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-indigo-400"></i> Parâmetros da Simulação
+          </h3>
+
+          <!-- Capital Selection -->
+          <div class="space-y-2">
+            <label class="text-xs text-slate-400 font-medium block">1. Capital Total Disponível (USDC)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setSimCapital(1000)" id="btn-cap-1k" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition">$1.000</button>
+              <button onclick="setSimCapital(3000)" id="btn-cap-3k" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition">$3.000</button>
+              <button onclick="setSimCapital(5000)" id="btn-cap-5k" class="py-1.5 px-2 rounded-lg bg-indigo-600 text-xs font-semibold text-white border border-indigo-500 shadow transition">$5.000</button>
+              <button onclick="setSimCapital(10000)" id="btn-cap-10k" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition">$10.000</button>
+              <button onclick="setSimCapital(25000)" id="btn-cap-25k" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition">$25.000</button>
+              <button onclick="setSimCapital(50000)" id="btn-cap-50k" class="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition">$50.000</button>
+            </div>
+            <div class="relative mt-2">
+              <span class="absolute left-3 top-2.5 text-slate-500 font-mono text-sm">$</span>
+              <input type="number" id="sim-input-capital" value="5000" oninput="runCapitalSimFromInputs()" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-7 pr-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+
+          <!-- Select Opportunity from Matrix or Preset -->
+          <div class="space-y-2">
+            <label class="text-xs text-slate-400 font-medium block">2. Selecionar Trava Alvo</label>
+            <select id="sim-select-spread" onchange="onSimSpreadSelectChange()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+              <option value="50k-40k">🛡️ 50.000P / 40.000P (+40.6% Folga, PoP: 96%)</option>
+              <option value="55k-40k">🛡️ 55.000P / 40.000P (+34.6% Folga, PoP: 97%)</option>
+              <option value="60k-50k" selected>🛡️ 60.000P / 50.000P (+29.1% Folga, PoP: 91%)</option>
+              <option value="65k-50k">🟢 65.000P / 50.000P (+23.9% Folga, PoP: 87%)</option>
+              <option value="70k-60k">🟢 70.000P / 60.000P (+17.0% Folga, PoP: 80%)</option>
+              <option value="75k-70k">🟣 75.000P / 70.000P (+9.8% Folga, Crédito Alto)</option>
+              <option value="custom">✏️ Personalizar Strikes Manualmente</option>
+            </select>
+          </div>
+
+          <!-- Manual Inputs -->
+          <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-xs">
+            <div>
+              <span class="text-slate-400 block mb-1">Strike Vendido ($)</span>
+              <input type="number" id="sim-strike-short" value="60000" oninput="runCapitalSimFromInputs()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono">
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1">Strike Comprado ($)</span>
+              <input type="number" id="sim-strike-long" value="50000" oninput="runCapitalSimFromInputs()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono">
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1">Crédito Unitário ($)</span>
+              <input type="number" id="sim-credit-unit" value="350" step="10" oninput="runCapitalSimFromInputs()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono">
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-1">Dias p/ Vencimento (DTE)</span>
+              <input type="number" id="sim-dte" value="30" oninput="runCapitalSimFromInputs()" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white font-mono">
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Output & Payoff Column (2/3) -->
+        <div class="lg:col-span-2 space-y-5">
+          
+          <!-- Key Metrics 4-Cards Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            
+            <div class="card-glass rounded-xl p-4 border border-emerald-500/30 bg-emerald-950/20">
+              <span class="text-[11px] text-emerald-400 uppercase font-semibold block">💰 Dinheiro Adiantado</span>
+              <span id="sim-out-credit-usd" class="mono text-xl sm:text-2xl font-bold text-emerald-300 mt-1 block">+$0.00</span>
+              <span id="sim-out-credit-brl" class="text-[11px] text-emerald-500 block mt-0.5">~R$ 0,00</span>
+            </div>
+
+            <div class="card-glass rounded-xl p-4 border border-indigo-500/30 bg-indigo-950/20">
+              <span class="text-[11px] text-indigo-400 uppercase font-semibold block">📈 Rendimento Anualizado</span>
+              <span id="sim-out-apy" class="mono text-xl sm:text-2xl font-bold text-indigo-300 mt-1 block">0.0% a.a.</span>
+              <span id="sim-out-monthly" class="text-[11px] text-indigo-400 block mt-0.5">~0.0% ao mês</span>
+            </div>
+
+            <div class="card-glass rounded-xl p-4 border border-cyan-500/30 bg-cyan-950/20">
+              <span class="text-[11px] text-cyan-400 uppercase font-semibold block">🛡️ Colchão de Queda</span>
+              <span id="sim-out-cushion" class="mono text-xl sm:text-2xl font-bold text-cyan-300 mt-1 block">+0.0%</span>
+              <span id="sim-out-breakeven" class="text-[11px] text-cyan-400 block mt-0.5">Breakeven: $0</span>
+            </div>
+
+            <div class="card-glass rounded-xl p-4 border border-slate-800">
+              <span class="text-[11px] text-slate-400 uppercase font-semibold block">⚠️ Risco Máximo (Capped)</span>
+              <span id="sim-out-max-loss" class="mono text-xl sm:text-2xl font-bold text-rose-400 mt-1 block">-$0.00</span>
+              <span id="sim-out-contracts" class="text-[11px] text-slate-500 block mt-0.5">0.00 contratos</span>
+            </div>
+
+          </div>
+
+          <!-- Visual Payoff Diagram -->
+          <div class="card-glass rounded-2xl p-5 border border-slate-800 space-y-4">
+            <div class="flex justify-between items-center">
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-chart-area text-indigo-400"></i> Régua Visual de Preço do BTC vs Seu Lucro
+              </h4>
+              <span class="text-xs text-slate-400">Spot Atual: <b id="sim-out-spot" class="text-white mono">$...</b></span>
+            </div>
+
+            <!-- Zones Ribbon Bar -->
+            <div class="space-y-2">
+              <div class="h-6 w-full rounded-lg overflow-hidden flex text-[10px] font-bold text-center leading-6 border border-slate-700/60">
+                <div class="bg-rose-950/90 text-rose-300 border-r border-rose-800/60" style="width: 25%">PERDA MÁXIMA CAPPED</div>
+                <div class="bg-amber-950/90 text-amber-300 border-r border-amber-800/60" style="width: 20%">TRANSIÇÃO</div>
+                <div class="bg-emerald-950/90 text-emerald-300 flex-1">100% DO LUCRO NO BOLSO (ZONA VERDE)</div>
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                <span id="sim-lbl-strike-long">$50.000 (Proteção)</span>
+                <span id="sim-lbl-be" class="text-cyan-400 font-bold">$59.650 (Breakeven)</span>
+                <span id="sim-lbl-strike-short" class="text-emerald-400 font-bold">$60.000 (Venda)</span>
+                <span id="sim-lbl-spot" class="text-white font-bold">$83.800 (Preço Atual)</span>
+              </div>
+            </div>
+
+            <!-- Detailed Analysis Accordion / Callout -->
+            <div class="rounded-xl p-4 bg-slate-900/90 border border-slate-800 text-xs space-y-2">
+              <div class="text-slate-300 flex items-start gap-2">
+                <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5"></i>
+                <div>
+                  <b class="text-white">Cenário Favorável:</b> O Bitcoin pode oscilar para cima, ficar de lado ou até cair até <b id="sim-text-cushion-price" class="text-cyan-300">$...</b>. Em todos esses cenários, você embolsa integralmente os <b id="sim-text-credit-usd" class="text-emerald-400">+$... USDC</b>.
+                </div>
+              </div>
+              <div class="text-slate-300 flex items-start gap-2">
+                <i class="fa-solid fa-shield-halved text-indigo-400 mt-0.5"></i>
+                <div>
+                  <b class="text-white">Cenário de Estresse (Crash):</b> Se o Bitcoin despencar violentamente abaixo do strike vendido, sua perda nunca passa de <b id="sim-text-max-loss" class="text-rose-400">-$... USDC</b> (graças à trava comprada). Nesse ponto, a **Rolagem Dupla** é acionada para transferir a posição para o próximo mês sem realizar a perda total.
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="prefillModalFromSim()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2">
+              <i class="fa-solid fa-rocket"></i>
+              <span>Quero Montar Esta Operação com Estes Parâmetros</span>
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
     <!-- ================= TAB 3: HISTÓRICO DE AUDITORIA ================= -->
     <div id="tab-audit" class="hidden space-y-6">
       <div class="card-glass rounded-xl p-6 border border-slate-800">
@@ -459,6 +648,20 @@
         if (data.has_session_key) {
           const sessionText = document.getElementById('session-text');
           if (sessionText) sessionText.textContent = `Derive Mainnet: ${data.session_label || 'Ancap'}`;
+        }
+
+        if (data.iv_regime) {
+          const iv = data.iv_regime;
+          const ivBadge = document.getElementById('iv-badge');
+          if (ivBadge) {
+            ivBadge.textContent = iv.badge;
+            ivBadge.className = `px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-${iv.color}-500/20 text-${iv.color}-300 border border-${iv.color}-500/30`;
+          }
+          if (document.getElementById('iv-atm-val')) document.getElementById('iv-atm-val').textContent = `${iv.atm_iv_pct}%`;
+          if (document.getElementById('iv-rank-val')) document.getElementById('iv-rank-val').textContent = `${iv.iv_rank}%`;
+          if (document.getElementById('iv-skew-val')) document.getElementById('iv-skew-val').textContent = `${iv.put_skew_pct > 0 ? '+' : ''}${iv.put_skew_pct}%`;
+          if (document.getElementById('iv-advice')) document.getElementById('iv-advice').textContent = iv.advice;
+          if (document.getElementById('market-iv-status')) document.getElementById('market-iv-status').textContent = `${iv.regime} (IV: ${iv.atm_iv_pct}%)`;
         }
       } catch (e) {
         console.error("Market fetch error:", e);
@@ -838,22 +1041,42 @@
 
             <!-- Auto-Roll & Take Profit Controls -->
             <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div class="flex items-center space-x-3">
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" ${p.auto_roll_enabled ? 'checked' : ''} onchange="toggleAutoRoll('${p.id}', this.checked)" class="sr-only peer">
-                  <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                </label>
-                <div>
-                  <span class="font-bold text-white block">Rolagem 100% Automática (Bot em Segundo Plano)</span>
-                  <span class="text-[11px] text-slate-400">Rola sozinho se DTE &le; ${p.auto_roll_trigger_dte}d e ${p.currency} &lt; ${p.short_strike} (Teto de custo: ${p.auto_roll_max_cost_pct}%)</span>
+              <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center space-x-2">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" ${p.auto_roll_enabled ? 'checked' : ''} onchange="toggleAutoRoll('${p.id}', this.checked)" class="sr-only peer">
+                    <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                  <div>
+                    <span class="font-bold text-white block text-[11px]">Auto Rolagem (Defesa)</span>
+                    <span class="text-[10px] text-slate-400">Se DTE &le; ${p.auto_roll_trigger_dte}d e Spot &lt; Strike</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2 pl-3 border-l border-slate-800">
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" ${p.auto_take_profit_enabled !== false ? 'checked' : ''} onchange="toggleAutoTP('${p.id}', this.checked)" class="sr-only peer">
+                    <div class="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                  <div>
+                    <span class="font-bold text-emerald-300 block text-[11px]">Auto Take Profit (80%)</span>
+                    <span class="text-[10px] text-slate-400">Realizar aos 80%</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="flex items-center space-x-2">
-                <button onclick="earlyClosePosition('${p.id}', ${p.current_pnl_total}, ${progress})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap flex items-center gap-1.5">
-                  <i class="fa-solid fa-hand-holding-dollar"></i>
-                  <span>Encerrar Posição (${progress.toFixed(0)}% do Lucro)</span>
-                </button>
+              <div class="flex items-center space-x-2 ml-auto sm:ml-0">
+                ${progress >= 75.0 ? `
+                  <button onclick="earlyClosePosition('${p.id}', ${p.current_pnl_total}, ${progress})" class="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition shadow-lg shadow-emerald-500/30 whitespace-nowrap flex items-center gap-1.5 animate-pulse">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                    <span>💰 Colocar Lucro no Bolso (${progress.toFixed(0)}%)</span>
+                  </button>
+                ` : `
+                  <button onclick="earlyClosePosition('${p.id}', ${p.current_pnl_total}, ${progress})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition shadow-md shadow-emerald-600/25 whitespace-nowrap flex items-center gap-1.5">
+                    <i class="fa-solid fa-hand-holding-dollar"></i>
+                    <span>Encerrar Posição (${progress.toFixed(0)}% do Lucro)</span>
+                  </button>
+                `}
                 <button onclick="quickRoll('${p.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-lg font-semibold text-xs transition whitespace-nowrap">
                   <i class="fa-solid fa-repeat mr-1"></i> Rolar Manualmente
                 </button>
@@ -1147,18 +1370,141 @@
       }
     }
 
+    let currentSimCapital = 5000;
+
+    function setSimCapital(amt) {
+      currentSimCapital = amt;
+      const inp = document.getElementById('sim-input-capital');
+      if (inp) inp.value = amt;
+      [1000, 3000, 5000, 10000, 25000, 50000].forEach(v => {
+        const b = document.getElementById(`btn-cap-${v >= 1000 ? (v/1000) + 'k' : v}`);
+        if (b) {
+          if (v === amt) {
+            b.className = "py-1.5 px-2 rounded-lg bg-indigo-600 text-xs font-semibold text-white border border-indigo-500 shadow transition";
+          } else {
+            b.className = "py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 transition";
+          }
+        }
+      });
+      runCapitalSimFromInputs();
+    }
+
+    function onSimSpreadSelectChange() {
+      const sel = document.getElementById('sim-select-spread').value;
+      if (sel === '50k-40k') {
+        document.getElementById('sim-strike-short').value = 50000;
+        document.getElementById('sim-strike-long').value = 40000;
+        document.getElementById('sim-credit-unit').value = 160;
+        document.getElementById('sim-dte').value = 45;
+      } else if (sel === '55k-40k') {
+        document.getElementById('sim-strike-short').value = 55000;
+        document.getElementById('sim-strike-long').value = 40000;
+        document.getElementById('sim-credit-unit').value = 240;
+        document.getElementById('sim-dte').value = 45;
+      } else if (sel === '60k-50k') {
+        document.getElementById('sim-strike-short').value = 60000;
+        document.getElementById('sim-strike-long').value = 50000;
+        document.getElementById('sim-credit-unit').value = 350;
+        document.getElementById('sim-dte').value = 30;
+      } else if (sel === '65k-50k') {
+        document.getElementById('sim-strike-short').value = 65000;
+        document.getElementById('sim-strike-long').value = 50000;
+        document.getElementById('sim-credit-unit').value = 520;
+        document.getElementById('sim-dte').value = 30;
+      } else if (sel === '70k-60k') {
+        document.getElementById('sim-strike-short').value = 70000;
+        document.getElementById('sim-strike-long').value = 60000;
+        document.getElementById('sim-credit-unit').value = 680;
+        document.getElementById('sim-dte').value = 30;
+      } else if (sel === '75k-70k') {
+        document.getElementById('sim-strike-short').value = 75000;
+        document.getElementById('sim-strike-long').value = 70000;
+        document.getElementById('sim-credit-unit').value = 850;
+        document.getElementById('sim-dte').value = 20;
+      }
+      runCapitalSimFromInputs();
+    }
+
+    async function runCapitalSimFromInputs() {
+      const capital = parseFloat(document.getElementById('sim-input-capital').value) || 5000;
+      const shortS = parseFloat(document.getElementById('sim-strike-short').value) || 60000;
+      const longS = parseFloat(document.getElementById('sim-strike-long').value) || 50000;
+      const credit = parseFloat(document.getElementById('sim-credit-unit').value) || 350;
+      const dte = parseInt(document.getElementById('sim-dte').value) || 30;
+
+      try {
+        const res = await fetch(`/api/simulate_capital?capital=${capital}&short_strike=${shortS}&long_strike=${longS}&credit=${credit}&dte=${dte}`);
+        const data = await res.json();
+
+        document.getElementById('sim-out-credit-usd').textContent = `+$${data.total_credit_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('sim-out-credit-brl').textContent = `~R$ ${data.total_credit_brl.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        document.getElementById('sim-out-apy').textContent = `${data.annualized_apy}% a.a.`;
+        document.getElementById('sim-out-monthly').textContent = `~${data.monthly_return_pct}% ao mês`;
+        document.getElementById('sim-out-cushion').textContent = `+${data.cushion_pct}%`;
+        document.getElementById('sim-out-breakeven').textContent = `Breakeven: $${data.breakeven.toLocaleString('en-US')}`;
+        document.getElementById('sim-out-max-loss').textContent = `-$${data.max_loss_usd.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        document.getElementById('sim-out-contracts').textContent = `${data.contracts} contratos cobrindo 100% margem`;
+        document.getElementById('sim-out-spot').textContent = `$${Number(data.spot_price).toLocaleString('en-US', {maximumFractionDigits: 0})}`;
+
+        document.getElementById('sim-lbl-strike-long').textContent = `$${data.long_strike.toLocaleString('en-US')} (Proteção)`;
+        document.getElementById('sim-lbl-be').textContent = `$${data.breakeven.toLocaleString('en-US')} (Breakeven)`;
+        document.getElementById('sim-lbl-strike-short').textContent = `$${data.short_strike.toLocaleString('en-US')} (Venda)`;
+        document.getElementById('sim-lbl-spot').textContent = `$${Number(data.spot_price).toLocaleString('en-US', {maximumFractionDigits: 0})} (Preço Atual)`;
+
+        document.getElementById('sim-text-cushion-price').textContent = `$${data.breakeven.toLocaleString('en-US')} (-${data.cushion_pct}%)`;
+        document.getElementById('sim-text-credit-usd').textContent = `+$${data.total_credit_usd.toFixed(2)} USDC`;
+        document.getElementById('sim-text-max-loss').textContent = `-$${data.max_loss_usd.toFixed(2)} USDC`;
+      } catch (err) {
+        console.error("Sim error:", err);
+      }
+    }
+
+    function prefillModalFromSim() {
+      const shortS = document.getElementById('sim-strike-short').value;
+      const longS = document.getElementById('sim-strike-long').value;
+      const credit = document.getElementById('sim-credit-unit').value;
+      const contracts = parseFloat(document.getElementById('sim-out-contracts').textContent) || 0.1;
+
+      document.getElementById('inp-short').value = shortS;
+      document.getElementById('inp-long').value = longS;
+      document.getElementById('inp-credit').value = credit;
+      document.getElementById('inp-contracts').value = contracts;
+      openNewModal();
+    }
+
+    async function toggleAutoTP(posId, enabled) {
+      try {
+        const res = await fetch('/api/toggle_auto_take_profit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({position_id: posId, enabled: enabled, tp_pct: 80.0})
+        });
+        const d = await res.json();
+        if (d.success) {
+          loadPositions();
+        }
+      } catch(e) {
+        console.error("Toggle TP error:", e);
+      }
+    }
+
     function switchTab(tab) {
-      const tabs = ['decision', 'positions', 'roller', 'audit'];
+      const tabs = ['decision', 'positions', 'roller', 'sim', 'audit'];
       tabs.forEach(t => {
-        document.getElementById(`tab-${t}`).classList.add('hidden');
-        document.getElementById(`tab-btn-${t}`).className = 'py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200';
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (el) el.classList.add('hidden');
+        if (btn) btn.className = 'py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0';
       });
 
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-btn-${tab}`).className = 'py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-indigo-500 text-indigo-400';
+      const activeEl = document.getElementById(`tab-${tab}`);
+      const activeBtn = document.getElementById(`tab-btn-${tab}`);
+      if (activeEl) activeEl.classList.remove('hidden');
+      if (activeBtn) activeBtn.className = 'py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-indigo-500 text-indigo-400 flex-shrink-0';
 
       if (tab === 'decision') loadDecisionMatrix();
       if (tab === 'roller') runRollSimulation();
+      if (tab === 'sim') runCapitalSimFromInputs();
       if (tab === 'audit') loadAuditLogs();
     }
 

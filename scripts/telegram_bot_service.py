@@ -468,13 +468,18 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             "• `/defi` ou `/pools` - 🎯 Radar da faixa ($2,596 ↔ $2,798), distâncias de piso/teto e saídas\n"
             "• `/saldo` ou `/status` - 💼 Saldo atualizado, composição e valorização/desvalorização\n"
             "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento 24h\n\n"
+            "🎯 *MESA DE OPÇÕES (DERIVE.XYZ — MODELO ELÍDIO):*\n"
+            "• `/opcoes` ou `/options` - 🛡️ Top 3 travas com maior folga de segurança\n"
+            "• `/travas` - 💼 Minhas travas abertas, PnL e Take Profit\n"
+            "• `/iv` ou `/volatilidade` - 🌡️ Termômetro de Volatilidade do Bitcoin\n\n"
             "_Toque diretamente nos botões interativos abaixo:_"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "⚡ Radar Arbitragem (/arb)", "callback_data": "refresh_arbitrage"}, {"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}],
-                [{"text": "💰 Rendimento Real (/lucro)", "callback_data": "defi_profit"}, {"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
-                [{"text": "💼 Saldo Atualizado (/saldo)", "callback_data": "refresh_status"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+                [{"text": "🎯 Radar Opções (/opcoes)", "callback_data": "options_radar"}, {"text": "💼 Minhas Travas", "callback_data": "options_positions"}],
+                [{"text": "🌡️ Termômetro IV (/iv)", "callback_data": "options_iv"}, {"text": "⚡ Radar Arbitragem", "callback_data": "refresh_arbitrage"}],
+                [{"text": "💰 Rendimento DeFi (/lucro)", "callback_data": "defi_profit"}, {"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
+                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
             ]
         }
         send_message(chat_id, msg, markup)
@@ -531,9 +536,117 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         send_message(chat_id, rep, markup)
         return
 
+    # 9. RADAR DE OPÇÕES DERIVE (TRAVAS DE SEGURANÇA ELÍDIO CARVALHO)
+    if cmd in ("/opcoes", "/opções", "/options", "/trava", "opcoes", "opções", "options"):
+        try:
+            import options_desk
+            matrix = options_desk.scan_decision_matrix("BTC")
+            top = matrix.get('top_picks', {}).get('ultra_conservative', [])[:3]
+            spot = matrix.get('spot_price', 0)
+            
+            lines = [
+                "🎯 *OPTIONS DESK — RADAR DE MÁXIMA SEGURANÇA (DERIVE)*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                f"• *Spot BTC:* `${spot:,.0f}`",
+                f"• *Estratégia:* Trava de Alta com Puts (Elídio Carvalho)",
+                "\n*TOP 3 TRAVAS COM MAIOR FOLGA DE QUEDA:*\n"
+            ]
+            for i, o in enumerate(top, 1):
+                lines.append(
+                    f"*{i}. {o['short_strike']:,.0f}P / {o['long_strike']:,.0f}P* ({o['expiry_formatted']} • {o['dte']}d)\n"
+                    f"  🛡️ *Folga de Queda:* `+{o['cushion_pct']:.1f}%` (PoP: {o['pop']:.0f}%)\n"
+                    f"  💰 *Crédito:* `+${o['net_credit']:,.1f} USDC` (ROM: {o['rom']:.1f}%)\n"
+                    f"  🛑 *Breakeven:* `${o['breakeven']:,.0f}` (BTC precisa cair {o['cushion_pct']:.1f}%)\n"
+                )
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            lines.append("👉 Toque no botão abaixo para abrir a mesa e montar no painel:")
+            
+            markup = {
+                "inline_keyboard": [
+                    [{"text": "🌐 Abrir Mesa de Opções", "url": "https://botrade-hyperliquid.onrender.com/options"}],
+                    [{"text": "💼 Ver Minhas Travas", "callback_data": "options_positions"}],
+                    [{"text": "🌡️ Termômetro de Volatilidade", "callback_data": "options_iv"}]
+                ]
+            }
+            send_message(chat_id, "\n".join(lines), markup)
+        except Exception as e:
+            send_message(chat_id, f"❌ *Erro ao consultar Options Desk:* {e}")
+        return
+
+    # 10. MINHAS TRAVAS / POSIÇÕES DE OPÇÕES ABERTAS
+    if cmd in ("/travas", "/posicoes_opcoes", "/minhas_travas", "travas"):
+        try:
+            import options_desk
+            raw_pos = options_desk.load_positions()
+            active = [options_desk.evaluate_position(p) for p in raw_pos if p.get('status') == 'active']
+            if not active:
+                send_message(
+                    chat_id,
+                    "💼 *OPTIONS DESK — NENHUMA TRAVA ABERTA NO MOMENTO*\n\n"
+                    "Você não possui travas ativas na custódia.\n"
+                    "Digite `/opcoes` para ver as melhores oportunidades do momento!",
+                    {"inline_keyboard": [[{"text": "🎯 Ver Oportunidades (/opcoes)", "callback_data": "options_radar"}]]}
+                )
+                return
+
+            lines = [
+                "💼 *OPTIONS DESK — SUAS TRAVAS ATIVAS*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            ]
+            for p in active:
+                rec = p.get('recommendation', {})
+                prog = p.get('profit_captured_pct', 0)
+                lines.append(
+                    f"• *{p.get('currency', 'BTC')} {p.get('short_strike', 0):,.0f}P / {p.get('long_strike', 0):,.0f}P* ({p.get('contracts', 0)} contratos)\n"
+                    f"  📅 *Vencimento:* {p.get('expiry_formatted')} ({p.get('dte')}d restantes)\n"
+                    f"  💰 *Crédito Inicial:* `+${p.get('initial_credit_total', 0):.2f} USDC`\n"
+                    f"  📈 *Lucro Líquido Atual:* `+${p.get('current_pnl_total', 0):.2f}` (*{prog:.1f}%* do crédito)\n"
+                    f"  🛡️ *Tolerância de Queda:* `-{p.get('max_tolerated_drop_pct', 0):.1f}%` (até ${p.get('breakeven_price', 0):,.0f})\n"
+                    f"  🤖 *Status:* {rec.get('badge', 'EM ANDAMENTO')}\n"
+                )
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            markup = {
+                "inline_keyboard": [
+                    [{"text": "🌐 Abrir no Painel Web", "url": "https://botrade-hyperliquid.onrender.com/options"}],
+                    [{"text": "🔄 Atualizar Posições", "callback_data": "options_positions"}]
+                ]
+            }
+            send_message(chat_id, "\n".join(lines), markup)
+        except Exception as e:
+            send_message(chat_id, f"❌ *Erro ao listar travas:* {e}")
+        return
+
+    # 11. TERMÔMETRO DE VOLATILIDADE (IV RANK)
+    if cmd in ("/volatilidade", "/iv", "volatilidade", "iv"):
+        try:
+            import options_desk
+            iv = options_desk.get_iv_regime("BTC")
+            spot = options_desk.get_spot_price("BTC")
+            lines = [
+                "🌡️ *TERMÔMETRO QUANT DE VOLATILIDADE (BTC)*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                f"• *Spot BTC:* `${spot:,.0f}`",
+                f"• *IV Implícita (ATM):* `{iv['atm_iv_pct']}%`",
+                f"• *IV Rank Percentil:* `{iv['iv_rank']}%`",
+                f"• *Put Skew:* `{iv['put_skew_pct']:+.1f}%`",
+                f"• *Diagnóstico:* {iv['badge']}",
+                f"\n💡 *Orientação da Mesa:*\n{iv['advice']}\n",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            ]
+            markup = {
+                "inline_keyboard": [
+                    [{"text": "🎯 Ver Travas Adequadas (/opcoes)", "callback_data": "options_radar"}],
+                    [{"text": "🌐 Abrir Options Desk", "url": "https://botrade-hyperliquid.onrender.com/options"}]
+                ]
+            }
+            send_message(chat_id, "\n".join(lines), markup)
+        except Exception as e:
+            send_message(chat_id, f"❌ *Erro ao consultar IV:* {e}")
+        return
+
     send_message(
         chat_id,
-        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/arbitragem` para ver spreads ao vivo, `/lucro` para o rendimento da pool, `/defi` para o radar da faixa ou `/ajuda` para o menu."
+        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/opcoes` para travas de segurança, `/arbitragem` para spreads DeFi, `/lucro` para o rendimento da pool ou `/ajuda` para o menu completo."
     )
 
 
@@ -544,6 +657,21 @@ def handle_callback_query(cq: dict):
     msg = cq.get("message", {})
     msg_id = msg.get("message_id")
     data = cq.get("data", "")
+
+    if data == "options_radar":
+        answer_callback(cq_id, "Buscando travas na Derive...")
+        handle_command(chat_id, "/opcoes")
+        return
+
+    if data == "options_positions":
+        answer_callback(cq_id, "Carregando travas ativas...")
+        handle_command(chat_id, "/travas")
+        return
+
+    if data == "options_iv":
+        answer_callback(cq_id, "Calculando volatilidade...")
+        handle_command(chat_id, "/iv")
+        return
 
     if data == "refresh_arbitrage":
         answer_callback(cq_id, "Buscando spreads na Base...")

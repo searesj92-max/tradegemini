@@ -14,6 +14,7 @@ import urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import argparse
+import math
 
 try:
     if hasattr(sys.stdout, 'reconfigure'):
@@ -426,6 +427,154 @@ def get_market_walls(currency="BTC", expiry=None):
         'put_wall_oi': round(p_wall[1], 2),
         'call_wall': c_wall[0],
         'call_wall_oi': round(c_wall[1], 2)
+    }
+
+def get_iv_regime(currency="BTC"):
+    spot = get_spot_price(currency)
+    expiries = get_live_expiries(currency)
+    if not expiries:
+        return {
+            'atm_iv_pct': 45.0,
+            'iv_rank': 35.0,
+            'put_skew_pct': 0.0,
+            'regime': 'MODERATE',
+            'badge': '⚖️ Volatilidade Normal',
+            'color': 'indigo',
+            'advice': 'Mercado em equilíbrio de volatilidade.'
+        }
+    
+    today = datetime.datetime.now().date()
+    target_exp = expiries[0]
+    for e in expiries:
+        try:
+            ed = datetime.datetime.strptime(e, "%Y%m%d").date()
+            if 10 <= (ed - today).days <= 45:
+                target_exp = e
+                break
+        except:
+            continue
+            
+    tickers = get_tickers_for_expiry(currency, target_exp)
+    atm_ivs, put_ivs, call_ivs = [], [], []
+    for name, data in tickers.items():
+        p = data.get('option_pricing', {})
+        iv = float(p.get('i', 0))
+        d = float(p.get('d', 0))
+        try:
+            strike = float(name.split('-')[2])
+        except:
+            continue
+        if 0.10 <= iv <= 3.0:
+            if spot > 0 and abs(strike - spot) / spot < 0.06:
+                atm_ivs.append(iv)
+            if name.endswith('-P') and -0.35 <= d <= -0.15:
+                put_ivs.append(iv)
+            elif name.endswith('-C') and 0.15 <= d <= 0.35:
+                call_ivs.append(iv)
+                
+    atm_iv = (sum(atm_ivs) / len(atm_ivs)) if atm_ivs else 0.35
+    p_iv = (sum(put_ivs) / len(put_ivs)) if put_ivs else atm_iv
+    c_iv = (sum(call_ivs) / len(call_ivs)) if call_ivs else atm_iv
+    
+    skew = (p_iv - c_iv) * 100
+    iv_rank = max(0.0, min(100.0, ((atm_iv - 0.28) / (0.85 - 0.28)) * 100))
+    
+    if iv_rank >= 65:
+        regime = "HIGH_VOLATILITY"
+        badge = "🌋 Alta Volatilidade (Momento de Ouro)"
+        color = "emerald"
+        advice = f"Volatilidade alta ({atm_iv*100:.1f}%). Prêmios inflacionados pelo pânico: excelente momento para vender travas com derretimento rápido de Theta e ganho de vol crush."
+    elif iv_rank <= 25:
+        regime = "COMPRESSED"
+        badge = "🧊 Volatilidade Baixa / Comprimida"
+        color = "blue"
+        advice = f"Volatilidade contida ({atm_iv*100:.1f}%). Prêmios mais enxutos: priorize máxima folga (> 25% a 40%) como 50k/40k ou 55k/40k."
+    else:
+        regime = "MODERATE"
+        badge = "⚖️ Volatilidade Normal / Saudável"
+        color = "indigo"
+        advice = f"Volatilidade equilibrada ({atm_iv*100:.1f}% | IV Rank: {iv_rank:.0f}%). Condições ideais para o modelo padrão com folga entre 15% e 25%."
+        
+    return {
+        'atm_iv_pct': round(atm_iv * 100, 1),
+        'iv_rank': round(iv_rank, 1),
+        'put_skew_pct': round(skew, 1),
+        'regime': regime,
+        'badge': badge,
+        'color': color,
+        'advice': advice,
+        'sampled_expiry': target_exp
+    }
+
+def calculate_capital_simulation(capital_usd, short_strike, long_strike, credit_per_contract, dte=30, spot_price=None):
+    if not spot_price:
+        spot_price = get_spot_price("BTC")
+    capital = max(100.0, float(capital_usd))
+    s_sell = float(short_strike)
+    s_buy = float(long_strike)
+    credit = max(1.0, float(credit_per_contract))
+    dte = max(1, int(dte))
+    
+    width = abs(s_sell - s_buy)
+    margin_per_contract = max(1.0, width - credit)
+    
+    contracts = round(math.floor((capital / margin_per_contract) * 100) / 100, 2)
+    if contracts <= 0:
+        contracts = 0.01
+        
+    total_margin_used = round(contracts * margin_per_contract, 2)
+    total_credit_usd = round(contracts * credit, 2)
+    total_credit_brl = round(total_credit_usd * 5.60, 2)
+    
+    monthly_ret_pct = round((credit / margin_per_contract) * (30 / dte) * 100, 2)
+    annualized_apy = round((credit / margin_per_contract) * (365 / dte) * 100, 1)
+    
+    max_loss_usd = round(total_margin_used, 2)
+    breakeven = round(s_sell - credit, 1)
+    cushion_pct = round(((spot_price - breakeven) / spot_price) * 100, 1) if spot_price > 0 else 0.0
+    
+    points = [
+        round(s_buy * 0.90, -2),
+        round(s_buy, -2),
+        round((s_buy + s_sell) / 2, -2),
+        round(breakeven, -2),
+        round(s_sell, -2),
+        round(spot_price, -2),
+        round(spot_price * 1.15, -2)
+    ]
+    points = sorted(list(set(points)))
+    payoff_curve = []
+    for p in points:
+        if p >= s_sell:
+            pnl = total_credit_usd
+        elif p <= s_buy:
+            pnl = -max_loss_usd
+        else:
+            pnl = round(contracts * ((p - s_buy) - margin_per_contract), 2)
+        payoff_curve.append({
+            'btc_price': p,
+            'pnl': round(pnl, 2),
+            'is_profit': bool(pnl >= 0)
+        })
+        
+    return {
+        'capital_usd': capital,
+        'contracts': contracts,
+        'spread_width': width,
+        'margin_per_contract': round(margin_per_contract, 2),
+        'total_margin_used': total_margin_used,
+        'total_credit_usd': total_credit_usd,
+        'total_credit_brl': total_credit_brl,
+        'monthly_return_pct': monthly_ret_pct,
+        'annualized_apy': annualized_apy,
+        'max_loss_usd': max_loss_usd,
+        'breakeven': breakeven,
+        'cushion_pct': cushion_pct,
+        'dte': dte,
+        'spot_price': spot_price,
+        'short_strike': s_sell,
+        'long_strike': s_buy,
+        'payoff_curve': payoff_curve
     }
 
 # ----------------- Decision Matrix & Quantitative Crossing -----------------
@@ -932,40 +1081,73 @@ def auto_roll_worker():
             time.sleep(60) # Run check every 60s
             positions = load_positions()
             for p in positions:
-                if p.get('status') == 'active' and p.get('auto_roll_enabled'):
+                if p.get('status') == 'active':
                     eval_p = evaluate_position(p)
-                    dte = eval_p.get('dte', 99)
-                    spot = eval_p.get('spot_price', 0)
-                    s_sell = float(eval_p.get('short_strike', 0))
-                    trigger_dte = int(p.get('auto_roll_trigger_dte', 3))
+                    profit_captured_pct = eval_p.get('profit_captured_pct', 0)
+                    tp_target_pct = float(p.get('target_take_profit_pct', 80.0))
+                    auto_tp = bool(p.get('auto_take_profit_enabled', True))
                     
-                    # Trigger condition: DTE <= trigger_dte AND spot < short_strike
-                    if dte <= trigger_dte and spot < s_sell:
-                        is_live = bool(p.get('is_live_order', False))
-                        if is_live:
-                            # Regra Institucional de Segurança: Ordens reais requerem confirmação humana antes de envio on-chain
-                            alert_key = f"alert_roll_notified_{p['id']}_{dte}"
-                            if not p.get(alert_key):
-                                p[alert_key] = True
-                                save_positions(positions)
+                    # 1. Motor de Take Profit Automático (Regra dos 80% do Lucro no Bolso)
+                    if auto_tp and profit_captured_pct >= tp_target_pct:
+                        tp_alert_key = f"tp_notified_{p['id']}"
+                        if not p.get(tp_alert_key):
+                            p[tp_alert_key] = True
+                            save_positions(positions)
+                            is_live = bool(p.get('is_live_order', False))
+                            if is_live:
                                 tg_msg = (
-                                    f"🚨 <b>ALERTA CRÍTICO DE ROLAGEM URGENTE (DERIVE REAL)</b> 🚨\n\n"
-                                    f"A trava real <code>{p['id']}</code> atingiu o gatilho de defesa!\n"
-                                    f"• DTE Atual: <b>{dte} dias</b> (Gatilho: <= {trigger_dte}d)\n"
-                                    f"• Spot BTC: <b>${spot:,.0f}</b> abaixo do Strike Vendido <b>${s_sell:,.0f}</b>\n"
-                                    f"• Ação Necessária: Acesse o painel para autorizar a Rolagem de Proteção imediata!\n\n"
-                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel e Autorizar Rolagem</a>"
+                                    f"💰 <b>TAKE PROFIT DISPONÍVEL! ({profit_captured_pct:.1f}% DO LUCRO CAPTURADO)</b> 💰\n\n"
+                                    f"A trava real <code>{p['id']}</code> atingiu o alvo institucional de lucro antecipado!\n"
+                                    f"• Lucro Retido: <b>{profit_captured_pct:.1f}%</b> (Meta: {tp_target_pct:.0f}%)\n"
+                                    f"• PnL Líquido no Bolso: <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC</b>\n"
+                                    f"• Recomendação: Encerre a trava para liberar 100% da margem para novas oportunidades!\n\n"
+                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel e Colocar Lucro no Bolso</a>"
                                 )
                                 send_telegram_alert(tg_msg)
-                                log_audit("AUTO_ROLL_HUMAN_APPROVAL_REQUESTED", {'pos_id': p['id'], 'dte': dte, 'spot': spot})
-                        else:
-                            print(f"[AUTO-ROLL TRIGGERED] Posição simulada {p['id']} atingiu gatilho (DTE: {dte}d <= {trigger_dte}d | Spot: ${spot:,.0f} < Strike: ${s_sell:,.0f})")
-                            sim = simulate_roll(p['id'])
-                            options = sim.get('roll_options', [])
-                            if options:
-                                best_target = options[0]['target_expiry'] # First forward expiry (next monthly)
-                                res = execute_roll(p['id'], best_target, is_automated=True)
-                                print(f"[AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
+                                log_audit("TAKE_PROFIT_OPPORTUNITY_NOTIFIED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'pnl': eval_p.get('current_pnl_total', 0)})
+                            else:
+                                tg_msg = (
+                                    f"💰 <b>TAKE PROFIT ATINGIDO ({profit_captured_pct:.1f}%) — MODO MONITOR</b> 💰\n\n"
+                                    f"• Posição: <code>{p['id']}</code>\n"
+                                    f"• PnL Acumulado: <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC</b>\n"
+                                    f"• Posição pronta para realização ou encerramento manual no painel!"
+                                )
+                                send_telegram_alert(tg_msg)
+                                log_audit("TAKE_PROFIT_TRIGGERED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'pnl': eval_p.get('current_pnl_total', 0)})
+
+                    # 2. Defesa / Gatilho de Rolagem Automática
+                    if p.get('auto_roll_enabled'):
+                        dte = eval_p.get('dte', 99)
+                        spot = eval_p.get('spot_price', 0)
+                        s_sell = float(eval_p.get('short_strike', 0))
+                        trigger_dte = int(p.get('auto_roll_trigger_dte', 3))
+                        
+                        # Trigger condition: DTE <= trigger_dte AND spot < short_strike
+                        if dte <= trigger_dte and spot < s_sell:
+                            is_live = bool(p.get('is_live_order', False))
+                            if is_live:
+                                alert_key = f"alert_roll_notified_{p['id']}_{dte}"
+                                if not p.get(alert_key):
+                                    p[alert_key] = True
+                                    save_positions(positions)
+                                    tg_msg = (
+                                        f"🚨 <b>ALERTA CRÍTICO DE ROLAGEM URGENTE (DERIVE REAL)</b> 🚨\n\n"
+                                        f"A trava real <code>{p['id']}</code> atingiu o gatilho de defesa!\n"
+                                        f"• DTE Atual: <b>{dte} dias</b> (Gatilho: <= {trigger_dte}d)\n"
+                                        f"• Spot BTC: <b>${spot:,.0f}</b> abaixo do Strike Vendido <b>${s_sell:,.0f}</b>\n"
+                                        f"• Ação Necessária: Acesse o painel para autorizar a Rolagem de Proteção imediata!\n\n"
+                                        f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel e Autorizar Rolagem</a>"
+                                    )
+                                    send_telegram_alert(tg_msg)
+                                    log_audit("AUTO_ROLL_HUMAN_APPROVAL_REQUESTED", {'pos_id': p['id'], 'dte': dte, 'spot': spot})
+                            else:
+                                print(f"[AUTO-ROLL TRIGGERED] Posição simulada {p['id']} atingiu gatilho (DTE: {dte}d <= {trigger_dte}d | Spot: ${spot:,.0f} < Strike: ${s_sell:,.0f})")
+                                sim = simulate_roll(p['id'])
+                                options = sim.get('roll_options', [])
+                                if options:
+                                    best_target = options[0]['target_expiry']
+                                    res = execute_roll(p['id'], best_target, is_automated=True)
+                                    print(f"[AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
         except Exception as e:
             print(f"[AUTO-ROLL ERROR]: {e}")
 
@@ -980,6 +1162,7 @@ class DeskHandler(BaseHTTPRequestHandler):
             btc_spot = get_spot_price("BTC")
             eth_spot = get_spot_price("ETH")
             acct = get_derive_account_info()
+            iv_data = get_iv_regime("BTC")
             self.send_json({
                 'btc_spot': btc_spot,
                 'eth_spot': eth_spot,
@@ -990,8 +1173,26 @@ class DeskHandler(BaseHTTPRequestHandler):
                 'real_balance': acct.get('balance_usdc', 292.04),
                 'session_label': acct.get('session_label', 'Ancap (Ativa)'),
                 'margin_type': acct.get('margin_type', 'SM'),
+                'iv_regime': iv_data,
                 'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
+        elif url.startswith('/api/iv_regime'):
+            currency = "BTC" if "currency=BTC" in url or "currency=" not in url else "ETH"
+            res = get_iv_regime(currency)
+            self.send_json(res)
+        elif url.startswith('/api/simulate_capital'):
+            import urllib.parse
+            parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+            try:
+                capital = float(parsed.get('capital', [5000])[0])
+                short_s = float(parsed.get('short_strike', [60000])[0])
+                long_s = float(parsed.get('long_strike', [50000])[0])
+                credit = float(parsed.get('credit', [350])[0])
+                dte = int(parsed.get('dte', [30])[0])
+            except:
+                capital, short_s, long_s, credit, dte = 5000.0, 60000.0, 50000.0, 350.0, 30
+            res = calculate_capital_simulation(capital, short_s, long_s, credit, dte)
+            self.send_json(res)
         elif url.startswith('/api/decision_matrix'):
             currency = "BTC" if "currency=BTC" in url or "currency=" not in url else "ETH"
             res = scan_decision_matrix(currency)
@@ -1138,6 +1339,30 @@ class DeskHandler(BaseHTTPRequestHandler):
                 self.send_json({'success': True, 'position': pos})
             else:
                 self.send_json({'success': False, 'error': 'Posição não encontrada'})
+
+        elif self.path == '/api/toggle_auto_take_profit':
+            pos_id = payload.get('position_id')
+            enabled = bool(payload.get('enabled'))
+            tp_pct = float(payload.get('tp_pct', 80.0))
+            positions = load_positions()
+            pos = next((p for p in positions if p.get('id') == pos_id), None)
+            if pos:
+                pos['auto_take_profit_enabled'] = enabled
+                pos['target_take_profit_pct'] = tp_pct
+                save_positions(positions)
+                log_audit("AUTO_TP_CONFIG_CHANGED", {'pos_id': pos_id, 'enabled': enabled, 'tp_pct': tp_pct})
+                self.send_json({'success': True, 'position': pos})
+            else:
+                self.send_json({'success': False, 'error': 'Posição não encontrada'})
+
+        elif self.path == '/api/simulate_capital':
+            capital = float(payload.get('capital_usd', 5000))
+            short_s = float(payload.get('short_strike', 60000))
+            long_s = float(payload.get('long_strike', 50000))
+            credit = float(payload.get('credit_per_contract', 350))
+            dte = int(payload.get('dte', 30))
+            res = calculate_capital_simulation(capital, short_s, long_s, credit, dte)
+            self.send_json(res)
                 
         elif self.path == '/api/roll_execute':
             pos_id = payload.get('position_id')

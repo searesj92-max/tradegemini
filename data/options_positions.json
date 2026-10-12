@@ -78,5 +78,32 @@
     "auto_roll_max_cost_pct": 35.0,
     "is_live_order": false,
     "roll_count": 0
+  },
+  {
+    "id": "pos-btc-live-sniper-78k-75k-20261023",
+    "currency": "BTC",
+    "expiry": "20261023",
+    "short_strike": 78000.0,
+    "long_strike": 75000.0,
+    "contracts": 0.3,
+    "initial_credit_per_contract": 268.0,
+    "initial_credit_total": 80.4,
+    "initial_margin_total": 819.6,
+    "opened_at": "2026-10-12 16:18:42",
+    "status": "active",
+    "target_take_profit_pct": 80.0,
+    "auto_roll_enabled": true,
+    "auto_roll_trigger_dte": 3,
+    "auto_roll_max_cost_pct": 35.0,
+    "is_live_order": true,
+    "live_details": {
+      "wallet": "0xcAF7...59bD",
+      "instrument": "BTC $78,000/$75,000 Put Spread Oct 23",
+      "total_received": 80.4,
+      "breakeven": 77732.0,
+      "max_profit": 80.4,
+      "max_loss": 819.6
+    },
+    "roll_count": 0
   }
 ]

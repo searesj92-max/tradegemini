@@ -136,19 +136,25 @@
               <button onclick="setMatrixCurrency('BTC')" id="matrix-curr-btc" class="flex-1 sm:flex-initial px-4 py-1.5 rounded text-xs font-semibold bg-indigo-600 text-white transition">BTC</button>
               <button onclick="setMatrixCurrency('ETH')" id="matrix-curr-eth" class="flex-1 sm:flex-initial px-4 py-1.5 rounded text-xs font-semibold text-slate-400 hover:text-white transition">ETH</button>
             </div>
-            <div class="grid grid-cols-2 gap-2 w-full sm:w-auto">
-              <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none w-full">
-                <option value="ALL">Todos os Perfis</option>
-                <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico</option>
-                <option value="CONSERVATIVE">🟢 Conservador</option>
+            <div class="grid grid-cols-3 gap-1.5 sm:flex sm:gap-2 w-full sm:w-auto">
+              <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                <option value="ALL">Todos Perfis</option>
+                <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico (>20% Folga)</option>
+                <option value="CONSERVATIVE">🟢 Conservador (>5% Folga)</option>
                 <option value="BALANCED">🟡 Equilibrado</option>
                 <option value="ELIDIO_GROWTH">🟣 Elídio (Crédito)</option>
               </select>
-              <select id="matrix-filter-dte" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none w-full">
-                <option value="ALL">⏱️ Todos os Prazos</option>
+              <select id="matrix-filter-dte" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                <option value="ALL">⏱️ Todos Prazos</option>
                 <option value="WEEKLY">⚡ Semanal (7-14d)</option>
                 <option value="MONTHLY">📅 Mensal (15-45d)</option>
                 <option value="LONG">🛡️ Longo (&gt;45d)</option>
+              </select>
+              <select id="matrix-sort" onchange="renderDecisionMatrix()" class="bg-indigo-950/80 border border-indigo-500/60 text-indigo-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full font-semibold">
+                <option value="CUSHION_DESC" selected>🛡️ Maior Folga % (Menor Risco)</option>
+                <option value="CONVICTION_DESC">🎯 Pontuação Quant</option>
+                <option value="ROM_DESC">⚡ Maior Retorno (RoM %)</option>
+                <option value="DTE_ASC">⏱️ Mais Próximas (DTE)</option>
               </select>
             </div>
           </div>
@@ -177,6 +183,24 @@
             </div>
             <span id="market-iv-status" class="mono font-bold text-indigo-400 text-sm mt-0.5 block">Moderada (~35% - 45%)</span>
           </div>
+        </div>
+
+        <!-- Quick Safety / Style Filter Pills -->
+        <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap custom-scroll pt-2 border-t border-slate-800/80 text-xs">
+          <span class="text-slate-400 font-medium flex-shrink-0"><i class="fa-solid fa-bolt mr-1 text-indigo-400"></i>Modo Rápido:</span>
+          <button onclick="applyQuickFilter('ULTRA')" id="qf-ultra" class="px-3 py-1 rounded-full font-semibold border border-cyan-400/50 bg-cyan-950/80 text-cyan-300 hover:bg-cyan-900 transition flex-shrink-0 flex items-center gap-1 shadow-sm shadow-cyan-500/20">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>🛡️ Máxima Segurança (&gt;20% a 40% de Folga)</span>
+          </button>
+          <button onclick="applyQuickFilter('CONSERVATIVE')" id="qf-cons" class="px-3 py-1 rounded-full font-semibold border border-emerald-500/40 bg-slate-800 text-slate-300 hover:bg-emerald-950/60 hover:text-emerald-300 transition flex-shrink-0">
+            🟢 Conservadoras (&gt;5% a 20%)
+          </button>
+          <button onclick="applyQuickFilter('ELIDIO')" id="qf-elidio" class="px-3 py-1 rounded-full font-semibold border border-purple-500/40 bg-slate-800 text-slate-300 hover:bg-purple-950/60 hover:text-purple-300 transition flex-shrink-0">
+            🟣 Modelo Elídio (Crédito Alto)
+          </button>
+          <button onclick="applyQuickFilter('ALL')" id="qf-all" class="px-3 py-1 rounded-full font-semibold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition flex-shrink-0">
+            Ver Todas (151)
+          </button>
         </div>
       </div>
 
@@ -456,6 +480,40 @@
       }
     }
 
+    function applyQuickFilter(mode) {
+      const profSelect = document.getElementById('matrix-filter-profile');
+      const sortSelect = document.getElementById('matrix-sort');
+      
+      // Reset button styles
+      ['qf-ultra', 'qf-cons', 'qf-elidio', 'qf-all'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.className = "px-3 py-1 rounded-full font-semibold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition flex-shrink-0";
+      });
+
+      if (mode === 'ULTRA') {
+        profSelect.value = 'ULTRA_CONSERVATIVE';
+        sortSelect.value = 'CUSHION_DESC';
+        const el = document.getElementById('qf-ultra');
+        if (el) el.className = "px-3 py-1 rounded-full font-semibold border border-cyan-400/50 bg-cyan-950/80 text-cyan-300 transition flex-shrink-0 flex items-center gap-1 shadow-sm shadow-cyan-500/20";
+      } else if (mode === 'CONSERVATIVE') {
+        profSelect.value = 'CONSERVATIVE';
+        sortSelect.value = 'CUSHION_DESC';
+        const el = document.getElementById('qf-cons');
+        if (el) el.className = "px-3 py-1 rounded-full font-semibold border border-emerald-400/50 bg-emerald-950/80 text-emerald-300 transition flex-shrink-0";
+      } else if (mode === 'ELIDIO') {
+        profSelect.value = 'ELIDIO_GROWTH';
+        sortSelect.value = 'ROM_DESC';
+        const el = document.getElementById('qf-elidio');
+        if (el) el.className = "px-3 py-1 rounded-full font-semibold border border-purple-400/50 bg-purple-950/80 text-purple-300 transition flex-shrink-0";
+      } else {
+        profSelect.value = 'ALL';
+        sortSelect.value = 'CUSHION_DESC';
+        const el = document.getElementById('qf-all');
+        if (el) el.className = "px-3 py-1 rounded-full font-semibold border border-indigo-500 bg-indigo-950 text-indigo-300 transition flex-shrink-0";
+      }
+      renderDecisionMatrix();
+    }
+
     function renderDecisionMatrix() {
       const container = document.getElementById('matrix-cards-container');
       if (!matrixDataCache || !matrixDataCache.all_opportunities) {
@@ -465,7 +523,9 @@
 
       const selectedProfile = document.getElementById('matrix-filter-profile').value;
       const selectedDte = document.getElementById('matrix-filter-dte') ? document.getElementById('matrix-filter-dte').value : 'ALL';
-      let opps = matrixDataCache.all_opportunities || [];
+      const sortBy = document.getElementById('matrix-sort') ? document.getElementById('matrix-sort').value : 'CUSHION_DESC';
+      let opps = [...(matrixDataCache.all_opportunities || [])];
+
       if (selectedProfile !== 'ALL') {
         opps = opps.filter(o => o.profile === selectedProfile);
       }
@@ -476,19 +536,17 @@
         opps = opps.filter(o => o.dte > 15 && o.dte <= 45);
       } else if (selectedDte === 'LONG') {
         opps = opps.filter(o => o.dte > 45);
+      }
+
+      // Sort logic
+      if (sortBy === 'CUSHION_DESC') {
+        opps.sort((a, b) => b.cushion_pct - a.cushion_pct);
+      } else if (sortBy === 'ROM_DESC') {
+        opps.sort((a, b) => b.rom - a.rom);
+      } else if (sortBy === 'DTE_ASC') {
+        opps.sort((a, b) => a.dte - b.dte);
       } else {
-        // Interleave short, medium, and long so all horizons are immediately visible
-        const shorts = opps.filter(o => o.dte <= 15);
-        const meds = opps.filter(o => o.dte > 15 && o.dte <= 45);
-        const longs = opps.filter(o => o.dte > 45);
-        const interleaved = [];
-        const maxLen = Math.max(shorts.length, meds.length, longs.length);
-        for (let i = 0; i < maxLen; i++) {
-          if (i < shorts.length) interleaved.push(shorts[i]);
-          if (i < meds.length) interleaved.push(meds[i]);
-          if (i < longs.length) interleaved.push(longs[i]);
-        }
-        opps = interleaved;
+        opps.sort((a, b) => b.conviction - a.conviction);
       }
 
       if (opps.length === 0) {
@@ -496,7 +554,7 @@
         return;
       }
 
-      container.innerHTML = opps.slice(0, 24).map(o => {
+      container.innerHTML = opps.slice(0, 30).map(o => {
         let badgeBg = "bg-purple-900/30 text-purple-300 border-purple-500/40";
         let barColor = "from-purple-500 to-indigo-500";
         if (o.profile === 'ULTRA_CONSERVATIVE') {
@@ -517,6 +575,13 @@
           dteBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40"><i class="fa-solid fa-calendar mr-1"></i>Mensal (${o.dte}d)</span>`;
         } else {
           dteBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-slate-700/60 text-slate-300 border border-slate-600/40"><i class="fa-solid fa-shield mr-1"></i>Longo (${o.dte}d)</span>`;
+        }
+
+        let cushionBadge = '';
+        if (o.cushion_pct >= 25.0) {
+          cushionBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-cyan-950 text-cyan-300 border border-cyan-400/60 shadow-sm shadow-cyan-500/20"><i class="fa-solid fa-shield-halved mr-1"></i>Folga de +${o.cushion_pct.toFixed(1)}%</span>`;
+        } else if (o.cushion_pct >= 15.0) {
+          cushionBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-emerald-950 text-emerald-300 border border-emerald-400/60 shadow-sm shadow-emerald-500/10"><i class="fa-solid fa-shield-halved mr-1"></i>Folga de +${o.cushion_pct.toFixed(1)}%</span>`;
         }
 
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
@@ -540,6 +605,7 @@
                       ${o.profile_label}
                     </span>
                     ${dteBadge}
+                    ${cushionBadge}
                   </div>
                   <div class="mt-2 flex items-center space-x-2">
                     <span class="font-bold text-white text-base mono">Vende ${o.short_strike}P / Compra ${o.long_strike}P</span>

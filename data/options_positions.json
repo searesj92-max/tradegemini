@@ -59,5 +59,24 @@
       "long_price": 761.0
     },
     "roll_count": 0
+  },
+  {
+    "id": "pos-btc-demo-tranche1-60k-50k-20261030",
+    "currency": "BTC",
+    "expiry": "20261030",
+    "short_strike": 60000.0,
+    "long_strike": 50000.0,
+    "contracts": 0.1,
+    "initial_credit_per_contract": 350.0,
+    "initial_credit_total": 35.0,
+    "initial_margin_total": 965.0,
+    "opened_at": "2026-10-12",
+    "status": "active",
+    "target_take_profit_pct": 80.0,
+    "auto_roll_enabled": true,
+    "auto_roll_trigger_dte": 3,
+    "auto_roll_max_cost_pct": 35.0,
+    "is_live_order": false,
+    "roll_count": 0
   }
 ]

@@ -386,19 +386,8 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
         if not clean_path:
             clean_path = "/"
 
-        if clean_path in ("/", "/index.html", "/cockpit"):
-            index_path = DASHBOARD_DIR / "index.html"
-            if index_path.exists():
-                content = index_path.read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(content)))
-                self.end_headers()
-                self.wfile.write(content)
-                return
-
-        # OPTIONS DESK (Derive.xyz / Elídio Carvalho Bull Put Spreads 24/7)
-        if clean_path in ("/options", "/options.html", "/desk", "/opcoes"):
+        # DEFAULT HOME & OPTIONS DESK (Derive.xyz / Elídio Carvalho Bull Put Spreads 24/7)
+        if clean_path in ("/", "/options", "/options.html", "/desk", "/opcoes"):
             options_path = DASHBOARD_DIR / "options_desk.html"
             if options_path.exists():
                 content = options_path.read_bytes()
@@ -406,6 +395,18 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(content)))
                 self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        # COCKPIT GERAL / HYPERLIQUID
+        if clean_path in ("/cockpit", "/hyperliquid", "/index.html", "/perp"):
+            index_path = DASHBOARD_DIR / "index.html"
+            if index_path.exists():
+                content = index_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
                 self.end_headers()
                 self.wfile.write(content)
                 return

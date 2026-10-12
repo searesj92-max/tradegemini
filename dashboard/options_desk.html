@@ -41,133 +41,141 @@
 <body class="min-h-screen flex flex-col">
 
   <!-- Header / Ticker Bar -->
-  <header class="border-b border-slate-800 bg-slate-900/90 sticky top-0 z-50 backdrop-blur-md">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-          <i class="fa-solid fa-chart-line text-white text-lg"></i>
+  <header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap justify-between items-center gap-2 sm:gap-4">
+      <div class="flex items-center space-x-2.5 sm:space-x-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 flex-shrink-0">
+          <i class="fa-solid fa-chart-line text-white text-base sm:text-lg"></i>
         </div>
         <div>
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="font-bold text-lg text-white tracking-tight">OPTIONS DESK</h1>
-            <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-semibold border border-indigo-500/30">OpsBit & Derive.xyz</span>
-            <span id="session-badge" class="text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h1 class="font-bold text-base sm:text-lg text-white tracking-tight">OPTIONS DESK</h1>
+            <span class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-semibold border border-indigo-500/30">Derive.xyz</span>
+            <span id="session-badge" class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span id="session-text">Derive Mainnet: Ancap</span>
+              <span id="session-text">Ancap</span>
             </span>
-            <span class="text-[11px] px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700">
-              Subconta <b id="subacct-id" class="text-white">#116270</b> • Saldo: <b id="subacct-balance" class="text-emerald-400">$292.04</b> USDC
+            <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700">
+              Saldo: <b id="subacct-balance" class="text-emerald-400">$320.81</b> USDC
             </span>
           </div>
-          <p class="text-xs text-slate-400">Trava de Alta com Puts (Elídio Carvalho) • Matriz de Decisão Quant • Rolagem Dupla</p>
+          <p class="hidden sm:block text-xs text-slate-400">Trava de Alta com Puts (Elídio Carvalho) • Matriz de Decisão Quant • Rolagem Dupla</p>
         </div>
       </div>
 
-      <!-- Live Spot Tickers & Open Interest Walls -->
-      <div class="flex items-center space-x-3">
-        <div class="flex items-center space-x-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700/60">
-          <span class="text-amber-400 font-bold text-xs"><i class="fa-brands fa-bitcoin mr-1"></i>BTC</span>
-          <span id="spot-btc" class="mono font-semibold text-sm text-white">Carregando...</span>
+      <!-- Live Spot Tickers & Quick Actions -->
+      <div class="flex items-center space-x-2 sm:space-x-3 ml-auto sm:ml-0">
+        <div class="flex items-center space-x-1 sm:space-x-1.5 bg-slate-800/90 px-2 sm:px-3 py-1 rounded-lg border border-slate-700/60 text-xs">
+          <span class="text-amber-400 font-bold"><i class="fa-brands fa-bitcoin mr-0.5"></i>BTC</span>
+          <span id="spot-btc" class="mono font-semibold text-white">...</span>
         </div>
-        <div class="flex items-center space-x-2 bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700/60">
-          <span class="text-blue-400 font-bold text-xs"><i class="fa-brands fa-ethereum mr-1"></i>ETH</span>
-          <span id="spot-eth" class="mono font-semibold text-sm text-white">Carregando...</span>
+        <div class="flex items-center space-x-1 sm:space-x-1.5 bg-slate-800/90 px-2 sm:px-3 py-1 rounded-lg border border-slate-700/60 text-xs">
+          <span class="text-blue-400 font-bold"><i class="fa-brands fa-ethereum mr-0.5"></i>ETH</span>
+          <span id="spot-eth" class="mono font-semibold text-white">...</span>
         </div>
-        <button onclick="refreshAll()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1.5">
+        <button onclick="refreshAll()" class="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1" title="Atualizar dados">
           <i id="refresh-icon" class="fa-solid fa-arrows-rotate"></i>
-          <span class="hidden sm:inline">Atualizar</span>
+          <span class="hidden md:inline">Atualizar</span>
         </button>
-        <a href="/" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1.5" title="Ir para Cockpit Geral">
+        <a href="/cockpit" class="p-1.5 sm:p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition border border-slate-700 text-xs flex items-center gap-1" title="Cockpit Geral">
           <i class="fa-solid fa-gauge"></i>
-          <span class="hidden sm:inline">Cockpit</span>
+          <span class="hidden md:inline">Cockpit</span>
         </a>
       </div>
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
-  <div class="border-b border-slate-800 bg-slate-900/60">
-    <div class="max-w-7xl mx-auto px-4 flex flex-wrap gap-2 sm:gap-6">
-      <button onclick="switchTab('decision')" id="tab-btn-decision" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-indigo-500 text-indigo-400">
+  <!-- Navigation Tabs (Touch-friendly & Horizontal Scroll on Mobile) -->
+  <div class="border-b border-slate-800 bg-slate-900/80 sticky top-[53px] sm:top-[65px] z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 flex items-center gap-2 sm:gap-6 overflow-x-auto whitespace-nowrap custom-scroll py-1 sm:py-0">
+      <button onclick="switchTab('decision')" id="tab-btn-decision" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-indigo-500 text-indigo-400 flex-shrink-0">
         <i class="fa-solid fa-brain"></i>
-        <span>O que Montar Agora (Matriz)</span>
+        <span>🎯 O que Montar (Matriz)</span>
       </button>
-      <button onclick="switchTab('positions')" id="tab-btn-positions" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+      <button onclick="switchTab('positions')" id="tab-btn-positions" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-wallet"></i>
-        <span>Minhas Operações (<span id="active-count">0</span>)</span>
+        <span>💼 Minhas Posições (<span id="active-count">0</span>)</span>
       </button>
-      <button onclick="switchTab('roller')" id="tab-btn-roller" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+      <button onclick="switchTab('roller')" id="tab-btn-roller" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-repeat"></i>
-        <span>Simulador de Rolagem</span>
+        <span>🔄 Simulador de Rolagem</span>
       </button>
-      <button onclick="switchTab('audit')" id="tab-btn-audit" class="py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 border-transparent text-slate-400 hover:text-slate-200">
+      <button onclick="switchTab('audit')" id="tab-btn-audit" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-clock-rotate-left"></i>
-        <span>Histórico de Rolagens</span>
+        <span>📋 Histórico</span>
       </button>
-      <button onclick="openNewModal()" class="py-3 px-1 font-medium text-sm text-emerald-400 hover:text-emerald-300 ml-auto flex items-center space-x-1.5">
+      <button onclick="openNewModal()" class="py-2.5 sm:py-3 px-2.5 sm:px-2 font-medium text-xs sm:text-sm text-emerald-400 hover:text-emerald-300 ml-auto flex items-center space-x-1 flex-shrink-0 bg-emerald-950/40 rounded-lg sm:bg-transparent border border-emerald-500/30 sm:border-0">
         <i class="fa-solid fa-plus-circle"></i>
-        <span>Registrar Trava</span>
+        <span>➕ Montar Trava</span>
       </button>
     </div>
   </div>
 
   <!-- Main Container -->
-  <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+  <main class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 flex-1 w-full space-y-4 sm:space-y-6">
 
     <!-- ================= TAB 0: MATRIZ DE DECISÃO QUANTITATIVA ================= -->
-    <div id="tab-decision" class="space-y-6">
+    <div id="tab-decision" class="space-y-4 sm:space-y-6">
       
       <!-- Top Quant Banner & Market Cross Filter -->
-      <div class="card-glass rounded-2xl p-5 border border-slate-800 space-y-4">
-        <div class="flex flex-wrap justify-between items-center gap-4">
+      <div class="card-glass rounded-2xl p-4 sm:p-5 border border-slate-800 space-y-3 sm:space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <i class="fa-solid fa-crosshairs text-indigo-400"></i>
-              Cruzamento de Dados & Risco x Retorno: O que está interessante montar hoje?
+              O que está interessante montar hoje?
             </h2>
-            <p class="text-xs text-slate-400 mt-1">
-              Filtro quantitativo que cruza Volatilidade Implícita (IV), Probabilidade Estatística (PoP), Breakeven com Margem de Segurança e Colchão para Rolagens Futuras.
+            <p class="text-xs text-slate-400 mt-0.5 sm:mt-1">
+              Filtro quantitativo que cruza Volatilidade Implícita (IV), Probabilidade (PoP), Breakeven e Colchão de Segurança.
             </p>
           </div>
 
           <!-- Currency & Profile Filter -->
-          <div class="flex items-center space-x-3">
-            <div class="flex rounded-lg bg-slate-800 p-1 border border-slate-700">
-              <button onclick="setMatrixCurrency('BTC')" id="matrix-curr-btc" class="px-3 py-1 rounded text-xs font-semibold bg-indigo-600 text-white">BTC</button>
-              <button onclick="setMatrixCurrency('ETH')" id="matrix-curr-eth" class="px-3 py-1 rounded text-xs font-semibold text-slate-400 hover:text-white">ETH</button>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div class="flex rounded-lg bg-slate-800 p-1 border border-slate-700 w-full sm:w-auto">
+              <button onclick="setMatrixCurrency('BTC')" id="matrix-curr-btc" class="flex-1 sm:flex-initial px-4 py-1.5 rounded text-xs font-semibold bg-indigo-600 text-white transition">BTC</button>
+              <button onclick="setMatrixCurrency('ETH')" id="matrix-curr-eth" class="flex-1 sm:flex-initial px-4 py-1.5 rounded text-xs font-semibold text-slate-400 hover:text-white transition">ETH</button>
             </div>
-            <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
-              <option value="ALL">Todos os Perfis</option>
-              <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico (&gt;25% a 40% de Folga)</option>
-              <option value="CONSERVATIVE">🟢 Alta Probabilidade (Conservador)</option>
-              <option value="BALANCED">🟡 Equilibrado (Risco x Retorno)</option>
-              <option value="ELIDIO_GROWTH">🟣 Modelo Elídio (Crédito Gordo)</option>
-            </select>
-            <select id="matrix-filter-dte" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none">
-              <option value="ALL">⏱️ Todos os Prazos</option>
-              <option value="WEEKLY">⚡ Semanal (7 a 14 dias)</option>
-              <option value="MONTHLY">📅 Mensal (15 a 45 dias)</option>
-              <option value="LONG">🛡️ Longo Prazo (&gt;45 dias)</option>
-            </select>
+            <div class="grid grid-cols-2 gap-2 w-full sm:w-auto">
+              <select id="matrix-filter-profile" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none w-full">
+                <option value="ALL">Todos os Perfis</option>
+                <option value="ULTRA_CONSERVATIVE">🛡️ Fundo Histórico</option>
+                <option value="CONSERVATIVE">🟢 Conservador</option>
+                <option value="BALANCED">🟡 Equilibrado</option>
+                <option value="ELIDIO_GROWTH">🟣 Elídio (Crédito)</option>
+              </select>
+              <select id="matrix-filter-dte" onchange="renderDecisionMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none w-full">
+                <option value="ALL">⏱️ Todos os Prazos</option>
+                <option value="WEEKLY">⚡ Semanal (7-14d)</option>
+                <option value="MONTHLY">📅 Mensal (15-45d)</option>
+                <option value="LONG">🛡️ Longo (&gt;45d)</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <!-- Institutional Wall Banner -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800 text-xs">
-          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-            <span class="text-slate-400 block font-medium">Suporte Institucional (Put Wall)</span>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-slate-800 text-xs">
+          <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
+            <div>
+              <span class="text-slate-400 block font-medium">Suporte Institucional (Put Wall)</span>
+              <span class="text-[10px] text-slate-500 hidden sm:block">Maior concentração de puts abertas</span>
+            </div>
             <span id="wall-put" class="mono font-bold text-emerald-400 text-sm mt-0.5 block">Carregando...</span>
-            <span class="text-[11px] text-slate-500">Maior concentração de puts abertas</span>
           </div>
-          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-            <span class="text-slate-400 block font-medium">Resistência Institucional (Call Wall)</span>
+          <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
+            <div>
+              <span class="text-slate-400 block font-medium">Resistência (Call Wall)</span>
+              <span class="text-[10px] text-slate-500 hidden sm:block">Teto de open interest do mercado</span>
+            </div>
             <span id="wall-call" class="mono font-bold text-rose-400 text-sm mt-0.5 block">Carregando...</span>
-            <span class="text-[11px] text-slate-500">Teto de open interest do mercado</span>
           </div>
-          <div class="bg-slate-800/60 rounded-xl p-3 border border-slate-700/50">
-            <span class="text-slate-400 block font-medium">Regime de Volatilidade (IV)</span>
+          <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
+            <div>
+              <span class="text-slate-400 block font-medium">Regime de Volatilidade (IV)</span>
+              <span class="text-[10px] text-slate-500 hidden sm:block">Prêmios atrativos p/ venda</span>
+            </div>
             <span id="market-iv-status" class="mono font-bold text-indigo-400 text-sm mt-0.5 block">Moderada (~35% - 45%)</span>
-            <span class="text-[11px] text-slate-500">Prêmios em níveis atrativos p/ venda</span>
           </div>
         </div>
       </div>
@@ -291,8 +299,8 @@
   </main>
 
   <!-- ================= MODAL: REGISTRAR NOVA TRAVA ================= -->
-  <div id="new-pos-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+  <div id="new-pos-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto custom-scroll">
       <div class="flex justify-between items-center mb-4">
         <h3 class="font-bold text-lg text-white flex items-center gap-2">
           <i class="fa-solid fa-plus-circle text-emerald-400"></i>
@@ -577,11 +585,11 @@
                 <p class="text-slate-400 leading-relaxed">${o.thesis}</p>
               </div>
 
-              <!-- Capital Sizing Recommendation for $292 Balance -->
+              <!-- Capital Sizing Recommendation -->
               <div class="mt-2.5 py-2 px-3 rounded-xl bg-indigo-950/40 border border-indigo-700/50 text-[11px] flex flex-wrap justify-between items-center gap-1.5 text-slate-300">
                 <div class="flex items-center gap-1.5">
                   <i class="fa-solid fa-calculator text-indigo-400"></i>
-                  <span>Para seu saldo (~$292 USDC): opere <b>${suggestedContr} ${o.currency}</b></span>
+                  <span>Sugerido p/ seu saldo: opere <b>${suggestedContr} ${o.currency}</b></span>
                 </div>
                 <div>
                   <span class="text-slate-400">Margem: <b class="text-white mono">$${userMarg}</b></span> | 
@@ -591,9 +599,9 @@
             </div>
 
             <!-- Action Button -->
-            <div class="pt-2 flex justify-between items-center text-xs">
+            <div class="pt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs">
               <span class="text-slate-500">Theta Diário: <b class="text-slate-300">+$${o.net_theta_daily.toFixed(1)}/dia</b></span>
-              <button onclick="adoptOpportunity('${o.currency}', '${o.expiry}', ${o.short_strike}, ${o.long_strike}, ${o.net_credit}, ${suggestedContr})" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition shadow-md shadow-indigo-600/25 flex items-center gap-1.5">
+              <button onclick="adoptOpportunity('${o.currency}', '${o.expiry}', ${o.short_strike}, ${o.long_strike}, ${o.net_credit}, ${suggestedContr})" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition shadow-md shadow-indigo-600/25 flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-plus-circle"></i>
                 <span>Montar Esta Trava</span>
               </button>

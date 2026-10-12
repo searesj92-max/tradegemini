@@ -226,7 +226,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         query = parse_qs(parsed.query)
 
-        if path in ("/api/open_spread", "/api/positions", "/api/toggle_auto_roll", "/api/roll_execute", "/api/close_position"):
+        if path in ("/api/open_spread", "/api/positions", "/api/toggle_auto_roll", "/api/toggle_auto_take_profit", "/api/roll_execute", "/api/close_position", "/api/simulate_capital"):
             content_len = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_len) if content_len > 0 else b"{}"
             proxy_to_options_desk(self, method="POST", body=body)
@@ -412,7 +412,7 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 return
 
         # OPTIONS DESK APIS (Proxied to local 24/7 Daemon)
-        if clean_path in ("/api/market", "/api/decision_matrix", "/api/positions", "/api/roll_simulation", "/api/roll_logs") or clean_path.startswith(("/api/decision_matrix", "/api/roll_simulation")):
+        if clean_path in ("/api/market", "/api/decision_matrix", "/api/positions", "/api/roll_simulation", "/api/roll_logs", "/api/iv_regime", "/api/simulate_capital") or clean_path.startswith(("/api/decision_matrix", "/api/roll_simulation", "/api/simulate_capital", "/api/iv_regime")):
             proxy_to_options_desk(self, method="GET")
             return
 

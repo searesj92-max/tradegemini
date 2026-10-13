@@ -460,64 +460,58 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
     # 1. MENU / AJUDA
     if cmd in ("/start", "/help", "/ajuda", "ajuda", "help", "menu"):
         msg = (
-            "🏛️ *SENTINELA & TESOURARIA DEFI BOTRADE*\n\n"
-            "Monitoramento 24/7 da pool WETH / USDC (Deposit #7732601) e Arbitragem Flash Loan:\n\n"
-            "• `/arbitragem` ou `/arb` - ⚡ Radar de Spreads ao Vivo (Aerodrome, Uniswap v3, PancakeSwap)\n"
-            "• `/planilha` ou `planilha` - 📊 Planilha ao vivo (Google Sheets automático e arquivos CSV)\n"
-            "• `/lucro` ou `lucro` - 💰 Rendimento real acumulado e base de ontem (sem estimativas)\n"
-            "• `/defi` ou `/pools` - 🎯 Radar da faixa ($2,596 ↔ $2,798), distâncias de piso/teto e saídas\n"
-            "• `/saldo` ou `/status` - 💼 Saldo atualizado, composição e valorização/desvalorização\n"
-            "• `/relatorio` ou `relatorio` - 📑 Resumo executivo de fechamento 24h\n\n"
-            "🎯 *MESA DE OPÇÕES (DERIVE.XYZ — MODELO ELÍDIO):*\n"
-            "• `/opcoes` ou `/options` - 🛡️ Top 3 travas com maior folga de segurança\n"
-            "• `/travas` - 💼 Minhas travas abertas, PnL e Take Profit\n"
-            "• `/iv` ou `/volatilidade` - 🌡️ Termômetro de Volatilidade do Bitcoin\n\n"
-            "_Toque diretamente nos botões interativos abaixo:_"
+            "🎯 *OPTIONS DESK — BOTRADE BOT (PUT SPREADS)*\n\n"
+            "Monitoramento 24/7 exclusivo das suas operações com opções Put Spreads na Derive (Carteira Tangem):\n\n"
+            "• `/travas` ou `/posicoes` - 💼 Relatório detalhado das suas travas ativas e PnL\n"
+            "• `/relatorio` ou `/status` - 📊 Resumo executivo de margem, crédito e distâncias de segurança\n"
+            "• `/lucro` - 💰 Total de crédito embolsado e alvos de Take Profit\n"
+            "• `/opcoes` - 🛡️ Radar de novas oportunidades com maior folga\n"
+            "• `/iv` - 🌡️ Termômetro de Volatilidade do Bitcoin\n\n"
+            "_Toque nos botões interativos abaixo para consultar:_"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "🎯 Radar Opções (/opcoes)", "callback_data": "options_radar"}, {"text": "💼 Minhas Travas", "callback_data": "options_positions"}],
-                [{"text": "🌡️ Termômetro IV (/iv)", "callback_data": "options_iv"}, {"text": "⚡ Radar Arbitragem", "callback_data": "refresh_arbitrage"}],
-                [{"text": "💰 Rendimento DeFi (/lucro)", "callback_data": "defi_profit"}, {"text": "📡 Radar da Faixa (/defi)", "callback_data": "defi_treasury"}],
-                [{"text": "📊 Planilha ao Vivo", "callback_data": "defi_sheet"}, {"text": "📑 Relatório 24h", "callback_data": "daily_report"}]
+                [{"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}, {"text": "📊 Relatório Consolidado", "callback_data": "daily_report"}],
+                [{"text": "🎯 Radar de Opções (/opcoes)", "callback_data": "options_radar"}, {"text": "🌡️ Termômetro IV (/iv)", "callback_data": "options_iv"}],
+                [{"text": "🌐 Abrir App da Derive", "url": "https://app.derive.xyz"}]
             ]
         }
         send_message(chat_id, msg, markup)
         return
 
-    # 2. PLANILHA AO VIVO (GOOGLE SHEETS & EXCEL)
-    if cmd in ("/planilha", "/excel", "/csv", "/sheets", "/sheet", "planilha", "excel", "csv", "sheets", "sheet") or "planilha" in text.lower():
-        handle_planilha_command(chat_id)
+    # 2. RELATÓRIO DE TRAVAS / SALDO / STATUS / LUCRO (REDIRECIONADO EXCLUSIVAMENTE PARA OPTIONS)
+    if cmd in ("/lucro", "/lucros", "/rendimento", "/rendimentos", "/ganhos", "lucro", "lucros", "rendimento", "rendimentos", "ganhos",
+               "/saldo", "/status", "/posicoes", "/posições", "saldo", "status", "posicoes", "posições",
+               "/relatorio", "/report", "/resumo", "relatorio", "resumo"):
+        try:
+            from telegram_options_monitor import generate_report
+            rep = generate_report()
+            markup = {
+                "inline_keyboard": [
+                    [{"text": "🔄 Atualizar Posições", "callback_data": "options_positions"}, {"text": "🎯 Radar Derive", "callback_data": "options_radar"}],
+                    [{"text": "🌡️ Termômetro IV", "callback_data": "options_iv"}, {"text": "🌐 Abrir Derive", "url": "https://app.derive.xyz"}]
+                ]
+            }
+            send_message(chat_id, rep, markup)
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao gerar relatório de opções: {e}")
         return
 
-    # 3. LUCRO DEDICADO (REAL ACUMULADO + BASE ANTERIOR)
-    if cmd in ("/lucro", "/lucros", "/rendimento", "/rendimentos", "/ganhos", "lucro", "lucros", "rendimento", "rendimentos", "ganhos", "quanto rendeu", "lucro de hoje") or "lucro" in text.lower() or "rendeu" in text.lower():
-        text_out, markup = format_defi_profit_dashboard()
-        send_message(chat_id, text_out, markup)
-        return
-
-    # 4. DEFI TREASURY / POOLS RADAR
-    if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "defi", "tesouraria", "pools", "pool") or "pool" in text.lower() or "faixa" in text.lower():
-        text_out, markup = format_defi_message()
-        send_message(chat_id, text_out, markup)
-        return
-
-    # 5. SALDO & STATUS DE ALOCAÇÃO
-    if cmd in ("/saldo", "/status", "/posicoes", "/posições", "saldo", "status", "posicoes", "posições"):
-        text_out, markup = format_defi_status_summary()
-        send_message(chat_id, text_out, markup)
-        return
-
-    # 6. DIAGNÓSTICO VIRTUAL (DESMONTADA)
-    if cmd in ("/virtual", "/krystal", "/rebalance", "virtual", "krystal", "rebalance", "rebalanceamento"):
-        text_out, markup = format_virtual_rebalance_status()
-        send_message(chat_id, text_out, markup)
-        return
-
-    # 7. RELATÓRIO 24H
-    if cmd in ("/relatorio", "/report", "/resumo", "relatorio", "resumo"):
-        text_out, markup = format_daily_report_message()
-        send_message(chat_id, text_out, markup)
+    # 3. AVISO SOBRE POOLS DESMONTADAS
+    if cmd in ("/defi", "/tesouraria", "/pools", "/pool", "defi", "tesouraria", "pools", "pool", "/planilha", "planilha"):
+        msg = (
+            "ℹ️ *POOLS DE LIQUIDEZ DESMONTADAS*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "O capital das pools DeFi foi 100% resgatado e migrado com sucesso para a sua custódia segura na **Tangem** e para as operações de **Opções Put Spreads na Derive**.\n\n"
+            "👉 Digite `/travas` ou `/relatorio` para acompanhar as suas operações ativas de Puts no Bitcoin!"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💼 Ver Minhas Travas (/travas)", "callback_data": "options_positions"}],
+                [{"text": "📊 Relatório Consolidado", "callback_data": "daily_report"}]
+            ]
+        }
+        send_message(chat_id, msg, markup)
         return
 
     # 8. RADAR DE ARBITRAGEM DEFI ON-CHAIN
@@ -646,7 +640,7 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
 
     send_message(
         chat_id,
-        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/opcoes` para travas de segurança, `/arbitragem` para spreads DeFi, `/lucro` para o rendimento da pool ou `/ajuda` para o menu completo."
+        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/travas` para ver suas posições ativas, `/opcoes` para novas oportunidades, `/relatorio` para o resumo executivo ou `/ajuda` para o menu completo."
     )
 
 
@@ -691,45 +685,40 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, rep, markup)
         return
 
-    if data in ("defi_profit", "profit_summary"):
-        answer_callback(cq_id, "Calculando rendimento real...")
-        text_out, markup = format_defi_profit_dashboard()
+    if data in ("daily_report", "defi_profit", "profit_summary", "refresh_status"):
+        answer_callback(cq_id, "Gerando relatório de opções...")
+        from telegram_options_monitor import generate_report
+        rep = generate_report()
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}, {"text": "🎯 Radar Derive", "callback_data": "options_radar"}],
+                [{"text": "🌡️ Termômetro IV", "callback_data": "options_iv"}, {"text": "🌐 Abrir Derive", "url": "https://app.derive.xyz"}]
+            ]
+        }
         if msg_id:
-            edit_message(chat_id, msg_id, text_out, markup)
+            edit_message(chat_id, msg_id, rep, markup)
         else:
-            send_message(chat_id, text_out, markup)
+            send_message(chat_id, rep, markup)
         return
 
-    if data == "defi_treasury":
-        answer_callback(cq_id, "Consultando radar da faixa...")
-        text_out, markup = format_defi_message()
+    if data in ("defi_treasury", "defi_sheet"):
+        answer_callback(cq_id, "Pools desmontadas")
+        msg = (
+            "ℹ️ *POOLS DE LIQUIDEZ DESMONTADAS*\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "O capital das pools DeFi foi 100% resgatado e migrado para a custódia segura na **Tangem** e para as operações de **Opções Put Spreads na Derive**.\n\n"
+            "👉 Use os botões abaixo para ver suas travas ativas no Bitcoin:"
+        )
+        markup = {
+            "inline_keyboard": [
+                [{"text": "💼 Ver Minhas Travas (/travas)", "callback_data": "options_positions"}],
+                [{"text": "📊 Relatório Consolidado", "callback_data": "daily_report"}]
+            ]
+        }
         if msg_id:
-            edit_message(chat_id, msg_id, text_out, markup)
+            edit_message(chat_id, msg_id, msg, markup)
         else:
-            send_message(chat_id, text_out, markup)
-        return
-
-    if data == "refresh_status":
-        answer_callback(cq_id, "Atualizando saldo consolidado...")
-        text_out, markup = format_defi_status_summary()
-        if msg_id:
-            edit_message(chat_id, msg_id, text_out, markup)
-        else:
-            send_message(chat_id, text_out, markup)
-        return
-
-    if data == "daily_report":
-        answer_callback(cq_id, "Gerando fechamento 24h...")
-        text_out, markup = format_daily_report_message()
-        if msg_id:
-            edit_message(chat_id, msg_id, text_out, markup)
-        else:
-            send_message(chat_id, text_out, markup)
-        return
-
-    if data == "defi_sheet":
-        answer_callback(cq_id, "Gerando planilha ao vivo...")
-        handle_planilha_command(chat_id)
+            send_message(chat_id, msg, markup)
         return
 
     answer_callback(cq_id)

@@ -16,8 +16,9 @@ python -u scripts/setup_derive_abis.py
 echo "[*] Subindo Options Desk 24/7 (Auto-Roll Daemon)..."
 python -u scripts/options_desk.py --port 8766 &
 
-# Inicia o Sentinela DeFi 24/7 Multi-Chain (Alertas de Range + Relatórios Periódicos)
-python -u scripts/defi_pools_monitor.py --loop &
+# Inicia o Monitor de Opções / Put Spreads 24/7 para o Telegram (a cada 3 horas)
+echo "[*] Subindo Monitor de Opções / Put Spreads 24/7 para Telegram..."
+python -u scripts/telegram_options_monitor.py --daemon &
 
 # Inicia o Monitor e Telegram Bot Interativo em background
 python -u scripts/run_live_monitor.py &

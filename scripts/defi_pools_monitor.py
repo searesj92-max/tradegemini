@@ -606,11 +606,9 @@ def generate_urgent_alert_message(item: dict, profits: dict) -> str:
 
 
 def send_telegram(text: str, reply_markup: dict = None) -> bool:
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or TOKEN
-    chat_id = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CHAT_ID", "")).strip() or CHAT_ID
-    if not token or not chat_id:
-        print("[-] Telegram bot token or chat ID missing.")
-        return False
+    # DESATIVADO: A pool de liquidez DeFi foi desmontada pelo usuário.
+    # Envio de alertas do sentinela DeFi permanentemente desativado.
+    return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {

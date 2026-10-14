@@ -46,32 +46,7 @@ if env_file.exists():
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.environ.get("TELEGRAM_SIGNALS_CHAT_ID", os.environ.get("TELEGRAM_CHAT_ID", "")).strip()
 
-POSITIONS = [
-    {
-        "id": "weth_usdc",
-        "name": "WETH / USDC (Slipstream 50)",
-        "chain": "Base (Layer 2)",
-        "protocol": "Aerodrome Finance",
-        "type": "Cofre Principal Concentrado",
-        "capital_usd": 11568.85,
-        "initial_capital_usd": 11568.85,
-        "weth_amount": 2.1138,
-        "usdc_amount": 5871.09,
-        "range_min": 2596.73,
-        "range_max": 2798.98,
-        "unit": "USDC/ETH",
-        "deposit_id": "Deposit #7732601",
-        "pair_address": "0x4200000000000000000000000000000000000006",
-        "price_key": "eth",
-        "price_field": "price",
-        "daily_usd": 21.09,
-        "apr": "15.89% Fee APR",
-        "prev_day_yield_usd": 21.09,
-        "prev_day_aero": 23.8,
-        "start_iso": "2026-10-06T21:48:00+00:00",
-        "profit_type": "gauge"
-    }
-]
+POSITIONS = []
 
 
 def fetch_json(url: str, timeout: int = 8) -> dict | None:

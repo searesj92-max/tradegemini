@@ -1019,12 +1019,12 @@
                 <span class="text-slate-400 block text-[11px]">$${p.initial_credit_per_contract.toFixed(1)}/unid</span>
               </div>
               <div>
-                <span class="text-slate-500 block">Custo p/ Fechar Hoje</span>
+                <span class="text-slate-500 block">Custo p/ Fechar (Mark)</span>
                 <span class="font-semibold text-slate-300 mono">$${p.cost_to_close_total.toFixed(2)}</span>
-                <span class="text-slate-400 block text-[11px]">(débito de saída)</span>
+                <span class="text-slate-400 block text-[11px]">$${p.cost_to_close_unit.toFixed(1)}/unid (Mark Derive)</span>
               </div>
               <div>
-                <span class="text-slate-500 block">Lucro Líquido Atual</span>
+                <span class="text-slate-500 block">Lucro Líquido (UPnL)</span>
                 <span class="font-bold ${pnlColor} mono text-sm">${pnlSign}$${pnl.toFixed(2)}</span>
                 <span class="text-slate-400 block text-[11px]">${progress.toFixed(1)}% do crédito</span>
               </div>

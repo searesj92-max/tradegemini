@@ -900,13 +900,16 @@ def evaluate_position(pos):
     mark_short = float(t_short.get('M', 0))
     mark_long = float(t_long.get('M', 0))
     
-    if ask_short > 0 and bid_long >= 0:
-        cost_to_close_unit = max(0.0, ask_short - bid_long)
-    else:
-        cost_to_close_unit = max(0.0, mark_short - mark_long)
-        
+    # 1. PnL Oficial da Derive (Baseado no Mark Price institucional / Marcação a Mercado)
+    mark_spread_unit = max(0.0, mark_short - mark_long) if (mark_short > 0 and mark_long >= 0) else 0.0
+    cost_to_close_unit = mark_spread_unit if mark_spread_unit > 0 else (max(0.0, ask_short - bid_long) if ask_short > 0 else 0.0)
     cost_to_close_total = cost_to_close_unit * contracts
     current_pnl_total = init_credit_total - cost_to_close_total
+
+    # 2. Custo Taker Agressivo (pior cenário teórico caso agredisse o livro de ordens perna por perna)
+    taker_unit = max(0.0, ask_short - bid_long) if (ask_short > 0 and bid_long >= 0) else mark_spread_unit
+    taker_cost_total = taker_unit * contracts
+    taker_pnl_total = init_credit_total - taker_cost_total
     
     if init_credit_total > 0:
         profit_captured_pct = max(0.0, min(100.0, ((init_credit_total - cost_to_close_total) / init_credit_total) * 100))
@@ -956,10 +959,13 @@ def evaluate_position(pos):
         'is_cushion_positive': bool(max_tolerated_drop_pct > 0),
         'ask_short': ask_short,
         'bid_long': bid_long,
+        'mark_price_unit': round(cost_to_close_unit, 2),
         'cost_to_close_unit': round(cost_to_close_unit, 2),
         'cost_to_close_total': round(cost_to_close_total, 2),
         'current_pnl_total': round(current_pnl_total, 2),
         'profit_captured_pct': round(profit_captured_pct, 1),
+        'taker_cost_total': round(taker_cost_total, 2),
+        'taker_pnl_total': round(taker_pnl_total, 2),
         'dist_to_short': round(dist_to_short, 2),
         'delta_short': round(delta_short, 2),
         'theta_short': round(theta_short, 2),

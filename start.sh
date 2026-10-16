@@ -2,8 +2,8 @@
 echo "[*] =============================================="
 echo "[*] INICIANDO BOTRADE NA NUVEM (RENDER.COM)"
 echo "[*] MODO OPTIONS DESK 24/7 (DERIVE.XYZ) ATIVO"
+echo "[*] MODO DERIVE PERP SNIPER V5 (5-YEAR VALIDATED) ATIVO"
 echo "[*] MODO SENTINELA DEFI ATIVO (4 POOLS 24/7)"
-echo "[*] AUTO-SNIPER PERP: DESATIVADO (SALDO MIGRADO)"
 echo "[*] =============================================="
 
 # Garante que os diretórios necessários existem

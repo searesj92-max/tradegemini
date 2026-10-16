@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import time
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -22,6 +22,13 @@ from hyperliquid_executor import HyperliquidExecutor
 from backtest_engine import run_backtest_pipeline
 from funding_radar import fetch_funding_radar
 from universe_scanner import scan_universe, LEADERBOARD_FILE
+from derive_perp_sniper import (
+    get_full_perp_sniper_status,
+    update_perp_sniper_config,
+    execute_derive_perp_entry,
+    close_derive_perp_position,
+    start_perp_sniper_daemon,
+)
 
 _MACRO_CACHE = {
     "last_fetched": 0,
@@ -346,6 +353,62 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+        if path == "/api/derive_perp/config":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+                data = json.loads(body)
+                res = update_perp_sniper_config(data)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        if path == "/api/derive_perp/execute":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+                data = json.loads(body)
+                coin = str(data.get("coin", "SOL")).upper()
+                side = str(data.get("side", "LONG")).upper()
+                manual = bool(data.get("manual", True))
+                res = execute_derive_perp_entry(coin=coin, side=side, manual=manual)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        if path == "/api/derive_perp/close":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+                data = json.loads(body)
+                coin = str(data.get("coin", query.get("coin", ["SOL"])[0])).upper()
+                reason = str(data.get("reason", "MANUAL_CLOSE"))
+                res = close_derive_perp_position(coin, reason=reason)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
         if path == "/api/backtest/run":
             try:
                 content_len = int(self.headers.get("Content-Length", 0))
@@ -762,12 +825,35 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
                 return
 
+        if parsed.path == "/api/derive_perp/status":
+            try:
+                query = parse_qs(parsed.query)
+                force = query.get("force", ["false"])[0].lower() in ("true", "1", "yes")
+                data = get_full_perp_sniper_status(force_scan=force)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
         return super().do_GET()
 
 
 def main():
     port = int(os.environ.get("PORT", 8765))
     server_address = ("0.0.0.0", port)
+
+    # Start 24/7 Derive Perp Sniper V5 (5-Year Validated Specialist Engine)
+    try:
+        start_perp_sniper_daemon()
+    except Exception as e:
+        print(f"[!] Erro ao iniciar DerivePerpSniperDaemon: {e}")
 
     # Start background cache refresher for lowest latency arbitrage (< 5ms response from RAM)
     try:
@@ -788,10 +874,11 @@ def main():
     except Exception as e:
         print(f"[!] Erro ao iniciar ArbCacheWorker: {e}")
 
-    httpd = HTTPServer(server_address, BotradeDashboardHandler)
-    print(f"[*] Botrade Cockpit Server rodando em http://localhost:{port}/ (e na rede local)")
+    httpd = ThreadingHTTPServer(server_address, BotradeDashboardHandler)
+    print(f"[*] Botrade Cockpit Server (Threading) rodando em http://localhost:{port}/ (e na rede local)")
     httpd.serve_forever()
 
 
 if __name__ == "__main__":
     main()
+

@@ -163,6 +163,15 @@ def calculate_indicators(candles: list[dict]) -> dict:
         else:
             vol_sma20.append(sum(volumes[i - 19 : i + 1]) / 20.0)
 
+    # --- Bull Market Support Band (20W SMA = 140 / 21W EMA = 147) ---
+    bmsb_ema = calc_ema(closes, 147)
+    bmsb_sma = []
+    for i in range(n):
+        if i < 139:
+            bmsb_sma.append(sum(closes[: i + 1]) / (i + 1))
+        else:
+            bmsb_sma.append(sum(closes[i - 139 : i + 1]) / 140.0)
+
     return {
         "times": times,
         "closes": closes,
@@ -173,6 +182,8 @@ def calculate_indicators(candles: list[dict]) -> dict:
         "ema21": ema21,
         "ema50": ema50,
         "ema200": ema200,
+        "bmsb_sma": bmsb_sma,
+        "bmsb_ema": bmsb_ema,
         "atr14": atr14,
         "rsi": rsi,
         "bb_upper": bb_upper,
@@ -629,9 +640,13 @@ def run_simulation(
         })
 
     # Format Indicator Series for Lightweight Charts
+    bmsb_sma = ind.get("bmsb_sma", ema200)
+    bmsb_ema = ind.get("bmsb_ema", ema200)
     chart_ema9 = [{"time": times[idx], "value": round(ema9[idx], 4)} for idx in range(n)]
     chart_ema21 = [{"time": times[idx], "value": round(ema21[idx], 4)} for idx in range(n)]
     chart_ema200 = [{"time": times[idx], "value": round(ema200[idx], 4)} for idx in range(n)]
+    chart_bmsb_sma = [{"time": times[idx], "value": round(bmsb_sma[idx], 4)} for idx in range(n)]
+    chart_bmsb_ema = [{"time": times[idx], "value": round(bmsb_ema[idx], 4)} for idx in range(n)]
     chart_bbupper = [{"time": times[idx], "value": round(bb_upper[idx], 4)} for idx in range(n)]
     chart_bblower = [{"time": times[idx], "value": round(bb_lower[idx], 4)} for idx in range(n)]
     chart_rsi = [{"time": times[idx], "value": round(rsi[idx], 2)} for idx in range(n)]
@@ -680,6 +695,8 @@ def run_simulation(
             "ema9": chart_ema9,
             "ema21": chart_ema21,
             "ema200": chart_ema200,
+            "bmsb_sma": chart_bmsb_sma,
+            "bmsb_ema": chart_bmsb_ema,
             "bb_upper": chart_bbupper,
             "bb_lower": chart_bblower,
             "rsi": chart_rsi

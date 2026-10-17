@@ -2124,14 +2124,23 @@
             <span id="bt-chart-strat" class="pill" style="font-size:11px;">Dual-Engine</span>
           </div>
 
-          <!-- Legenda de Cores dos Indicadores -->
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:11px; font-family:var(--mono);">
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#f59e0b; border-radius:2px;"></span> EMA 9</span>
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#3b82f6; border-radius:2px;"></span> EMA 21</span>
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:#a855f7; border-radius:2px;"></span> EMA 200</span>
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:10px; height:3px; background:rgba(255,255,255,0.3); border-radius:2px;"></span> Bollinger</span>
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%;"></span> Compra (BUY)</span>
-            <span style="display:inline-flex; align-items:center; gap:4px;"><span style="display:inline-block; width:8px; height:8px; background:#ef4444; border-radius:50%;"></span> Stop Loss</span>
+          <!-- Botões de Camadas Limpas (Ligar/Desligar Indicadores sem Embolar o Gráfico) -->
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; font-family:var(--mono);">
+            <button id="btn-ind-bmsb" onclick="toggleBtIndicator('bmsb')" style="cursor:pointer; padding:3px 8px; border-radius:6px; border:1px solid rgba(16,185,129,0.5); background:rgba(16,185,129,0.15); color:#34d399; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Ligar/Desligar Bull Market Support Band (20W SMA / 21W EMA)">
+              <span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:2px;"></span> BMSB (20W/21W)
+            </button>
+            <button id="btn-ind-ema21" onclick="toggleBtIndicator('ema21')" style="cursor:pointer; padding:3px 8px; border-radius:6px; border:1px solid rgba(59,130,246,0.5); background:rgba(59,130,246,0.15); color:#60a5fa; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Ligar/Desligar EMA 21">
+              <span style="display:inline-block; width:10px; height:3px; background:#3b82f6; border-radius:2px;"></span> EMA 21
+            </button>
+            <button id="btn-ind-ema200" onclick="toggleBtIndicator('ema200')" style="cursor:pointer; padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background:transparent; color:#64748b; display:inline-flex; align-items:center; gap:4px;" title="Clique para exibir EMA 200">
+              <span style="display:inline-block; width:10px; height:3px; background:#a855f7; border-radius:2px;"></span> EMA 200
+            </button>
+            <button id="btn-ind-ema9" onclick="toggleBtIndicator('ema9')" style="cursor:pointer; padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background:transparent; color:#64748b; display:inline-flex; align-items:center; gap:4px;" title="Clique para exibir EMA 9">
+              <span style="display:inline-block; width:10px; height:3px; background:#f59e0b; border-radius:2px;"></span> EMA 9
+            </button>
+            <button id="btn-ind-bb" onclick="toggleBtIndicator('bb')" style="cursor:pointer; padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.12); background:transparent; color:#64748b; display:inline-flex; align-items:center; gap:4px;" title="Clique para exibir Bandas de Bollinger">
+              <span style="display:inline-block; width:10px; height:3px; background:rgba(255,255,255,0.4); border-radius:2px;"></span> Bollinger
+            </button>
           </div>
 
           <!-- Controles de Zoom -->
@@ -5507,14 +5516,60 @@
       });
       btCandleSeries.setData(data.candles || []);
 
-      // Indicators Overlays
+      if (!window.btIndVisible) {
+        window.btIndVisible = { bmsb: true, ema21: true, ema200: false, ema9: false, bb: false };
+      }
+
+      // Compute BMSB (140 SMA / 147 EMA) client-side if not present in API payload
+      const cList = data.candles || [];
+      let bmsbSmaData = (data.indicators && data.indicators.bmsb_sma) || [];
+      let bmsbEmaData = (data.indicators && data.indicators.bmsb_ema) || [];
+      if (cList.length > 0 && (!bmsbSmaData.length || !bmsbEmaData.length)) {
+        bmsbSmaData = [];
+        bmsbEmaData = [];
+        let emaVal = cList[0].close;
+        const kMult = 2.0 / (147.0 + 1.0);
+        for (let i = 0; i < cList.length; i++) {
+          const cl = cList[i].close;
+          emaVal = cl * kMult + emaVal * (1.0 - kMult);
+          const startIdx = Math.max(0, i - 139);
+          let sumSma = 0;
+          for (let j = startIdx; j <= i; j++) sumSma += cList[j].close;
+          const smaVal = sumSma / (i - startIdx + 1);
+          bmsbSmaData.push({ time: cList[i].time, value: smaVal });
+          bmsbEmaData.push({ time: cList[i].time, value: emaVal });
+        }
+      }
+
+      // Indicators Overlays (Clean by default: only BMSB & EMA 21 visible unless toggled)
       if (data.indicators) {
-        // Bollinger Bands
+        // Bull Market Support Band (20W SMA & 21W EMA)
+        if (bmsbSmaData.length) {
+          window.btBmsbSmaSeries = btMainChart.addLineSeries({
+            color: "#ef4444",
+            lineWidth: 2,
+            visible: window.btIndVisible.bmsb,
+            title: "20W SMA (BMSB)",
+          });
+          window.btBmsbSmaSeries.setData(bmsbSmaData);
+        }
+        if (bmsbEmaData.length) {
+          window.btBmsbEmaSeries = btMainChart.addLineSeries({
+            color: "#10b981",
+            lineWidth: 2,
+            visible: window.btIndVisible.bmsb,
+            title: "21W EMA (BMSB)",
+          });
+          window.btBmsbEmaSeries.setData(bmsbEmaData);
+        }
+
+        // Bollinger Bands (Hidden by default to avoid clutter)
         if (data.indicators.bb_upper && data.indicators.bb_upper.length) {
           btBbUpperSeries = btMainChart.addLineSeries({
             color: "rgba(255, 255, 255, 0.25)",
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dotted,
+            visible: window.btIndVisible.bb,
             title: "BB Upper",
           });
           btBbUpperSeries.setData(data.indicators.bb_upper);
@@ -5524,16 +5579,18 @@
             color: "rgba(255, 255, 255, 0.25)",
             lineWidth: 1,
             lineStyle: LightweightCharts.LineStyle.Dotted,
+            visible: window.btIndVisible.bb,
             title: "BB Lower",
           });
           btBbLowerSeries.setData(data.indicators.bb_lower);
         }
 
-        // EMA 200 (Macro)
+        // EMA 200 (Hidden by default when BMSB is active)
         if (data.indicators.ema200 && data.indicators.ema200.length) {
           btEma200Series = btMainChart.addLineSeries({
             color: "#a855f7",
             lineWidth: 2,
+            visible: window.btIndVisible.ema200,
             title: "EMA 200",
           });
           btEma200Series.setData(data.indicators.ema200);
@@ -5544,16 +5601,18 @@
           btEma21Series = btMainChart.addLineSeries({
             color: "#3b82f6",
             lineWidth: 1.5,
+            visible: window.btIndVisible.ema21,
             title: "EMA 21",
           });
           btEma21Series.setData(data.indicators.ema21);
         }
 
-        // EMA 9
+        // EMA 9 (Hidden by default to keep chart clean)
         if (data.indicators.ema9 && data.indicators.ema9.length) {
           btEma9Series = btMainChart.addLineSeries({
             color: "#f59e0b",
             lineWidth: 1.5,
+            visible: window.btIndVisible.ema9,
             title: "EMA 9",
           });
           btEma9Series.setData(data.indicators.ema9);
@@ -5665,6 +5724,43 @@
     window.resetBacktestChartZoom = function() {
       if (btMainChart) btMainChart.timeScale().fitContent();
       if (btRsiChart) btRsiChart.timeScale().fitContent();
+    };
+
+    window.toggleBtIndicator = function(key) {
+      if (!window.btIndVisible) {
+        window.btIndVisible = { bmsb: true, ema21: true, ema200: false, ema9: false, bb: false };
+      }
+      window.btIndVisible[key] = !window.btIndVisible[key];
+      const vis = window.btIndVisible[key];
+
+      if (key === 'bmsb') {
+        if (window.btBmsbSmaSeries) window.btBmsbSmaSeries.applyOptions({ visible: vis });
+        if (window.btBmsbEmaSeries) window.btBmsbEmaSeries.applyOptions({ visible: vis });
+      } else if (key === 'ema21' && btEma21Series) {
+        btEma21Series.applyOptions({ visible: vis });
+      } else if (key === 'ema200' && btEma200Series) {
+        btEma200Series.applyOptions({ visible: vis });
+      } else if (key === 'ema9' && btEma9Series) {
+        btEma9Series.applyOptions({ visible: vis });
+      } else if (key === 'bb') {
+        if (btBbUpperSeries) btBbUpperSeries.applyOptions({ visible: vis });
+        if (btBbLowerSeries) btBbLowerSeries.applyOptions({ visible: vis });
+      }
+
+      const btn = $("btn-ind-" + key);
+      if (btn) {
+        const activeStyles = {
+          bmsb: { border: "rgba(16,185,129,0.5)", bg: "rgba(16,185,129,0.15)", color: "#34d399" },
+          ema21: { border: "rgba(59,130,246,0.5)", bg: "rgba(59,130,246,0.15)", color: "#60a5fa" },
+          ema200: { border: "rgba(168,85,247,0.5)", bg: "rgba(168,85,247,0.15)", color: "#c084fc" },
+          ema9: { border: "rgba(245,158,11,0.5)", bg: "rgba(245,158,11,0.15)", color: "#fbbf24" },
+          bb: { border: "rgba(255,255,255,0.4)", bg: "rgba(255,255,255,0.1)", color: "#e2e8f0" }
+        }[key] || { border: "rgba(255,255,255,0.4)", bg: "rgba(255,255,255,0.1)", color: "#e2e8f0" };
+        btn.style.borderColor = vis ? activeStyles.border : "rgba(255,255,255,0.12)";
+        btn.style.background = vis ? activeStyles.bg : "transparent";
+        btn.style.color = vis ? activeStyles.color : "#64748b";
+        btn.style.fontWeight = vis ? "700" : "400";
+      }
     };
 
     window.filterBacktestTrades = function(filter) {

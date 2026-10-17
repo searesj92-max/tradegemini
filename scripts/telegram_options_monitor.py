@@ -81,12 +81,17 @@ def generate_report():
         rec = eval_p.get("recommendation", {})
         upnl_sign = "+" if upnl >= 0 else ""
 
+        bmsb = eval_p.get("bmsb", {})
+        bmsb_str = f"`${bmsb.get('band_bottom', 0):,.0f}–${bmsb.get('band_top', 0):,.0f}` ({bmsb.get('badge', '')})" if bmsb else ""
+
         msg.append(f"\n*{idx}. Posição: BTC {short_k:,.0f} / {long_k:,.0f} Put Spread*")
         msg.append(f"   • *Vencimento:* `{exp_formatted}` (`{dte}d` restantes | `{contracts}` BTC)")
         msg.append(f"   • *Crédito Inicial:* `+${credit:,.2f} USDC` (Margem: `${margin:,.2f}`)")
         msg.append(f"   • *Lucro Atual (Mark Derive):* `{upnl_sign}${upnl:,.2f} USDC` (`{upnl_pct:.1f}%` capturado)")
         msg.append(f"   • *Restante na Mesa:* `${rem_table:,.2f}` (`+${rem_per_day:,.2f}/dia` até 100%)")
         msg.append(f"   • *Distância de Segurança:* {status_icon} `+${dist_usd:,.2f}` (`+{dist_pct:.1f}%` acima)")
+        if bmsb_str:
+            msg.append(f"   • *Suporte Bull Market (20W/21W):* {bmsb_str}")
         msg.append(f"   • *Decisão (80% vs 100%):* {rec.get('badge', '🟢 MANTER')}")
 
     msg.append("\n━━━━━━━━━━━━━━━━━━━━━━")

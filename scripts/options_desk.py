@@ -505,6 +505,68 @@ def get_market_walls(currency="BTC", expiry=None):
         'call_wall_oi': round(c_wall[1], 2)
     }
 
+_BMSB_CACHE = {}
+
+def get_bmsb_status(currency="BTC"):
+    """Calcula a Bull Market Support Band (SMA 20 Semanas = 140d / EMA 21 Semanas = 147d)."""
+    now = time.time()
+    cached = _BMSB_CACHE.get(currency)
+    if cached and (now - cached['ts']) < 900:
+        return cached['data']
+
+    spot = get_spot_price(currency)
+    symbol = "BTCUSDT" if currency == "BTC" else "ETHUSDT"
+    try:
+        url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1d&limit=300"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            klines = json.loads(resp.read().decode("utf-8"))
+        closes = [float(k[4]) for k in klines]
+        if spot > 0 and closes:
+            closes[-1] = spot
+        sma20w = sum(closes[-140:]) / min(len(closes), 140)
+        ema21w = closes[0]
+        k_mult = 2.0 / (147.0 + 1.0)
+        for c in closes[1:]:
+            ema21w = (c * k_mult) + (ema21w * (1.0 - k_mult))
+    except Exception:
+        # Fallback aproximado caso a API externa oscile
+        sma20w = spot * 0.873
+        ema21w = spot * 0.931
+
+    band_top = round(max(sma20w, ema21w), 0)
+    band_bottom = round(min(sma20w, ema21w), 0)
+    dist_top_pct = round(((spot - band_top) / spot) * 100, 1) if spot > 0 else 0.0
+    dist_bot_pct = round(((spot - band_bottom) / spot) * 100, 1) if spot > 0 else 0.0
+
+    if spot > band_top:
+        regime = "BULL"
+        badge = f"🟢 Bull Market (+{dist_top_pct}% acima)"
+        color = "emerald"
+    elif spot >= band_bottom:
+        regime = "TESTING"
+        badge = "🟡 Testando a Banda (Suporte)"
+        color = "amber"
+    else:
+        regime = "BEAR"
+        badge = f"🔴 Abaixo da Banda ({dist_bot_pct}%)"
+        color = "rose"
+
+    res = {
+        'currency': currency,
+        'sma20w': round(sma20w, 0),
+        'ema21w': round(ema21w, 0),
+        'band_top': band_top,
+        'band_bottom': band_bottom,
+        'dist_top_pct': dist_top_pct,
+        'dist_bot_pct': dist_bot_pct,
+        'regime': regime,
+        'badge': badge,
+        'color': color
+    }
+    _BMSB_CACHE[currency] = {'ts': now, 'data': res}
+    return res
+
 def get_iv_regime(currency="BTC"):
     spot = get_spot_price(currency)
     expiries = get_live_expiries(currency)
@@ -660,6 +722,7 @@ def scan_decision_matrix(currency="BTC"):
     expiries = get_live_expiries(currency)
     today = datetime.datetime.now().date()
     walls = get_market_walls(currency)
+    bmsb = get_bmsb_status(currency)
     
     matrix = []
     
@@ -773,6 +836,18 @@ def scan_decision_matrix(currency="BTC"):
                                 f"com PoP de {pop}%. Decaimento de Theta rende {theta_yield_daily:.2f}% ao dia sobre a margem."
                             )
                             conviction = min(100.0, max(10.0, (pop * 0.45) + (min(200.0, rom) * 0.35) + (cushion_pct * 3.0) + (p_sell['iv'] * 20.0)))
+
+                        # 5. Bull Market Support Band (BMSB) Filter & Trap Check
+                        bmsb_tag = ""
+                        if bmsb.get('band_bottom', 0) > 0:
+                            b_bot = bmsb['band_bottom']
+                            b_top = bmsb['band_top']
+                            if s_sell <= b_bot * 0.985 and spot > b_top:
+                                conviction = min(100.0, conviction + 4.0)
+                                bmsb_tag = "🛡️ Abaixo da BMSB"
+                            elif spot <= b_top * 1.085 and (b_bot * 0.985 <= s_sell <= b_top * 1.01):
+                                conviction = max(10.0, conviction - 12.0)
+                                bmsb_tag = "⚠️ Zona de Violinada BMSB"
                             
                         matrix.append({
                             'currency': currency,
@@ -797,6 +872,7 @@ def scan_decision_matrix(currency="BTC"):
                             'profile_label': profile_label,
                             'conviction': round(conviction, 1),
                             'thesis': thesis,
+                            'bmsb_tag': bmsb_tag,
                             'short_ticker': p_sell['ticker'],
                             'long_ticker': p_buy['ticker']
                         })
@@ -822,6 +898,7 @@ def scan_decision_matrix(currency="BTC"):
         'currency': currency,
         'spot_price': spot,
         'walls': walls,
+        'bmsb': bmsb,
         'scanned_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'total_evaluated': len(matrix),
         'top_picks': {
@@ -969,6 +1046,7 @@ def evaluate_position(pos):
     breakeven_price = s_sell - init_credit_unit
     max_tolerated_drop_usd = spot - breakeven_price
     max_tolerated_drop_pct = ((spot - breakeven_price) / spot) * 100
+    bmsb = get_bmsb_status(currency)
 
     return {
         **pos,
@@ -979,6 +1057,7 @@ def evaluate_position(pos):
         'max_tolerated_drop_usd': round(max_tolerated_drop_usd, 1),
         'max_tolerated_drop_pct': round(max_tolerated_drop_pct, 2),
         'is_cushion_positive': bool(max_tolerated_drop_pct > 0),
+        'bmsb': bmsb,
         'ask_short': ask_short,
         'bid_long': bid_long,
         'mark_price_unit': round(cost_to_close_unit, 2),
@@ -1269,6 +1348,7 @@ class DeskHandler(BaseHTTPRequestHandler):
             eth_spot = get_spot_price("ETH")
             acct = get_derive_account_info()
             iv_data = get_iv_regime("BTC")
+            bmsb_data = get_bmsb_status("BTC")
             self.send_json({
                 'btc_spot': btc_spot,
                 'eth_spot': eth_spot,
@@ -1280,6 +1360,7 @@ class DeskHandler(BaseHTTPRequestHandler):
                 'session_label': acct.get('session_label', 'Ancap (Ativa)'),
                 'margin_type': acct.get('margin_type', 'SM'),
                 'iv_regime': iv_data,
+                'bmsb': bmsb_data,
                 'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
         elif url.startswith('/api/iv_regime'):

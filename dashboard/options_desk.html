@@ -186,13 +186,20 @@
         </div>
 
         <!-- Institutional Wall Banner -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 pt-2 border-t border-slate-800 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pt-2 border-t border-slate-800 text-xs">
           <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
             <div>
               <span class="text-slate-400 block font-medium">Suporte Institucional (Put Wall)</span>
               <span class="text-[10px] text-slate-500 hidden sm:block">Maior concentração de puts abertas</span>
             </div>
             <span id="wall-put" class="mono font-bold text-emerald-400 text-sm mt-0.5 block">Carregando...</span>
+          </div>
+          <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-emerald-500/30 flex sm:block items-center justify-between">
+            <div>
+              <span class="text-slate-300 block font-medium">Bull Market Support Band (20W/21W)</span>
+              <span id="bmsb-sub-status" class="text-[10px] text-emerald-400 hidden sm:block">SMA 20S / EMA 21S (Filtro Macro)</span>
+            </div>
+            <span id="wall-bmsb" class="mono font-bold text-emerald-300 text-sm mt-0.5 block">Carregando...</span>
           </div>
           <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
             <div>
@@ -685,6 +692,15 @@
           if (document.getElementById('iv-advice')) document.getElementById('iv-advice').textContent = iv.advice;
           if (document.getElementById('market-iv-status')) document.getElementById('market-iv-status').textContent = `${iv.regime} (IV: ${iv.atm_iv_pct}%)`;
         }
+        if (data.bmsb && matrixCurrency === 'BTC') {
+          const b = data.bmsb;
+          if (document.getElementById('wall-bmsb')) {
+            document.getElementById('wall-bmsb').textContent = `$${Number(b.band_bottom).toLocaleString('en-US')} – $${Number(b.band_top).toLocaleString('en-US')}`;
+          }
+          if (document.getElementById('bmsb-sub-status')) {
+            document.getElementById('bmsb-sub-status').textContent = b.badge;
+          }
+        }
       } catch (e) {
         console.error("Market fetch error:", e);
       }
@@ -698,6 +714,15 @@
         if (matrixDataCache.walls) {
           document.getElementById('wall-put').textContent = `$${Number(matrixDataCache.walls.put_wall).toLocaleString('en-US')}`;
           document.getElementById('wall-call').textContent = `$${Number(matrixDataCache.walls.call_wall).toLocaleString('en-US')}`;
+        }
+        if (matrixDataCache.bmsb) {
+          const b = matrixDataCache.bmsb;
+          if (document.getElementById('wall-bmsb')) {
+            document.getElementById('wall-bmsb').textContent = `$${Number(b.band_bottom).toLocaleString('en-US')} – $${Number(b.band_top).toLocaleString('en-US')}`;
+          }
+          if (document.getElementById('bmsb-sub-status')) {
+            document.getElementById('bmsb-sub-status').textContent = b.badge;
+          }
         }
         renderDecisionMatrix();
       } catch (e) {
@@ -808,6 +833,11 @@
         } else if (o.cushion_pct >= 15.0) {
           cushionBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold bg-emerald-950 text-emerald-300 border border-emerald-400/60 shadow-sm shadow-emerald-500/10"><i class="fa-solid fa-shield-halved mr-1"></i>Folga de +${o.cushion_pct.toFixed(1)}%</span>`;
         }
+        let bmsbBadge = '';
+        if (o.bmsb_tag) {
+          const isWarn = o.bmsb_tag.includes('⚠️');
+          bmsbBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold ${isWarn ? 'bg-rose-950 text-rose-300 border border-rose-500/50' : 'bg-teal-950 text-teal-300 border border-teal-500/50'}">${o.bmsb_tag}</span>`;
+        }
 
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
         const cushionColor = o.cushion_pct >= 0 ? 'text-emerald-400' : 'text-amber-400';
@@ -831,6 +861,7 @@
                     </span>
                     ${dteBadge}
                     ${cushionBadge}
+                    ${bmsbBadge}
                   </div>
                   <div class="mt-2 flex items-center space-x-2">
                     <span class="font-bold text-white text-base mono">Vende ${o.short_strike}P / Compra ${o.long_strike}P</span>
@@ -1060,6 +1091,25 @@
                 <span class="font-bold text-white mono text-sm">$${p.breakeven_price.toLocaleString('en-US')}</span>
               </div>
             </div>
+
+            ${p.bmsb ? `
+            <!-- Mapa Limpo: Bull Market Support Band vs Seus Strikes -->
+            <div class="rounded-xl px-3.5 py-2.5 bg-slate-900/70 border border-slate-800/90 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <div class="flex items-center gap-2 text-slate-300 font-medium">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span><b>Bull Market Support Band (20W/21W):</b></span>
+                <span class="mono text-emerald-300 font-bold">$${Number(p.bmsb.band_bottom).toLocaleString('en-US')} – $${Number(p.bmsb.band_top).toLocaleString('en-US')}</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">${p.bmsb.badge}</span>
+              </div>
+              <div class="flex items-center gap-3 mono text-slate-400 ml-auto">
+                <span>Proteção: <b class="text-indigo-300">$${Number(p.long_strike).toLocaleString('en-US')}</b></span>
+                <span>•</span>
+                <span>Venda: <b class="text-amber-300">$${Number(p.short_strike).toLocaleString('en-US')}</b></span>
+                <span>•</span>
+                <span>Spot: <b class="text-white">$${Number(p.spot_price).toLocaleString('en-US', {maximumFractionDigits: 0})}</b></span>
+              </div>
+            </div>
+            ` : ''}
 
             <!-- Auto-Roll & Take Profit Controls -->
             <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">

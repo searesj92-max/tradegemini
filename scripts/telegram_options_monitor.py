@@ -53,6 +53,11 @@ def generate_report():
     total_credit = sum(p.get("initial_credit_total", 0.0) for p in live_pos)
     total_margin = sum(p.get("initial_margin_total", 0.0) for p in live_pos)
     
+    try:
+        import options_desk
+    except Exception:
+        options_desk = None
+
     for idx, pos in enumerate(live_pos, 1):
         short_k = pos["short_strike"]
         long_k = pos["long_strike"]
@@ -62,31 +67,32 @@ def generate_report():
         expiry = pos["expiry"]
         exp_formatted = f"{expiry[6:8]}/{expiry[4:6]}/{expiry[0:4]}"
         
-        # Calculate distance to danger
         dist_usd = spot - short_k
         dist_pct = (dist_usd / spot) * 100
         breakeven = short_k - (credit / contracts)
-        
-        # Status icon
         status_icon = "🟢" if dist_pct >= 5.0 else ("🟡" if dist_pct > 2.0 else "🔴")
-        
+
+        eval_p = options_desk.evaluate_position(pos) if options_desk else {}
+        dte = eval_p.get("dte", 0)
+        upnl = eval_p.get("current_pnl_total", 0.0)
+        upnl_pct = eval_p.get("profit_captured_pct", 0.0)
+        rem_table = eval_p.get("cost_to_close_total", 0.0)
+        rem_per_day = rem_table / max(1, dte)
+        rec = eval_p.get("recommendation", {})
+        upnl_sign = "+" if upnl >= 0 else ""
+
         msg.append(f"\n*{idx}. Posição: BTC {short_k:,.0f} / {long_k:,.0f} Put Spread*")
-        msg.append(f"   • *Vencimento:* `{exp_formatted}` (Contratos: `{contracts}` BTC)")
-        msg.append(f"   • *Crédito Recebido:* `+${credit:,.2f} USDC` (Margem: `${margin:,.2f}`)")
-        msg.append(f"   • *Ponto de Equilíbrio:* `${breakeven:,.2f}`")
+        msg.append(f"   • *Vencimento:* `{exp_formatted}` (`{dte}d` restantes | `{contracts}` BTC)")
+        msg.append(f"   • *Crédito Inicial:* `+${credit:,.2f} USDC` (Margem: `${margin:,.2f}`)")
+        msg.append(f"   • *Lucro Atual (Mark Derive):* `{upnl_sign}${upnl:,.2f} USDC` (`{upnl_pct:.1f}%` capturado)")
+        msg.append(f"   • *Restante na Mesa:* `${rem_table:,.2f}` (`+${rem_per_day:,.2f}/dia` até 100%)")
         msg.append(f"   • *Distância de Segurança:* {status_icon} `+${dist_usd:,.2f}` (`+{dist_pct:.1f}%` acima)")
-        
-        if pos["id"] == "pos-btc-live-sniper-78k-75k-20261023":
-            msg.append("   • *Perfil:* ⚡ _Sniper Semanal (Theta: +$6.68/dia)_")
-            msg.append("   • *Alvo Take Profit (80%):* `+$64.30`")
-        elif "20261127" in pos["expiry"]:
-            msg.append("   • *Perfil:* 🛡️ _Médio Prazo (Novembro / Ultra Seguro)_")
-            msg.append("   • *Alvo Take Profit (80%):* `+$25.80`")
+        msg.append(f"   • *Decisão (80% vs 100%):* {rec.get('badge', '🟢 MANTER')}")
 
     msg.append("\n━━━━━━━━━━━━━━━━━━━━━━")
     msg.append(f"💰 *Total de Crédito Embolsado:* `+${total_credit:,.2f} USDC`")
     msg.append(f"🔒 *Margem Total Travada:* `${total_margin:,.2f} USDC`")
-    msg.append(f"🛡️ *Status Geral:* `100% NO LUCRO MÁXIMO` (BTC acima dos strikes)")
+    msg.append(f"🛡️ *Status Geral:* `100% FORA DO DINHEIRO (OTM)`")
     
     return "\n".join(msg)
 

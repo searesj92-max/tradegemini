@@ -922,27 +922,49 @@ def evaluate_position(pos):
     delta_short = float(pricing_short.get('d', 0)) if pricing_short else 0.0
     theta_short = float(pricing_short.get('t', 0)) if pricing_short else 0.0
     
-    # Recommendation
+    # Quantitative Decision Matrix: Exit Early vs Hold for 100%
+    rem_money_on_table = max(0.0, cost_to_close_total)
+    rem_yield_per_day = rem_money_on_table / max(1, dte)
     rec_type = "HOLD"
     rec_badge = "🟢 MANTER"
-    rec_text = "Posição saudável. O tempo e a desvalorização do prêmio (Theta) estão trabalhando a seu favor."
+    rec_text = (
+        f"Posição saudável (+{dist_to_short:.1f}% de folga). "
+        f"Restam ${rem_money_on_table:.2f} de prêmio para derreter ({dte}d restantes = +${rem_yield_per_day:.2f}/dia)."
+    )
     
-    if profit_captured_pct >= tp_target_pct:
-        rec_type = "TAKE_PROFIT"
-        rec_badge = "🎯 TAKE PROFIT"
-        rec_text = f"Meta de {profit_captured_pct:.1f}% do lucro atingida! Encerre a trava para embolsar o ganho e liberar a margem."
-    elif dte <= 4 and spot < s_sell:
+    if dte <= 4 and spot < s_sell:
         rec_type = "ROLL_TRIGGER"
         rec_badge = "🔴 ROLAR AGORA"
-        rec_text = f"Faltam apenas {dte} dias e o preço (${spot:,.0f}) está abaixo do strike alvo (${s_sell:,.0f}). Role a trava para o próximo mês para evitar expiração com prejuízo!"
-    elif dte <= 7 and dist_to_short < 1.0:
-        rec_type = "WATCH_RISK"
-        rec_badge = "🟡 ATENÇÃO"
-        rec_text = f"O preço está a apenas {dist_to_short:+.1f}% do strike vendido. Fique alerta para possível rolagem nos próximos dias."
+        rec_text = f"Faltam apenas {dte} dias e o preço (${spot:,.0f}) está abaixo do strike (${s_sell:,.0f}). Role a trava para a próxima semana para defender o capital!"
     elif spot < s_buy:
         rec_type = "IN_DEEP_LOSS"
         rec_badge = "⚠️ PREJUÍZO / ROLAR"
         rec_text = "Preço rompeu a trava de proteção. Faça a rolagem de horizonte longo para continuar no jogo sem realizar a perda total."
+    elif dte >= 4 and profit_captured_pct >= 75.0:
+        rec_type = "TAKE_PROFIT"
+        rec_badge = "🎯 SAIR E GIRAR CAPITAL"
+        rec_text = (
+            f"Meta rápida atingida ({profit_captured_pct:.1f}% capturados ainda com {dte}d restantes)! "
+            f"Segurar pelos últimos ${rem_money_on_table:.2f} rende apenas +${rem_yield_per_day:.2f}/dia. Vale a pena encerrar e abrir nova trava!"
+        )
+    elif dte <= 3 and dist_to_short >= 3.5 and profit_captured_pct >= 60.0:
+        rec_type = "HOLD_FOR_100"
+        rec_badge = "💎 BUSCAR OS 100% (SEGURO)"
+        rec_text = (
+            f"Faltam apenas {dte}d e o BTC tem folga segura (+{dist_to_short:.1f}% acima do strike). "
+            f"Não deixe ${rem_money_on_table:.2f} na mesa: segurar até expirar rende +${rem_yield_per_day:.2f}/dia (98.5% Win Rate) com taxa zero!"
+        )
+    elif dte <= 3 and 0.0 <= dist_to_short < 3.5 and profit_captured_pct >= 55.0:
+        rec_type = "TAKE_PROFIT"
+        rec_badge = "🛡️ TRAVAR LUCRO (ZONA AMARELA)"
+        rec_text = (
+            f"Faltam {dte}d e o BTC está próximo do strike (+{dist_to_short:.1f}% de folga). "
+            f"Não arrisque seu lucro de +${current_pnl_total:.2f} para tentar buscar os últimos ${rem_money_on_table:.2f}: encerre agora!"
+        )
+    elif dte <= 7 and dist_to_short < 1.5:
+        rec_type = "WATCH_RISK"
+        rec_badge = "🟡 ATENÇÃO"
+        rec_text = f"O preço está a apenas {dist_to_short:+.1f}% do strike vendido. Fique alerta para possível rolagem se perder ${s_sell:,.0f}."
 
     breakeven_price = s_sell - init_credit_unit
     max_tolerated_drop_usd = spot - breakeven_price
@@ -1169,7 +1191,8 @@ def auto_roll_worker():
                     tp_target_pct = float(p.get('target_take_profit_pct', 80.0))
                     auto_tp = bool(p.get('auto_take_profit_enabled', True))
                     
-                    # 1. Motor de Take Profit Automático (Regra dos 80% do Lucro no Bolso)
+                    # 1. Motor de Decisão Inteligente: Take Profit (75-80%) vs Buscar os 100%
+                    rec = eval_p.get('recommendation', {})
                     if auto_tp and profit_captured_pct >= tp_target_pct:
                         tp_alert_key = f"tp_notified_{p['id']}"
                         if not p.get(tp_alert_key):
@@ -1178,21 +1201,22 @@ def auto_roll_worker():
                             is_live = bool(p.get('is_live_order', False))
                             if is_live:
                                 tg_msg = (
-                                    f"💰 <b>TAKE PROFIT DISPONÍVEL! ({profit_captured_pct:.1f}% DO LUCRO CAPTURADO)</b> 💰\n\n"
-                                    f"A trava real <code>{p['id']}</code> atingiu o alvo institucional de lucro antecipado!\n"
-                                    f"• Lucro Retido: <b>{profit_captured_pct:.1f}%</b> (Meta: {tp_target_pct:.0f}%)\n"
-                                    f"• PnL Líquido no Bolso: <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC</b>\n"
-                                    f"• Recomendação: Encerre a trava para liberar 100% da margem para novas oportunidades!\n\n"
-                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel e Colocar Lucro no Bolso</a>"
+                                    f"💰 <b>META DE {profit_captured_pct:.1f}% ATINGIDA — MATRIZ DE DECISÃO</b> 💰\n\n"
+                                    f"A trava real <code>{p['id']}</code> atingiu <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC ({profit_captured_pct:.1f}%)</b>!\n"
+                                    f"• Dias Restantes (DTE): <b>{eval_p.get('dte', 0)}d</b>\n"
+                                    f"• Folga do BTC: <b>+{eval_p.get('dist_to_short', 0):.1f}%</b> acima do strike\n"
+                                    f"• Veredito Quantitativo: <b>{rec.get('badge', 'AVALIAR')}</b>\n"
+                                    f"• Análise: <i>{rec.get('text', '')}</i>\n\n"
+                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Painel Options Desk</a>"
                                 )
                                 send_telegram_alert(tg_msg)
-                                log_audit("TAKE_PROFIT_OPPORTUNITY_NOTIFIED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'pnl': eval_p.get('current_pnl_total', 0)})
+                                log_audit("TAKE_PROFIT_OPPORTUNITY_NOTIFIED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'pnl': eval_p.get('current_pnl_total', 0), 'verdict': rec.get('type')})
                             else:
                                 tg_msg = (
                                     f"💰 <b>TAKE PROFIT ATINGIDO ({profit_captured_pct:.1f}%) — MODO MONITOR</b> 💰\n\n"
                                     f"• Posição: <code>{p['id']}</code>\n"
                                     f"• PnL Acumulado: <b>+${eval_p.get('current_pnl_total', 0):,.2f} USDC</b>\n"
-                                    f"• Posição pronta para realização ou encerramento manual no painel!"
+                                    f"• Veredito: <b>{rec.get('badge', '')}</b> — {rec.get('text', '')}"
                                 )
                                 send_telegram_alert(tg_msg)
                                 log_audit("TAKE_PROFIT_TRIGGERED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'pnl': eval_p.get('current_pnl_total', 0)})

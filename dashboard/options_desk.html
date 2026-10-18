@@ -108,7 +108,7 @@
       </button>
       <button onclick="switchTab('roller')" id="tab-btn-roller" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-repeat"></i>
-        <span>🔄 Simulador de Rolagem</span>
+        <span>🔄 Calculadora de Rolagem</span>
       </button>
       <button onclick="switchTab('sim')" id="tab-btn-sim" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-calculator"></i>
@@ -330,14 +330,23 @@
       <div id="options-tv-chart-root" style="height:620px; width:100%;"></div>
     </div>
 
-    <!-- ================= TAB 2: SIMULADOR DE ROLAGEM ================= -->
+    <!-- ================= TAB 2: CALCULADORA DE ROLAGEM DEFENSIVA ================= -->
     <div id="tab-roller" class="hidden space-y-6">
       <div class="card-glass rounded-xl p-6 border border-slate-800">
-        <div class="flex flex-wrap justify-between items-start gap-4">
+        
+        <!-- Transparency Notice -->
+        <div class="bg-blue-950/40 border border-blue-500/40 rounded-xl p-3.5 text-xs text-blue-200 flex items-center gap-3">
+          <i class="fa-solid fa-circle-info text-cyan-400 text-lg flex-shrink-0"></i>
+          <div>
+            <b class="text-white">Esta tela NÃO representa operações simuladas abertas:</b> Ela é uma <b>calculadora de consulta em tempo real</b> da Derive.xyz. Ela mostra as alternativas de mercado caso você queira ou precise defender/prorrogar a sua trava real atual.
+          </div>
+        </div>
+
+        <div class="flex flex-wrap justify-between items-start gap-4 mt-4">
           <div>
             <h2 class="text-lg font-bold text-white flex items-center gap-2">
               <i class="fa-solid fa-repeat text-indigo-400"></i>
-              Mecanismo de Rolagem (Roll Forward)
+              Calculadora de Rolagem Defensiva (Roll Forward)
             </h2>
             <p class="text-sm text-slate-400 mt-1">
               Como o Elídio ensina: se o ativo não atingir o strike alvo até a semana do vencimento, você fecha a trava atual e reabre nos próximos meses.
@@ -352,7 +361,7 @@
 
         <!-- Selector -->
         <div class="mt-6 flex flex-wrap items-center gap-4">
-          <label class="text-xs uppercase font-medium text-slate-400">Escolha a Trava para Rolar:</label>
+          <label class="text-xs uppercase font-medium text-slate-400">Escolha a Trava Real para Consultar Rolagem:</label>
           <select id="roll-pos-select" onchange="runRollSimulation()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
             <!-- Dynamically populated -->
           </select>
@@ -1304,9 +1313,13 @@
 
     function populateRollSelector(positions) {
       const select = document.getElementById('roll-pos-select');
+      if (positions.length === 0) {
+        select.innerHTML = '<option value="">Nenhuma posição ativa para rolar</option>';
+        return;
+      }
       select.innerHTML = positions.map(p => `
         <option value="${p.id}">
-          ${p.currency} ${p.short_strike}P/${p.long_strike}P — Venc: ${p.expiry_formatted} (${p.dte}d)
+          ⚡ [REAL DERIVE] ${p.currency} ${p.short_strike}P/${p.long_strike}P — Venc: ${p.expiry_formatted} (${p.dte}d restantes)
         </option>
       `).join('');
     }
@@ -1340,16 +1353,22 @@
 
         container.innerHTML = `
           <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-4">
-            <div class="flex justify-between items-center text-xs border-b border-slate-800 pb-3">
-              <div>
-                <span class="text-slate-400">Posição Atual:</span>
-                <span class="font-bold text-white mono ml-1">${pos.currency} ${pos.short_strike}P / ${pos.long_strike}P</span>
-                <span class="text-slate-400 ml-2">Vence em ${pos.expiry_formatted} (${pos.dte} dias)</span>
+            <div class="flex flex-wrap justify-between items-center text-xs border-b border-slate-800 pb-3 gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600/50 font-bold px-2 py-0.5 rounded">⚡ TRAVA REAL DERIVE</span>
+                <span class="text-slate-400">Posição:</span>
+                <span class="font-bold text-white mono">${pos.currency} ${pos.short_strike}P / ${pos.long_strike}P</span>
+                <span class="text-slate-400">(${pos.contracts} contratos • Vence em ${pos.expiry_formatted} • ${pos.dte} dias)</span>
               </div>
               <div>
                 <span class="text-slate-400">Crédito Original Recebido:</span>
-                <span class="font-bold text-emerald-400 mono ml-1">$${pos.initial_credit_total.toFixed(2)}</span>
+                <span class="font-bold text-emerald-400 mono ml-1">+$${pos.initial_credit_total.toFixed(2)} USDC</span>
               </div>
+            </div>
+
+            <div class="text-[11px] text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 flex items-center justify-between flex-wrap gap-2">
+              <span><i class="fa-solid fa-magnifying-glass-chart mr-1.5 text-cyan-400"></i><b>Cotações em tempo real do livro da Derive</b> para eventual prorrogação:</span>
+              <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-check-circle mr-1"></i>Nenhuma ordem futura está aberta (são apenas cotações de consulta)</span>
             </div>
 
             <div class="overflow-x-auto custom-scroll">

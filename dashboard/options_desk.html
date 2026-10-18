@@ -6,6 +6,9 @@
   <title>Options Desk — Terminal Quant de Opções (OpsBit & Derive)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="tradingview_pro.css">
+  <script src="lightweight-charts.standalone.production.js"></script>
+  <script src="tradingview_pro.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
     body {
@@ -95,6 +98,10 @@
       <button onclick="switchTab('positions')" id="tab-btn-positions" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-wallet"></i>
         <span>💼 Minhas Posições (<span id="active-count">0</span>)</span>
+      </button>
+      <button onclick="switchTab('chart')" id="tab-btn-chart" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
+        <i class="fa-solid fa-chart-line text-emerald-400"></i>
+        <span>📈 Gráfico TradingView Pro</span>
       </button>
       <button onclick="switchTab('roller')" id="tab-btn-roller" class="py-2.5 sm:py-3 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm flex items-center space-x-1.5 border-transparent text-slate-400 hover:text-slate-200 flex-shrink-0">
         <i class="fa-solid fa-repeat"></i>
@@ -186,7 +193,7 @@
         </div>
 
         <!-- Institutional Wall Banner -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pt-2 border-t border-slate-800 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 pt-2 border-t border-slate-800 text-xs">
           <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
             <div>
               <span class="text-slate-400 block font-medium">Suporte Institucional (Put Wall)</span>
@@ -200,6 +207,13 @@
               <span id="bmsb-sub-status" class="text-[10px] text-emerald-400 hidden sm:block">SMA 20S / EMA 21S (Filtro Macro)</span>
             </div>
             <span id="wall-bmsb" class="mono font-bold text-emerald-300 text-sm mt-0.5 block">Carregando...</span>
+          </div>
+          <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-indigo-500/40 flex sm:block items-center justify-between">
+            <div>
+              <span class="text-indigo-200 block font-semibold">🚦 Ciclo Oliver Kell (1S / 1D)</span>
+              <span id="oliver-sub-status" class="text-[10px] text-indigo-300 hidden sm:block">Semáforo Fractal & EMAs 9/21</span>
+            </div>
+            <span id="wall-oliver-phase" class="mono font-bold text-emerald-300 text-xs sm:text-sm mt-0.5 block">Carregando...</span>
           </div>
           <div class="bg-slate-800/60 rounded-xl p-2.5 sm:p-3 border border-slate-700/50 flex sm:block items-center justify-between">
             <div>
@@ -287,6 +301,30 @@
           <div class="text-center py-12 text-slate-500">Carregando suas operações...</div>
         </div>
       </div>
+    </div>
+
+    <!-- ================= TAB: GRÁFICO TRADINGVIEW PRO NATIVO ================= -->
+    <div id="tab-chart" class="hidden space-y-4">
+      <div class="flex flex-wrap justify-between items-center gap-2">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-400"></i>
+            Terminal Gráfico TradingView Pro & Quant Desk
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Motor oficial TradingView 60fps com Ferramentas de Desenho (Fibonacci, Linhas, Régua), BMSB, Oliver Kell e Níveis de Strikes Derive
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs px-2.5 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Dados em Tempo Real (60 FPS)
+          </span>
+        </div>
+      </div>
+
+      <!-- Root Chart Container -->
+      <div id="options-tv-chart-root" style="height:620px; width:100%;"></div>
     </div>
 
     <!-- ================= TAB 2: SIMULADOR DE ROLAGEM ================= -->
@@ -701,6 +739,15 @@
             document.getElementById('bmsb-sub-status').textContent = b.badge;
           }
         }
+        if (data.oliver_kell && matrixCurrency === 'BTC') {
+          const ok = data.oliver_kell;
+          if (document.getElementById('wall-oliver-phase')) {
+            document.getElementById('wall-oliver-phase').textContent = ok.badge || ok.phase_name;
+          }
+          if (document.getElementById('oliver-sub-status')) {
+            document.getElementById('oliver-sub-status').textContent = ok.options_advice || `EMA 9: $${ok.ema9_d} / EMA 21: $${ok.ema21_d}`;
+          }
+        }
       } catch (e) {
         console.error("Market fetch error:", e);
       }
@@ -722,6 +769,15 @@
           }
           if (document.getElementById('bmsb-sub-status')) {
             document.getElementById('bmsb-sub-status').textContent = b.badge;
+          }
+        }
+        if (matrixDataCache.oliver_kell) {
+          const ok = matrixDataCache.oliver_kell;
+          if (document.getElementById('wall-oliver-phase')) {
+            document.getElementById('wall-oliver-phase').textContent = ok.badge || ok.phase_name;
+          }
+          if (document.getElementById('oliver-sub-status')) {
+            document.getElementById('oliver-sub-status').textContent = ok.options_advice || `EMA 9: $${ok.ema9_d} / EMA 21: $${ok.ema21_d}`;
           }
         }
         renderDecisionMatrix();
@@ -838,6 +894,15 @@
           const isWarn = o.bmsb_tag.includes('⚠️');
           bmsbBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold ${isWarn ? 'bg-rose-950 text-rose-300 border border-rose-500/50' : 'bg-teal-950 text-teal-300 border border-teal-500/50'}">${o.bmsb_tag}</span>`;
         }
+        let oliverBadge = '';
+        if (o.oliver_tag) {
+          const isStop = o.oliver_tag.includes('🛑');
+          const isWarn = o.oliver_tag.includes('⚠️');
+          const oliverCls = isStop
+            ? 'bg-rose-950 text-rose-300 border border-rose-500/50'
+            : (isWarn ? 'bg-amber-950 text-amber-300 border border-amber-500/50' : 'bg-indigo-950 text-indigo-300 border border-indigo-400/50');
+          oliverBadge = `<span class="text-[11px] px-2 py-0.5 rounded-md font-bold ${oliverCls}">${o.oliver_tag}</span>`;
+        }
 
         const cushionSign = o.cushion_pct >= 0 ? '+' : '';
         const cushionColor = o.cushion_pct >= 0 ? 'text-emerald-400' : 'text-amber-400';
@@ -862,6 +927,7 @@
                     ${dteBadge}
                     ${cushionBadge}
                     ${bmsbBadge}
+                    ${oliverBadge}
                   </div>
                   <div class="mt-2 flex items-center space-x-2">
                     <span class="font-bold text-white text-base mono">Vende ${o.short_strike}P / Compra ${o.long_strike}P</span>
@@ -948,6 +1014,14 @@
         renderPositions(positionsCache);
         updateKPIs(positionsCache);
         populateRollSelector(positionsCache);
+        if (window.optionsTvChart && positionsCache.length > 0) {
+          const firstPos = positionsCache[0];
+          window.optionsTvChart.setOptionsLevels({
+            shortStrike: firstPos.short_strike,
+            longStrike: firstPos.long_strike,
+            breakeven: firstPos.breakeven_price || (firstPos.short_strike - (firstPos.initial_credit_per_contract || 0))
+          });
+        }
       } catch (e) {
         console.error("Positions fetch error:", e);
       }
@@ -1643,7 +1717,7 @@
     }
 
     function switchTab(tab) {
-      const tabs = ['decision', 'positions', 'roller', 'sim', 'audit'];
+      const tabs = ['decision', 'positions', 'chart', 'roller', 'sim', 'audit'];
       tabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
@@ -1660,6 +1734,30 @@
       if (tab === 'roller') runRollSimulation();
       if (tab === 'sim') runCapitalSimFromInputs();
       if (tab === 'audit') loadAuditLogs();
+      if (tab === 'chart') {
+        if (!window.optionsTvChart && typeof TradingViewProChart !== 'undefined') {
+          window.optionsTvChart = new TradingViewProChart('options-tv-chart-root', {
+            symbol: 'BTCUSDT',
+            timeframe: '4h',
+            showBMSB: true,
+            showKell: true,
+            showOptions: true
+          });
+        }
+        if (window.optionsTvChart) {
+          if (positionsCache && positionsCache.length > 0) {
+            const p = positionsCache[0];
+            window.optionsTvChart.setOptionsLevels({
+              shortStrike: p.short_strike,
+              longStrike: p.long_strike,
+              breakeven: p.breakeven_price || (p.short_strike - (p.initial_credit_per_contract || 0))
+            });
+          }
+          setTimeout(() => {
+            window.optionsTvChart.handleResize();
+          }, 60);
+        }
+      }
     }
 
     window.onload = init;

@@ -1,0 +1,388 @@
+/* ============================================================
+   TradingView Pro Engine - Ultra-Optimized Dark Theme Styling
+   Reverse-Engineered 1:1 Pixel-Perfect TradingView Experience
+   ============================================================ */
+
+.tv-pro-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 600px;
+  background-color: #131722;
+  border: 1px solid #2a2e39;
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+  color: #d1d4dc;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  position: relative;
+  user-select: none;
+}
+
+.tv-pro-wrapper.tv-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
+/* TOP HEADER TOOLBAR */
+.tv-pro-header {
+  height: 44px;
+  min-height: 44px;
+  background-color: #1e222d;
+  border-bottom: 1px solid #2a2e39;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  gap: 8px;
+  z-index: 10;
+  overflow-x: auto;
+}
+
+.tv-pro-header::-webkit-scrollbar {
+  display: none;
+}
+
+.tv-header-left, .tv-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Symbol & Search Pill */
+.tv-symbol-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2e39;
+  border: 1px solid #363c4e;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tv-symbol-selector:hover {
+  background: #363c4e;
+  border-color: #2962ff;
+}
+
+.tv-symbol-selector select {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.tv-symbol-selector select option {
+  background: #1e222d;
+  color: #fff;
+}
+
+/* Timeframe Buttons */
+.tv-divider {
+  width: 1px;
+  height: 20px;
+  background-color: #2a2e39;
+  margin: 0 4px;
+}
+
+.tv-btn {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #787b86;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tv-btn:hover {
+  background-color: #2a2e39;
+  color: #d1d4dc;
+}
+
+.tv-btn.active {
+  background-color: #2a2e39;
+  color: #2962ff;
+  font-weight: 700;
+}
+
+.tv-btn-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(41, 98, 255, 0.2);
+  color: #2962ff;
+}
+
+/* Indicators Toggle Pills */
+.tv-indicator-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(42, 46, 57, 0.5);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9598a1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tv-indicator-toggle:hover {
+  background: #2a2e39;
+  color: #fff;
+}
+
+.tv-indicator-toggle.active {
+  background: rgba(41, 98, 255, 0.15);
+  border-color: rgba(41, 98, 255, 0.4);
+  color: #2962ff;
+}
+
+.tv-indicator-toggle.active.bmsb-btn {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.tv-indicator-toggle.active.kell-btn {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.tv-indicator-toggle.active.options-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+/* MAIN BODY (SIDEBAR + CHART) */
+.tv-pro-body {
+  display: flex;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  height: calc(100% - 44px);
+}
+
+/* LEFT DRAWING TOOLS SIDEBAR */
+.tv-pro-sidebar {
+  width: 44px;
+  min-width: 44px;
+  background-color: #1e222d;
+  border-right: 1px solid #2a2e39;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 6px;
+  z-index: 10;
+}
+
+.tv-tool-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #787b86;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tv-tool-btn:hover {
+  background-color: #2a2e39;
+  color: #d1d4dc;
+}
+
+.tv-tool-btn.active {
+  background-color: #2962ff;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(41, 98, 255, 0.5);
+}
+
+.tv-tool-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 42px;
+  background: #2a2e39;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 100;
+}
+
+/* CHART CONTAINER & DRAWING CANVAS OVERLAY */
+.tv-pro-chart-area {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background-color: #131722;
+}
+
+.tv-chart-viewport {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.tv-drawing-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.tv-drawing-canvas.drawing-active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+/* FLOATING STATUS LEGEND (TOP-LEFT) */
+.tv-status-legend {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  background: rgba(19, 23, 34, 0.75);
+  backdrop-filter: blur(4px);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(42, 46, 57, 0.6);
+}
+
+.tv-legend-primary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tv-legend-symbol {
+  color: #ffffff;
+}
+
+.tv-legend-interval {
+  color: #787b86;
+  font-size: 11px;
+}
+
+.tv-legend-price {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+}
+
+.tv-legend-price.up { color: #089981; }
+.tv-legend-price.down { color: #f23645; }
+
+.tv-legend-ohlc {
+  display: flex;
+  gap: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #9598a1;
+}
+
+.tv-legend-ohlc span b {
+  color: #d1d4dc;
+}
+
+.tv-legend-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tv-ind-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tv-ind-bmsb { color: #10b981; }
+.tv-ind-ema8 { color: #ec4899; }
+.tv-ind-ema21 { color: #f59e0b; }
+.tv-ind-ema200 { color: #3b82f6; }
+.tv-ind-opt-strike { color: #ef4444; font-weight: 700; }
+.tv-ind-opt-be { color: #06b6d4; font-weight: 700; }
+
+/* MEASURE TOOL POPUP */
+.tv-measure-box {
+  position: absolute;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid #38bdf8;
+  color: #fff;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  pointer-events: none;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .tv-pro-sidebar {
+    width: 36px;
+    min-width: 36px;
+  }
+  .tv-tool-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .tv-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  .tv-legend-ohlc {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}

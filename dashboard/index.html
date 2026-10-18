@@ -1581,7 +1581,9 @@
     }
 
   </style>
+  <link rel="stylesheet" href="tradingview_pro.css">
   <script type="text/javascript" src="lightweight-charts.standalone.production.js"></script>
+  <script type="text/javascript" src="tradingview_pro.js"></script>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
@@ -1892,6 +1894,54 @@
           </div>
         </div>
       </div>
+
+      <!-- ========================================== -->
+      <!-- SCANNER AURORA FRACTAL: OLIVER KELL 6 FASES -->
+      <!-- ========================================== -->
+      <div class="card" style="margin-top:16px; margin-bottom:16px; padding:16px; border:1px solid rgba(56,189,248,0.3); background:var(--surface);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+          <div>
+            <h3 style="font-size:15px; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <span>🚦 Scanner Aurora Fractal · Ciclo de 6 Fases de Oliver Kell (1D Mapa + 2H Lupa)</span>
+              <span class="brand-tag" style="color:var(--blue); border-color:rgba(56,189,248,0.35); background:rgba(56,189,248,0.12);">US Investing Champion +941%</span>
+            </h3>
+            <div style="font-size:11px; color:var(--muted); margin-top:2px;">
+              Monitoramento multi-timeframe em tempo real das <strong>EMAs 9 e 21</strong> nos 25 pares mais líquidos da Hyperliquid. Regra de Ouro: opere <strong>Fases 2 (Wedge Pop), 3 (EMA Crossback) e 4 (Base n' Break)</strong> quando o Semáforo 1D estiver Verde.
+            </div>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button class="quick-pick-btn active" id="ok-flt-all" onclick="filterOliverScanner('all')">Todos (25)</button>
+            <button class="quick-pick-btn" id="ok-flt-green" onclick="filterOliverScanner('green')">🟢 Semáforo Verde</button>
+            <button class="quick-pick-btn" id="ok-flt-buy" onclick="filterOliverScanner('buy')">🚀 Gatilho Fases 2/3/4</button>
+            <button class="quick-pick-btn" id="ok-flt-warn" onclick="filterOliverScanner('warn')">⚠️ Exaustão / Wedge Drop (5/6)</button>
+            <span id="oliver-scanner-sync" style="font-size:11px; color:var(--muted); font-family:var(--mono); margin-left:4px;">Sincronizando...</span>
+            <button id="btn-refresh-oliver" class="quick-pick-btn" onclick="loadOliverKellScanner(true)" style="background:var(--blue); color:#04101e; border-color:var(--blue); font-size:11px; font-weight:800; cursor:pointer;">
+              🔄 Atualizar Fases
+            </button>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto; max-height:420px; overflow-y:auto;">
+          <table class="order-history-table" style="width:100%; font-size:12px;">
+            <thead>
+              <tr style="position:sticky; top:0; background:var(--surface2); z-index:2;">
+                <th style="width:36px;">#</th>
+                <th>Ativo</th>
+                <th>Preço Atual</th>
+                <th>Semáforo Macro (1D Mapa)</th>
+                <th>Fase Diária (1D Mapa)</th>
+                <th>Fase Intraday (2H Lupa)</th>
+                <th>Gatilho Oliver Kell (Trade & Options)</th>
+                <th>Confluência Botrade</th>
+                <th style="text-align:right;">Ação Rápida</th>
+              </tr>
+            </thead>
+            <tbody id="oliver-scanner-tbody">
+              <tr><td colspan="9" style="text-align:center; color:var(--dim); padding:16px;">Carregando Scanner Aurora Fractal de Oliver Kell...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ========================================== -->
@@ -1952,12 +2002,13 @@
                 <th>Fator Lucro</th>
                 <th>Lucro Líq ($)</th>
                 <th>Max DD</th>
+                <th>Ciclo Oliver Kell (1D / 2H)</th>
                 <th>Veredito Gertrude</th>
                 <th style="text-align:right;">Ação</th>
               </tr>
             </thead>
             <tbody id="scanner-leaderboard-tbody">
-              <tr><td colspan="11" style="text-align:center; color:var(--dim); padding:16px;">Carregando ranking da varredura...</td></tr>
+              <tr><td colspan="12" style="text-align:center; color:var(--dim); padding:16px;">Carregando ranking da varredura...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2294,11 +2345,12 @@
               <th>Lucro Líquido</th>
               <th>Trades</th>
               <th>Status Quântico</th>
+              <th>Ciclo Oliver Kell (1D / 2H)</th>
               <th style="text-align:center;">Ação Rápida ($5 @ 10x)</th>
             </tr>
           </thead>
           <tbody id="univ-table-tbody">
-            <tr><td colspan="10" style="text-align:center; padding:20px; color:var(--dim);">Carregando universo Hyperliquid...</td></tr>
+            <tr><td colspan="11" style="text-align:center; padding:20px; color:var(--dim);">Carregando universo Hyperliquid...</td></tr>
           </tbody>
         </table>
       </div>
@@ -3730,9 +3782,9 @@
     ];
 
     let currentTvSymbol = "SOLUSDT";
-    let currentTvTf = "15";
+    let currentTvTf = "4h";
     let currentTvHeight = 650;
-    let tvWidgetInstance = null;
+    let tvProInstance = null;
 
     window.setTvChartHeight = function(h) {
       currentTvHeight = h;
@@ -3744,7 +3796,11 @@
         b.classList.remove("active");
         if (b.textContent.includes(h + "px")) b.classList.add("active");
       });
-      initTradingViewChart(currentTvSymbol, currentTvTf);
+      if (tvProInstance) {
+        tvProInstance.handleResize();
+      } else {
+        initTradingViewChart(currentTvSymbol, currentTvTf);
+      }
     };
 
     window.toggleTvFullscreen = function() {
@@ -3758,57 +3814,57 @@
         fsBtn.style.background = isFs ? "var(--red)" : "var(--blue)";
         fsBtn.style.color = isFs ? "#ffffff" : "#04101e";
       }
-      initTradingViewChart(currentTvSymbol, currentTvTf);
+      if (tvProInstance) {
+        setTimeout(() => tvProInstance.handleResize(), 50);
+      } else {
+        initTradingViewChart(currentTvSymbol, currentTvTf);
+      }
     };
 
-    function initTradingViewChart(symbol = "SOLUSDT", interval = "15") {
-      currentTvSymbol = symbol;
-      currentTvTf = interval;
+    function initTradingViewChart(symbol = "BTCUSDT", interval = "4h") {
+      let cleanSym = symbol ? symbol.toUpperCase() : "BTCUSDT";
+      if (!cleanSym.endsWith("USDT")) cleanSym += "USDT";
+      currentTvSymbol = cleanSym;
+
+      let tf = interval || "4h";
+      if (tf === "15") tf = "15m";
+      else if (tf === "60") tf = "1h";
+      else if (tf === "240") tf = "4h";
+      else if (tf === "D") tf = "1d";
+      currentTvTf = tf;
+
       const container = $("tradingview_live_chart");
       if (!container) return;
-      container.innerHTML = "";
 
       const box = document.querySelector(".tv-container-box");
       const isFs = box && box.classList.contains("fullscreen-mode");
       const chartHeight = isFs ? (window.innerHeight - 85) : currentTvHeight;
       container.style.height = chartHeight + "px";
 
-      if (typeof TradingView === "undefined") {
-        container.innerHTML = '<div class="empty-state" style="padding:40px;">Carregando motor TradingView...</div>';
+      const activeLabel = $("tv-active-label");
+      if (activeLabel) {
+        activeLabel.textContent = `BINANCE:${currentTvSymbol} · ${currentTvTf.toUpperCase()}`;
+      }
+
+      if (typeof TradingViewProChart === "undefined") {
+        container.innerHTML = '<div class="empty-state" style="padding:40px;">Carregando motor TradingView Pro...</div>';
         return;
       }
 
-      const activeLabel = $("tv-active-label");
-      if (activeLabel) {
-        activeLabel.textContent = `BINANCE:${symbol} · ${interval === "240" ? "4h" : interval + "m"}`;
+      if (tvProInstance) {
+        tvProInstance.setSymbol(currentTvSymbol, currentTvTf);
+        setTimeout(() => tvProInstance.handleResize(), 50);
+      } else {
+        container.innerHTML = "";
+        tvProInstance = new TradingViewProChart("tradingview_live_chart", {
+          symbol: currentTvSymbol,
+          timeframe: currentTvTf,
+          height: chartHeight,
+          showBMSB: true,
+          showKell: true,
+          showOptions: false
+        });
       }
-
-      tvWidgetInstance = new TradingView.widget({
-        autosize: true,
-        height: chartHeight,
-        symbol: `BINANCE:${symbol}`,
-        interval: interval,
-        timezone: "America/Sao_Paulo",
-        theme: "dark",
-        style: "1",
-        locale: "br",
-        toolbar_bg: "#0f172a",
-        enable_publishing: false,
-        hide_side_toolbar: false,
-        allow_symbol_change: true,
-        save_image: true,
-        container_id: "tradingview_live_chart",
-        studies: [
-          "RSI@tv-basicstudies",
-          "MASimple@tv-basicstudies"
-        ],
-        overrides: {
-          "paneProperties.background": "#080c14",
-          "paneProperties.vertGridProperties.color": "#162235",
-          "paneProperties.horzGridProperties.color": "#162235",
-          "scalesProperties.textColor": "#94a3b8"
-        }
-      });
     }
 
     window.loadTvChart = function(symbol, interval, name) {
@@ -5071,6 +5127,175 @@
     };
 
     // ==========================================
+    // OLIVER KELL 6-PHASE FRACTAL SCANNER (1D + 2H)
+    // ==========================================
+    window.oliverKellMap = {};
+    window.oliverKellRows = [];
+    window.oliverActiveFilter = "all";
+
+    window.renderOliverBadgeCell = function(coin, fallbackObj = null) {
+      const sym = (coin || "").toUpperCase();
+      const ok = window.oliverKellMap[sym] || fallbackObj || {};
+      const sem = ok.oliver_macro_semaphore || "";
+      const mPhase = ok.oliver_macro_phase || "";
+      const lPhase = ok.oliver_lupa_phase || "";
+      const lSig = ok.oliver_lupa_signal || "";
+      const isBuy = Boolean(ok.is_oliver_fractal_buy);
+
+      if (!sem && !mPhase && !lPhase) {
+        return `<span style="color:var(--dim); font-size:11px; font-family:var(--mono);">— Fora Top 25 Liq</span>`;
+      }
+
+      const isGreen = sem.includes("VERDE");
+      const semBadgeColor = isGreen
+        ? "background:rgba(16,185,129,0.14); color:var(--green); border:1px solid rgba(16,185,129,0.35);"
+        : "background:rgba(239,68,68,0.14); color:var(--red); border:1px solid rgba(239,68,68,0.35);";
+
+      let lupaColor = "color:var(--muted);";
+      if (isBuy) {
+        lupaColor = "color:var(--green); font-weight:800;";
+      } else if (lSig === "EXHAUSTION_EXTENSION" || lSig === "WEDGE_DROP") {
+        lupaColor = "color:var(--amber); font-weight:700;";
+      } else if (lSig === "DOWNTREND") {
+        lupaColor = "color:var(--red);";
+      }
+
+      return `
+        <div style="display:flex; flex-direction:column; gap:3px; line-height:1.2;">
+          <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+            <span style="font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; ${semBadgeColor}">
+              1D: ${mPhase || sem}
+            </span>
+            ${isBuy ? '<span style="font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px; background:rgba(56,189,248,0.18); color:var(--blue); border:1px solid rgba(56,189,248,0.4);">🎯 GATILHO</span>' : ''}
+          </div>
+          <div style="font-size:11px; ${lupaColor}">
+            2H: ${lPhase || "N/A"}
+          </div>
+        </div>
+      `;
+    };
+
+    window.filterOliverScanner = function(mode) {
+      window.oliverActiveFilter = mode || "all";
+      ["all", "green", "buy", "warn"].forEach(k => {
+        const el = $("ok-flt-" + k);
+        if (el) {
+          if (k === window.oliverActiveFilter) el.classList.add("active");
+          else el.classList.remove("active");
+        }
+      });
+      window.renderOliverScannerRows();
+    };
+
+    window.renderOliverScannerRows = function() {
+      const tbody = $("oliver-scanner-tbody");
+      if (!tbody) return;
+
+      const mode = window.oliverActiveFilter || "all";
+      const filtered = (window.oliverKellRows || []).filter(r => {
+        const sem = r.oliver_macro_semaphore || "";
+        const lSig = r.oliver_lupa_signal || "";
+        if (mode === "green") return sem.includes("VERDE");
+        if (mode === "buy") return Boolean(r.is_oliver_fractal_buy) || ["WEDGE_POP", "EMA_CROSSBACK", "BASE_N_BREAK"].includes(lSig);
+        if (mode === "warn") return ["EXHAUSTION_EXTENSION", "WEDGE_DROP"].includes(lSig);
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--dim); padding:16px;">Nenhum ativo encontrado para este filtro do Ciclo Oliver Kell.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map((r, idx) => {
+        const sem = r.oliver_macro_semaphore || "N/A";
+        const isGreen = sem.includes("VERDE");
+        const semStyle = isGreen
+          ? "background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.35);"
+          : "background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.35);";
+
+        const lSig = r.oliver_lupa_signal || "";
+        let actionPlaybook = "";
+        if (r.is_oliver_fractal_buy) {
+          actionPlaybook = `<span style="color:var(--green); font-weight:800;">🔥 COMPRA FRACTAL (1D Verde + 2H Gatilho) · Bull Put / Call Spread</span>`;
+        } else if (["WEDGE_POP", "EMA_CROSSBACK", "BASE_N_BREAK"].includes(lSig) && !isGreen) {
+          actionPlaybook = `<span style="color:var(--amber); font-weight:700;">⚡ Repique Tático 2H contra 1D Vermelho (Alvo Curto na EMA21 1D)</span>`;
+        } else if (lSig === "EXHAUSTION_EXTENSION") {
+          actionPlaybook = `<span style="color:var(--amber); font-weight:700;">⚠️ Fase 5 (Exaustão &gt;2 ATR): Realizar Parcial / Vender Call OTM</span>`;
+        } else if (lSig === "WEDGE_DROP") {
+          actionPlaybook = `<span style="color:var(--red); font-weight:800;">🛑 Fase 6 (Wedge Drop): Saída / Bear Call Credit Spread</span>`;
+        } else if (isGreen) {
+          actionPlaybook = `<span style="color:var(--blue);">⏳ Mapa 1D Verde: Aguardar Lupa 2H fazer Fase 2 ou Fase 3</span>`;
+        } else {
+          actionPlaybook = `<span style="color:var(--muted);">🛡️ Fase 1 (Defesa / Cash): Semáforo Fechado para Compra</span>`;
+        }
+
+        const priceVal = Number(r.price || 0);
+        const priceStr = priceVal >= 100 ? `$${priceVal.toFixed(2)}` : (priceVal >= 1 ? `$${priceVal.toFixed(3)}` : `$${priceVal.toFixed(5)}`);
+
+        return `
+          <tr>
+            <td style="font-family:var(--mono); color:var(--dim);">${idx + 1}</td>
+            <td><strong style="color:var(--blue); font-size:13px;">${r.coin}</strong></td>
+            <td style="font-family:var(--mono); font-weight:700;">${priceStr}</td>
+            <td><span style="padding:2px 8px; border-radius:4px; font-size:11px; font-weight:800; ${semStyle}">${sem}</span></td>
+            <td style="font-weight:700; color:${isGreen ? 'var(--green)' : 'var(--text)'};">${r.oliver_macro_phase || "N/A"}</td>
+            <td style="font-weight:700; color:${r.is_oliver_fractal_buy ? 'var(--green)' : 'var(--blue)'};">${r.oliver_lupa_phase || "N/A"}</td>
+            <td>${actionPlaybook}</td>
+            <td><span style="font-size:11px; color:var(--muted);">${r.status || "MONITORANDO"}</span></td>
+            <td style="text-align:right;">
+              <button class="quick-pick-btn" onclick="selectBacktestCoinAndRun('${r.coin}')" style="background:rgba(56,189,248,0.15); color:var(--blue); border-color:var(--blue); font-size:11px; font-weight:700;">
+                📈 Abrir Lupa
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    };
+
+    window.loadOliverKellScanner = async function(force = false) {
+      const syncEl = $("oliver-scanner-sync");
+      const btn = $("btn-refresh-oliver");
+      if (syncEl) syncEl.textContent = force ? "Varrendo 1D + 2H..." : "Sincronizando...";
+      if (btn && force) {
+        btn.disabled = true;
+        btn.textContent = "⏳ Varrendo...";
+      }
+
+      try {
+        const res = await fetch(`/api/oliver_kell/scanner${force ? '?force=true' : ''}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const rows = data.results || [];
+        window.oliverKellRows = rows;
+        rows.forEach(r => {
+          if (r.coin) window.oliverKellMap[r.coin.toUpperCase()] = r;
+        });
+
+        if (syncEl) {
+          const dt = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : "Agora";
+          const greenCount = rows.filter(x => (x.oliver_macro_semaphore || "").includes("VERDE")).length;
+          const buyCount = rows.filter(x => x.is_oliver_fractal_buy).length;
+          syncEl.textContent = `🟢 ${greenCount} Verdes · 🚀 ${buyCount} Gatilhos · ${dt}`;
+        }
+
+        const allBtn = $("ok-flt-all");
+        if (allBtn) allBtn.textContent = `Todos (${rows.length})`;
+
+        window.renderOliverScannerRows();
+        if (typeof filterUniverseTable === "function" && universeCoinsData.length > 0) {
+          filterUniverseTable();
+        }
+      } catch (err) {
+        console.error("Erro ao carregar Scanner Oliver Kell:", err);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🔄 Atualizar Fases";
+        }
+      }
+    };
+
+    // ==========================================
     // MASS UNIVERSE SCANNER LEADERBOARD
     // ==========================================
     window.loadUniverseScannerLeaderboard = async function(force = false) {
@@ -5098,7 +5323,7 @@
         if (tbody) {
           const list = data.leaderboard || [];
           if (list.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--dim); padding:16px;">Nenhum ativo ranqueado ainda. Clique em "Executar Nova Varredura".</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--dim); padding:16px;">Nenhum ativo ranqueado ainda. Clique em "Executar Nova Varredura".</td></tr>`;
           } else {
             tbody.innerHTML = list.map(r => {
               const pnlColor = r.net_profit_usd >= 0 ? "var(--green)" : "var(--red)";
@@ -5117,6 +5342,7 @@
                   <td style="font-weight:800; color:${pfColor};">${r.profit_factor.toFixed(2)}x</td>
                   <td style="font-weight:700; color:${pnlColor}; font-family:var(--mono);">${pnlSign}$${r.net_profit_usd.toFixed(2)}</td>
                   <td style="color:var(--red); font-family:var(--mono);">-${r.max_drawdown_pct.toFixed(1)}%</td>
+                  <td>${window.renderOliverBadgeCell(r.coin, r)}</td>
                   <td>${r.gertrude_badge}</td>
                   <td style="text-align:right;">
                     <button class="quick-pick-btn" onclick="selectBacktestCoinAndRun('${r.coin}')" style="background:rgba(56,189,248,0.15); color:var(--blue); border-color:var(--blue); font-size:11px; font-weight:700;">
@@ -5212,7 +5438,7 @@
       if (!tbody) return;
 
       if (!coins || coins.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--dim);">Nenhuma moeda encontrada para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--dim);">Nenhuma moeda encontrada para os filtros selecionados.</td></tr>`;
         return;
       }
 
@@ -5250,6 +5476,7 @@
             <td style="font-family:var(--mono); font-weight:700; color:var(--green);">+${c.net_profit_pct.toFixed(1)}%</td>
             <td style="font-family:var(--mono); color:var(--muted);">${c.trades} <span style="font-size:10px; color:var(--dim);">(${c.wins}W/${c.losses}L)</span></td>
             <td>${badgeHtml}</td>
+            <td>${window.renderOliverBadgeCell(c.coin, c)}</td>
             <td style="text-align:center;">
               <button onclick="launchUniverseCoin('${c.coin}', '${c.strategy}')" style="background:var(--surface2); border:1px solid var(--border); color:var(--blue); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:600; cursor:pointer;" title="Ver Gráfico e Abrir Terminal de Ordem">
                 ⚡ Radar
@@ -5869,6 +6096,10 @@
     // Start On-chain User Fills polling
     loadUserFills();
     setInterval(loadUserFills, 30000);
+
+    // Auto-load Oliver Kell 6-Phase Fractal Scanner (1D Mapa + 2H Lupa)
+    loadOliverKellScanner(false);
+    setInterval(() => loadOliverKellScanner(false), 60000);
 
     // Auto-load Mass Universe Scanner Leaderboard
     loadUniverseScannerLeaderboard(false);

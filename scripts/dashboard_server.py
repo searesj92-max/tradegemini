@@ -793,6 +793,58 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
                 return
 
+        if parsed.path == "/api/oliver_kell/scanner":
+            try:
+                from datetime import datetime, timezone
+                query = parse_qs(parsed.query)
+                force = query.get("force", ["false"])[0].lower() in ("true", "1", "yes")
+                scan_file = ROOT / "data" / "market_scan_latest.json"
+
+                if force or not scan_file.exists():
+                    from market_scanner import scan_all_markets
+                    results = scan_all_markets(top_n=25)
+                    payload = {
+                        "status": "ok",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "scanned_count": len(results),
+                        "top_opportunities": results[:5],
+                        "results": results,
+                        "all_results": results
+                    }
+                    scan_file.parent.mkdir(parents=True, exist_ok=True)
+                    scan_file.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+                else:
+                    raw_scan = json.loads(scan_file.read_text(encoding="utf-8"))
+                    if isinstance(raw_scan, list):
+                        results = raw_scan
+                        payload = {
+                            "status": "ok",
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "scanned_count": len(results),
+                            "top_opportunities": results[:5],
+                            "results": results,
+                            "all_results": results
+                        }
+                    else:
+                        results = raw_scan.get("results") or raw_scan.get("all_results") or []
+                        payload = raw_scan
+                        payload["status"] = "ok"
+                        payload["results"] = results
+                        payload["all_results"] = results
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.end_headers()
+                self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+                return
+
         if parsed.path == "/api/backtest/scanner":
             try:
                 query = parse_qs(parsed.query)
@@ -801,9 +853,28 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 days = int(query.get("days", [180])[0])
                 timeframe = query.get("timeframe", ["4h"])[0]
 
+                scan_file = ROOT / "data" / "market_scan_latest.json"
+                oliver_map = {}
+                if scan_file.exists():
+                    try:
+                        s_data = json.loads(scan_file.read_text(encoding="utf-8"))
+                        items = s_data if isinstance(s_data, list) else (s_data.get("results") or s_data.get("all_results") or [])
+                        for item in items:
+                            oliver_map[item.get("coin")] = item
+                    except Exception:
+                        pass
+
                 if not force and LEADERBOARD_FILE.exists():
                     try:
                         cached = json.loads(LEADERBOARD_FILE.read_text(encoding="utf-8"))
+                        for r in cached.get("leaderboard", []):
+                            ok_info = oliver_map.get(r.get("coin"), {})
+                            if ok_info:
+                                r["oliver_macro_semaphore"] = ok_info.get("oliver_macro_semaphore", "VERMELHO")
+                                r["oliver_macro_phase"] = ok_info.get("oliver_macro_phase", "—")
+                                r["oliver_lupa_phase"] = ok_info.get("oliver_lupa_phase", "—")
+                                r["oliver_lupa_signal"] = ok_info.get("oliver_lupa_signal", "WAIT")
+                                r["is_oliver_fractal_buy"] = bool(ok_info.get("is_oliver_fractal_buy", False))
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json; charset=utf-8")
                         self.end_headers()

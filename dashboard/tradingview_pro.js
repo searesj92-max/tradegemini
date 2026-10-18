@@ -33,11 +33,15 @@
       this.currentTimeframe = this.options.timeframe;
       this.activeTool = 'cursor'; // cursor, trendline, horizontal, fibonacci, measure
       this.drawings = [];
+      this.redoStack = [];
       this.currentDrawing = null;
       this.candlesData = [];
+      this.volumeData = [];
       this.priceLines = {};
       this.indicatorSeries = {};
       this.isDrawing = false;
+      this.isLoadingMore = false;
+      this.hasMoreHistory = true;
 
       this.initLayout();
       this.initChart();
@@ -141,8 +145,15 @@
               <button class="tv-tool-btn" data-tool="measure" title="Régua de Medição (% e Barras)">
                 <i class="fa-solid fa-ruler-combined"></i>
               </button>
+              <div class="tv-sidebar-divider"></div>
+              <button class="tv-tool-btn" id="${this.container.id}_undo_btn" title="Desfazer Última Marcação (Ctrl+Z)">
+                <i class="fa-solid fa-rotate-left" style="color:#fbbf24;"></i>
+              </button>
+              <button class="tv-tool-btn" id="${this.container.id}_redo_btn" title="Refazer Marcação (Ctrl+Y)">
+                <i class="fa-solid fa-rotate-right" style="color:#34d399;"></i>
+              </button>
               <div style="flex:1;"></div>
-              <button class="tv-tool-btn" id="${this.container.id}_clear_drawings" title="Limpar Todos os Desenhos">
+              <button class="tv-tool-btn" id="${this.container.id}_clear_drawings" title="Limpar Todas as Marcações">
                 <i class="fa-solid fa-trash-can text-rose-400"></i>
               </button>
             </div>
@@ -177,6 +188,9 @@
 
               <!-- Measure Tool Popup Box -->
               <div class="tv-measure-box" id="${this.container.id}_measure_box" style="display:none;"></div>
+
+              <!-- Toast Popup Notification -->
+              <div class="tv-toast-popup" id="${this.container.id}_toast" style="display:none;"></div>
             </div>
           </div>
         </div>
@@ -186,6 +200,7 @@
       this.viewportEl = document.getElementById(`${this.container.id}_viewport`);
       this.canvasEl = document.getElementById(`${this.container.id}_canvas`);
       this.measureBox = document.getElementById(`${this.container.id}_measure_box`);
+      this.toastEl = document.getElementById(`${this.container.id}_toast`);
       this.ctx = this.canvasEl.getContext('2d');
     }
 
@@ -320,6 +335,28 @@
       this.chart.subscribeCrosshairMove((param) => {
         this.updateLegend(param);
       });
+
+      // Synchronize canvas drawings with chart pans, zooms, scales & trigger infinite scroll
+      this.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        this.redrawCanvas();
+        if (range && range.from < 25 && !this.isLoadingMore && this.hasMoreHistory) {
+          this.loadMoreHistory();
+        }
+      });
+      this.chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+        this.redrawCanvas();
+      });
+
+      // Synchronize drawings during wheel zoom & mouse drag across viewport
+      this.viewportEl.addEventListener('wheel', () => {
+        requestAnimationFrame(() => this.redrawCanvas());
+      }, { passive: true });
+
+      this.viewportEl.addEventListener('mousemove', (e) => {
+        if (e.buttons > 0) {
+          requestAnimationFrame(() => this.redrawCanvas());
+        }
+      });
     }
 
     /* ----------------------------------------------------
@@ -328,6 +365,8 @@
     async loadData() {
       const sym = this.currentSymbol;
       const tf = this.currentTimeframe;
+      this.hasMoreHistory = true;
+      this.isLoadingMore = false;
 
       // Map internal tf to binance interval
       const intervalMap = {
@@ -335,23 +374,34 @@
         '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w'
       };
       const interval = intervalMap[tf] || '4h';
-      const limit = (tf === '1w' || tf === '1d') ? 350 : 500;
-
-      const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=${limit}`;
 
       try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-        if (!Array.isArray(data)) {
-          console.warn('[TV PRO] Invalid kline response:', data);
-          return;
+        // Initial fetch: 1,000 candles
+        const url1 = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=1000`;
+        const resp1 = await fetch(url1);
+        const data1 = await resp1.json();
+        let allData = Array.isArray(data1) ? data1 : [];
+
+        // For intraday timeframes (15m, 1h, 4h), prefetch another 1,000 candles for deep history
+        if (allData.length > 0 && ['15m', '1h', '4h'].includes(tf)) {
+          try {
+            const oldestMs = allData[0][0] - 1;
+            const url2 = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=1000&endTime=${oldestMs}`;
+            const resp2 = await fetch(url2);
+            const data2 = await resp2.json();
+            if (Array.isArray(data2) && data2.length > 0) {
+              allData = data2.concat(allData);
+            }
+          } catch (e) {
+            // graceful fallback
+          }
         }
 
         const candleList = [];
         const volumeList = [];
 
-        for (let i = 0; i < data.length; i++) {
-          const item = data[i];
+        for (let i = 0; i < allData.length; i++) {
+          const item = allData[i];
           const time = Math.floor(item[0] / 1000);
           const open = parseFloat(item[1]);
           const high = parseFloat(item[2]);
@@ -368,6 +418,7 @@
         }
 
         this.candlesData = candleList;
+        this.volumeData = volumeList;
         this.candlestickSeries.setData(candleList);
         this.volumeSeries.setData(volumeList);
 
@@ -377,7 +428,10 @@
         // Update Options Strike Lines
         this.updateOptionsPriceLines();
 
-        // Fit Content
+        // Redraw user drawings
+        this.redrawCanvas();
+
+        // Fit Content initially
         this.chart.timeScale().fitContent();
 
         // Initial Legend Update
@@ -389,6 +443,67 @@
 
       } catch (err) {
         console.error('[TV PRO ERROR] Failed to load market candles:', err);
+      }
+    }
+
+    async loadMoreHistory() {
+      if (this.isLoadingMore || !this.hasMoreHistory || !this.candlesData || this.candlesData.length === 0) return;
+      this.isLoadingMore = true;
+
+      try {
+        const sym = this.currentSymbol;
+        const intervalMap = {
+          '1m': '1m', '5m': '5m', '15m': '15m',
+          '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w'
+        };
+        const interval = intervalMap[this.currentTimeframe] || '4h';
+        const oldestTimeMs = (this.candlesData[0].time * 1000) - 1;
+
+        const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=1000&endTime=${oldestTimeMs}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          this.hasMoreHistory = false;
+          this.isLoadingMore = false;
+          return;
+        }
+
+        const olderCandles = [];
+        const olderVolumes = [];
+
+        for (let i = 0; i < data.length; i++) {
+          const item = data[i];
+          const time = Math.floor(item[0] / 1000);
+          const open = parseFloat(item[1]);
+          const high = parseFloat(item[2]);
+          const low = parseFloat(item[3]);
+          const close = parseFloat(item[4]);
+          const volume = parseFloat(item[5]);
+
+          olderCandles.push({ time, open, high, low, close });
+          olderVolumes.push({
+            time,
+            value: volume,
+            color: close >= open ? 'rgba(8, 153, 129, 0.35)' : 'rgba(242, 54, 69, 0.35)'
+          });
+        }
+
+        this.candlesData = olderCandles.concat(this.candlesData);
+        this.volumeData = olderVolumes.concat(this.volumeData || []);
+
+        this.candlestickSeries.setData(this.candlesData);
+        if (this.volumeSeries) {
+          this.volumeSeries.setData(this.volumeData);
+        }
+
+        this.calculateAndSetIndicators();
+        this.redrawCanvas();
+
+      } catch (err) {
+        console.warn('[TV PRO] Error lazy-loading older candles:', err);
+      } finally {
+        this.isLoadingMore = false;
       }
     }
 
@@ -547,7 +662,7 @@
     }
 
     /* ----------------------------------------------------
-       6. INTERACTIVE DRAWING TOOLS ENGINE (Canvas Overlay)
+       6. INTERACTIVE DRAWING TOOLS ENGINE (Anchored & Sync)
        ---------------------------------------------------- */
     resizeCanvas() {
       if (!this.canvasEl || !this.viewportEl) return;
@@ -563,7 +678,7 @@
 
     setDrawingTool(toolName) {
       this.activeTool = toolName;
-      document.querySelectorAll(`#${this.container.id}_wrapper .tv-tool-btn`).forEach(b => {
+      document.querySelectorAll(`#${this.container.id}_wrapper .tv-tool-btn[data-tool]`).forEach(b => {
         b.classList.toggle('active', b.getAttribute('data-tool') === toolName);
       });
 
@@ -575,7 +690,33 @@
       }
     }
 
+    getPointCoordinates(time, logical, price) {
+      if (!this.chart || !this.candlestickSeries) return { x: null, y: null };
+      let x = null;
+      if (time !== undefined && time !== null) {
+        x = this.chart.timeScale().timeToCoordinate(time);
+      }
+      if ((x === null || isNaN(x)) && logical !== undefined && logical !== null) {
+        x = this.chart.timeScale().logicalToCoordinate(logical);
+      }
+      let y = null;
+      if (price !== undefined && price !== null && !isNaN(price)) {
+        y = this.candlestickSeries.priceToCoordinate(price);
+      }
+      return { x, y };
+    }
+
+    getTimeFromLogical(logical) {
+      if (!this.candlesData || this.candlesData.length === 0) return null;
+      const idx = Math.round(logical);
+      if (idx >= 0 && idx < this.candlesData.length) {
+        return this.candlesData[idx].time;
+      }
+      return null;
+    }
+
     redrawCanvas() {
+      if (!this.canvasEl || !this.ctx) return;
       const dpr = window.devicePixelRatio || 1;
       const w = this.canvasEl.width / dpr;
       const h = this.canvasEl.height / dpr;
@@ -583,108 +724,205 @@
 
       // Render saved drawings
       for (const d of this.drawings) {
-        this.renderDrawing(d);
+        this.renderDrawing(d, false);
       }
 
       // Render current in-progress drawing
       if (this.currentDrawing) {
-        this.renderDrawing(this.currentDrawing);
+        this.renderDrawing(this.currentDrawing, true);
       }
     }
 
-    renderDrawing(d) {
+    renderDrawing(d, isCurrent = false) {
       if (!d) return;
       const ctx = this.ctx;
+      const dpr = window.devicePixelRatio || 1;
+      const w = this.canvasEl.width / dpr;
       ctx.save();
 
       if (d.type === 'trendline') {
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(d.x1, d.y1);
-        ctx.lineTo(d.x2, d.y2);
-        ctx.stroke();
-
-        // Endpoint dots
-        ctx.fillStyle = '#38bdf8';
-        ctx.beginPath(); ctx.arc(d.x1, d.y1, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(d.x2, d.y2, 4, 0, Math.PI * 2); ctx.fill();
-
-      } else if (d.type === 'horizontal') {
-        const dpr = window.devicePixelRatio || 1;
-        const w = this.canvasEl.width / dpr;
-        ctx.strokeStyle = '#f59e0b';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([6, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, d.y);
-        ctx.lineTo(w, d.y);
-        ctx.stroke();
-
-        // Label
-        if (d.price) {
-          ctx.setLineDash([]);
-          ctx.fillStyle = '#f59e0b';
-          ctx.fillRect(w - 70, d.y - 10, 68, 20);
-          ctx.fillStyle = '#000';
-          ctx.font = 'bold 10px monospace';
-          ctx.fillText(`$${d.price.toFixed(1)}`, w - 64, d.y + 4);
+        let x1, y1, x2, y2;
+        if (isCurrent) {
+          x1 = d.startX;
+          y1 = d.startY;
+          x2 = d.currentX;
+          y2 = d.currentY;
+        } else {
+          const pt1 = this.getPointCoordinates(d.time1, d.logical1, d.price1);
+          const pt2 = this.getPointCoordinates(d.time2, d.logical2, d.price2);
+          x1 = pt1.x;
+          y1 = pt1.y;
+          x2 = pt2.x;
+          y2 = pt2.y;
         }
 
-      } else if (d.type === 'fibonacci') {
-        const dpr = window.devicePixelRatio || 1;
-        const w = this.canvasEl.width / dpr;
-        const levels = [
-          { r: 0.0, color: '#787b86', text: '0.0% (Topo)' },
-          { r: 0.236, color: '#ef4444', text: '23.6%' },
-          { r: 0.382, color: '#f59e0b', text: '38.2%' },
-          { r: 0.500, color: '#10b981', text: '50.0% (Equilíbrio)' },
-          { r: 0.618, color: '#06b6d4', text: '61.8% (Ouro)' },
-          { r: 0.786, color: '#8b5cf6', text: '78.6%' },
-          { r: 1.0, color: '#787b86', text: '100.0% (Fundo)' }
-        ];
+        if (x1 !== null && y1 !== null && x2 !== null && y2 !== null && !isNaN(x1) && !isNaN(y1) && !isNaN(x2) && !isNaN(y2)) {
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
 
-        const yTop = Math.min(d.y1, d.y2);
-        const yBot = Math.max(d.y1, d.y2);
-        const range = yBot - yTop;
+          // Endpoint dots only when line has meaningful length
+          if (Math.hypot(x2 - x1, y2 - y1) >= 8) {
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(x1, y1, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x2, y2, 4, 0, Math.PI * 2); ctx.fill();
+          }
+        }
 
-        levels.forEach(lvl => {
-          const y = (d.y1 < d.y2) ? (yTop + (range * lvl.r)) : (yBot - (range * lvl.r));
-          ctx.strokeStyle = lvl.color;
-          ctx.lineWidth = 1;
+      } else if (d.type === 'horizontal') {
+        let y = null;
+        if (d.price !== undefined && d.price !== null) {
+          y = this.candlestickSeries.priceToCoordinate(d.price);
+        } else if (d.y !== undefined) {
+          y = d.y;
+        }
+
+        if (y !== null && !isNaN(y)) {
+          ctx.strokeStyle = d.color || '#f59e0b';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 4]);
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(w, y);
           ctx.stroke();
 
-          ctx.fillStyle = lvl.color;
-          ctx.font = '10px sans-serif';
-          ctx.fillText(`Fib ${lvl.text}`, 14, y - 4);
-        });
+          // Label
+          if (d.price) {
+            ctx.setLineDash([]);
+            ctx.fillStyle = d.color || '#f59e0b';
+            ctx.fillRect(w - 74, y - 10, 72, 20);
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText(`$${d.price.toFixed(1)}`, w - 68, y + 4);
+          }
+        }
+
+      } else if (d.type === 'fibonacci') {
+        let p1Price = d.price1;
+        let p2Price = d.price2;
+        let xLeft = 0;
+        let xRight = w;
+
+        if (isCurrent) {
+          p1Price = this.candlestickSeries.coordinateToPrice(d.startY);
+          p2Price = this.candlestickSeries.coordinateToPrice(d.currentY);
+          xLeft = Math.min(d.startX, d.currentX);
+          xRight = Math.max(d.startX, d.currentX);
+        } else {
+          const pt1 = this.getPointCoordinates(d.time1, d.logical1, d.price1);
+          const pt2 = this.getPointCoordinates(d.time2, d.logical2, d.price2);
+          if (pt1.x !== null && pt2.x !== null) {
+            xLeft = Math.min(pt1.x, pt2.x);
+            xRight = Math.max(pt1.x, pt2.x);
+          }
+        }
+
+        if (p1Price !== null && p2Price !== null && !isNaN(p1Price) && !isNaN(p2Price)) {
+          const levels = [
+            { r: 0.0, color: '#787b86', text: '0.0% (Topo)' },
+            { r: 0.236, color: '#ef4444', text: '23.6%' },
+            { r: 0.382, color: '#f59e0b', text: '38.2%' },
+            { r: 0.500, color: '#10b981', text: '50.0% (Equilíbrio)' },
+            { r: 0.618, color: '#06b6d4', text: '61.8% (Ouro)' },
+            { r: 0.786, color: '#8b5cf6', text: '78.6%' },
+            { r: 1.0, color: '#787b86', text: '100.0% (Fundo)' }
+          ];
+
+          levels.forEach(lvl => {
+            const levelPrice = p1Price + (p2Price - p1Price) * lvl.r;
+            const y = this.candlestickSeries.priceToCoordinate(levelPrice);
+            if (y !== null && !isNaN(y)) {
+              ctx.strokeStyle = lvl.color;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(0, y);
+              ctx.lineTo(w, y);
+              ctx.stroke();
+
+              ctx.fillStyle = lvl.color;
+              ctx.font = '10px sans-serif';
+              ctx.fillText(`Fib ${lvl.text} ($${levelPrice.toFixed(1)})`, 14, y - 4);
+            }
+          });
+        }
 
       } else if (d.type === 'measure') {
-        // Measure rectangle shaded area
-        const xMin = Math.min(d.x1, d.x2);
-        const yMin = Math.min(d.y1, d.y2);
-        const width = Math.abs(d.x2 - d.x1);
-        const height = Math.abs(d.y2 - d.y1);
+        let x1, y1, x2, y2;
+        if (isCurrent) {
+          x1 = d.startX; y1 = d.startY;
+          x2 = d.currentX; y2 = d.currentY;
+        } else {
+          const pt1 = this.getPointCoordinates(d.time1, d.logical1, d.price1);
+          const pt2 = this.getPointCoordinates(d.time2, d.logical2, d.price2);
+          x1 = pt1.x; y1 = pt1.y; x2 = pt2.x; y2 = pt2.y;
+        }
 
-        const isUp = d.y2 < d.y1;
-        ctx.fillStyle = isUp ? 'rgba(8, 153, 129, 0.15)' : 'rgba(242, 54, 69, 0.15)';
-        ctx.fillRect(xMin, yMin, width, height);
+        if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+          const xMin = Math.min(x1, x2);
+          const yMin = Math.min(y1, y2);
+          const width = Math.abs(x2 - x1);
+          const height = Math.abs(y2 - y1);
 
-        ctx.strokeStyle = isUp ? '#089981' : '#f23645';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(xMin, yMin, width, height);
+          const isUp = y2 < y1;
+          ctx.fillStyle = isUp ? 'rgba(8, 153, 129, 0.15)' : 'rgba(242, 54, 69, 0.15)';
+          ctx.fillRect(xMin, yMin, width, height);
 
-        // Arrow
-        ctx.beginPath();
-        ctx.moveTo(d.x1, d.y1);
-        ctx.lineTo(d.x2, d.y2);
-        ctx.stroke();
+          ctx.strokeStyle = isUp ? '#089981' : '#f23645';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(xMin, yMin, width, height);
+
+          // Arrow line
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        }
       }
 
       ctx.restore();
+    }
+
+    undo() {
+      if (this.drawings && this.drawings.length > 0) {
+        const removed = this.drawings.pop();
+        if (!this.redoStack) this.redoStack = [];
+        this.redoStack.push(removed);
+        this.redrawCanvas();
+        this.showToast('Marcação desfeita (Ctrl+Z)');
+      }
+    }
+
+    redo() {
+      if (this.redoStack && this.redoStack.length > 0) {
+        const restored = this.redoStack.pop();
+        this.drawings.push(restored);
+        this.redrawCanvas();
+        this.showToast('Marcação refeita (Ctrl+Y)');
+      }
+    }
+
+    clearDrawings() {
+      if (this.drawings && this.drawings.length > 0) {
+        this.redoStack = [...this.drawings];
+        this.drawings = [];
+        this.redrawCanvas();
+        this.showToast('Todas as marcações removidas');
+      }
+    }
+
+    showToast(msg) {
+      if (!this.toastEl) return;
+      this.toastEl.textContent = msg;
+      this.toastEl.style.display = 'block';
+      this.toastEl.style.opacity = '1';
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => {
+        this.toastEl.style.opacity = '0';
+        setTimeout(() => { if (this.toastEl) this.toastEl.style.display = 'none'; }, 200);
+      }, 1500);
     }
 
     /* ----------------------------------------------------
@@ -895,15 +1133,36 @@
         });
       });
 
+      // Undo & Redo Buttons
+      const undoBtn = document.getElementById(`${this.container.id}_undo_btn`);
+      if (undoBtn) undoBtn.addEventListener('click', () => this.undo());
+
+      const redoBtn = document.getElementById(`${this.container.id}_redo_btn`);
+      if (redoBtn) redoBtn.addEventListener('click', () => this.redo());
+
       const clearBtn = document.getElementById(`${this.container.id}_clear_drawings`);
       if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-          this.drawings = [];
-          this.currentDrawing = null;
-          this.measureBox.style.display = 'none';
-          this.redrawCanvas();
-        });
+        clearBtn.addEventListener('click', () => this.clearDrawings());
       }
+
+      // Global Keyboard Shortcuts for Drawing (Ctrl+Z: Undo, Ctrl+Y: Redo, Delete/Backspace)
+      window.addEventListener('keydown', (e) => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+        
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            this.redo();
+          } else {
+            this.undo();
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+          e.preventDefault();
+          this.redo();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+          this.undo();
+        }
+      });
 
       // 7. Canvas Mouse Events for Drawings
       this.canvasEl.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -917,20 +1176,39 @@
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      this.isDrawing = true;
       const price = this.candlestickSeries.coordinateToPrice(y);
+      const logical = this.chart.timeScale().coordinateToLogical(x);
+      const time = this.chart.timeScale().coordinateToTime(x) || this.getTimeFromLogical(logical);
 
-      if (this.activeTool === 'trendline') {
-        this.currentDrawing = { type: 'trendline', x1: x, y1: y, x2: x, y2: y };
-      } else if (this.activeTool === 'horizontal') {
-        this.drawings.push({ type: 'horizontal', y: y, price: price });
+      if (this.activeTool === 'horizontal') {
+        if (price !== null && !isNaN(price)) {
+          this.drawings.push({
+            type: 'horizontal',
+            price: price,
+            color: '#f59e0b'
+          });
+          this.redoStack = [];
+          this.redrawCanvas();
+          this.showToast(`Linha Horizontal: $${price.toFixed(1)}`);
+        }
         this.isDrawing = false;
-        this.redrawCanvas();
-      } else if (this.activeTool === 'fibonacci') {
-        this.currentDrawing = { type: 'fibonacci', x1: x, y1: y, x2: x, y2: y };
-      } else if (this.activeTool === 'measure') {
-        this.currentDrawing = { type: 'measure', x1: x, y1: y, x2: x, y2: y, startPrice: price };
+        return;
       }
+
+      this.isDrawing = true;
+      this.currentDrawing = {
+        type: this.activeTool,
+        startX: x,
+        startY: y,
+        currentX: x,
+        currentY: y,
+        time1: time,
+        logical1: logical,
+        price1: price,
+        time2: time,
+        logical2: logical,
+        price2: price
+      };
     }
 
     onMouseMove(e) {
@@ -939,14 +1217,20 @@
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      this.currentDrawing.x2 = x;
-      this.currentDrawing.y2 = y;
+      const price = this.candlestickSeries.coordinateToPrice(y);
+      const logical = this.chart.timeScale().coordinateToLogical(x);
+      const time = this.chart.timeScale().coordinateToTime(x) || this.getTimeFromLogical(logical);
+
+      this.currentDrawing.currentX = x;
+      this.currentDrawing.currentY = y;
+      this.currentDrawing.time2 = time;
+      this.currentDrawing.logical2 = logical;
+      this.currentDrawing.price2 = price;
 
       if (this.currentDrawing.type === 'measure') {
-        const currentPrice = this.candlestickSeries.coordinateToPrice(y);
-        const p1 = this.currentDrawing.startPrice || currentPrice;
-        const diff = currentPrice - p1;
-        const diffPct = (diff / p1) * 100;
+        const p1 = this.currentDrawing.price1 || price;
+        const diff = (price !== null && p1 !== null) ? (price - p1) : 0;
+        const diffPct = (p1 && p1 !== 0) ? (diff / p1) * 100 : 0;
 
         this.measureBox.style.display = 'block';
         this.measureBox.style.left = `${Math.min(x, rect.width - 150) + 12}px`;
@@ -963,8 +1247,14 @@
     onMouseUp(e) {
       if (!this.isDrawing) return;
       this.isDrawing = false;
-      if (this.currentDrawing && this.currentDrawing.type !== 'measure') {
-        this.drawings.push(this.currentDrawing);
+      if (this.currentDrawing) {
+        const dist = Math.hypot(this.currentDrawing.currentX - this.currentDrawing.startX, this.currentDrawing.currentY - this.currentDrawing.startY);
+
+        // Discard accidental single clicks < 8px to prevent phantom dots
+        if (dist >= 8 && this.currentDrawing.type !== 'measure') {
+          this.drawings.push({ ...this.currentDrawing });
+          this.redoStack = [];
+        }
       }
       this.currentDrawing = null;
       this.redrawCanvas();

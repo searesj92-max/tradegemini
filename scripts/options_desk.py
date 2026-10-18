@@ -1286,12 +1286,17 @@ def simulate_roll(pos_id):
     contracts = float(eval_pos['contracts'])
     init_credit_total = float(eval_pos['initial_credit_total'])
     cost_to_close_total = eval_pos['cost_to_close_total']
+    spot = eval_pos.get('spot_price', 0.0) or get_spot_price(currency)
+    spread_width = abs(s_sell - s_buy)
     
     all_expiries = get_live_expiries(currency)
     forward_expiries = [e for e in all_expiries if int(e) > int(current_expiry)]
     
     roll_options = []
     today = datetime.datetime.now().date()
+    
+    # Avalia mesmo strike e rebaixamentos defensivos de strike (afastar do perigo)
+    candidate_shifts = [0, 2000, 3000, 4000, 5000]
     
     for next_exp in forward_expiries[:4]:
         try:
@@ -1301,39 +1306,54 @@ def simulate_roll(pos_id):
             continue
             
         tickers = get_tickers_for_expiry(currency, next_exp)
-        short_t = tickers.get(f"{currency}-{next_exp}-{int(s_sell)}-P", {})
-        long_t = tickers.get(f"{currency}-{next_exp}-{int(s_buy)}-P", {})
         
-        bid_new_short = float(short_t.get('b', 0))
-        ask_new_long = float(long_t.get('a', 0))
-        
-        if bid_new_short > 0 and ask_new_long >= 0:
-            new_credit_unit = max(0.0, bid_new_short - ask_new_long)
-            new_credit_total = new_credit_unit * contracts
-            net_roll_cost = cost_to_close_total - new_credit_total
-            remaining_profit = init_credit_total - net_roll_cost
+        for shift in candidate_shifts:
+            cand_sell = s_sell - shift
+            cand_buy = cand_sell - spread_width
             
-            roll_options.append({
-                'target_expiry': next_exp,
-                'target_expiry_formatted': exp_date.strftime("%d/%m/%Y"),
-                'target_dte': dte,
-                'short_strike': s_sell,
-                'long_strike': s_buy,
-                'close_cost_total': round(cost_to_close_total, 2),
-                'new_credit_total': round(new_credit_total, 2),
-                'net_roll_cost': round(net_roll_cost, 2),
-                'remaining_profit': round(remaining_profit, 2),
-                'pct_profit_preserved': round((remaining_profit / init_credit_total) * 100, 1) if init_credit_total > 0 else 0.0,
-                'bid_new_short': bid_new_short,
-                'ask_new_long': ask_new_long
-            })
+            short_t = tickers.get(f"{currency}-{next_exp}-{int(cand_sell)}-P", {})
+            long_t = tickers.get(f"{currency}-{next_exp}-{int(cand_buy)}-P", {})
             
+            bid_new_short = float(short_t.get('b', 0) or 0)
+            ask_new_long = float(long_t.get('a', 0) or 0)
+            
+            if bid_new_short > 0:
+                new_credit_unit = max(0.0, bid_new_short - ask_new_long)
+                new_credit_total = new_credit_unit * contracts
+                net_roll_cost = cost_to_close_total - new_credit_total
+                remaining_profit = init_credit_total - net_roll_cost
+                pct_preserved = (remaining_profit / init_credit_total) * 100.0 if init_credit_total > 0 else 0.0
+                
+                # Só inclui se preservar lucro positivo razoável ou se for o mesmo strike
+                if pct_preserved >= 60.0 or shift == 0:
+                    cushion = ((spot - cand_sell) / spot) * 100.0 if spot > 0 else 0.0
+                    label = "Mesmo Strike" if shift == 0 else f"🛡️ Afastado em -${shift:,.0f} (Folga de {cushion:.1f}%)"
+                    roll_options.append({
+                        'target_expiry': next_exp,
+                        'target_expiry_formatted': exp_date.strftime("%d/%m/%Y"),
+                        'target_dte': dte,
+                        'short_strike': cand_sell,
+                        'long_strike': cand_buy,
+                        'shift': shift,
+                        'label': label,
+                        'close_cost_total': round(cost_to_close_total, 2),
+                        'new_credit_total': round(new_credit_total, 2),
+                        'net_roll_cost': round(net_roll_cost, 2),
+                        'remaining_profit': round(remaining_profit, 2),
+                        'pct_profit_preserved': round(pct_preserved, 1),
+                        'bid_new_short': bid_new_short,
+                        'ask_new_long': ask_new_long
+                    })
+            
+    # Ordena: maior preservação de lucro com preferência para strikes rebaixados (mais seguros)
+    roll_options.sort(key=lambda x: (1 if x['pct_profit_preserved'] >= 70.0 else 0, x['shift'], x['pct_profit_preserved']), reverse=True)
+    
     return {
         'position': eval_pos,
         'roll_options': roll_options
     }
 
-def execute_roll(pos_id, target_expiry, is_automated=False):
+def execute_roll(pos_id, target_expiry, target_short_strike=None, is_automated=False):
     positions = load_positions()
     pos_idx = next((i for i, p in enumerate(positions) if p.get('id') == pos_id), -1)
     if pos_idx == -1:
@@ -1341,10 +1361,15 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
         
     pos = positions[pos_idx]
     sim = simulate_roll(pos_id)
-    target_option = next((o for o in sim.get('roll_options', []) if o['target_expiry'] == target_expiry), None)
+    options = sim.get('roll_options', [])
+    
+    if target_short_strike is not None:
+        target_option = next((o for o in options if o['target_expiry'] == target_expiry and abs(float(o['short_strike']) - float(target_short_strike)) < 1.0), None)
+    else:
+        target_option = next((o for o in options if o['target_expiry'] == target_expiry), None)
     
     if not target_option:
-        return {'success': False, 'error': 'Vencimento alvo inválido ou sem liquidez'}
+        return {'success': False, 'error': 'Vencimento alvo ou strike inválido ou sem liquidez'}
         
     # Check max cost limit for auto roll
     if is_automated:
@@ -1379,12 +1404,14 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
             
         time.sleep(2.0)
         
-        # 2. Abrir a nova trava no vencimento alvo
+        # 2. Abrir a nova trava no vencimento alvo (respeitando o strike selecionado, mesmo ou rebaixado)
+        new_short = float(target_option.get('short_strike', pos['short_strike']))
+        new_long = float(target_option.get('long_strike', pos['long_strike']))
         open_live_res = place_derive_spread_order(
             currency=pos['currency'],
             expiry=str(target_expiry),
-            short_strike=float(pos['short_strike']),
-            long_strike=float(pos['long_strike']),
+            short_strike=new_short,
+            long_strike=new_long,
             contracts=float(pos['contracts']),
             short_price=float(target_option.get('bid_new_short', 0)),
             long_price=float(target_option.get('ask_new_long', 0)),
@@ -1399,12 +1426,14 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
             return {'success': False, 'error': f"Trava antiga encerrada com sucesso na Derive, porém abertura da nova falhou: {open_live_res.get('error')}. Margem e capital preservados na subconta."}
             
     # Create new position
+    new_short = float(target_option.get('short_strike', pos['short_strike']))
+    new_long = float(target_option.get('long_strike', pos['long_strike']))
     new_pos = {
-        'id': f"pos-{pos['currency'].lower()}-{int(pos['short_strike'])}-{int(pos['long_strike'])}-{target_expiry}",
+        'id': f"pos-{pos['currency'].lower()}-{int(new_short)}-{int(new_long)}-{target_expiry}",
         'currency': pos['currency'],
         'expiry': target_expiry,
-        'short_strike': pos['short_strike'],
-        'long_strike': pos['long_strike'],
+        'short_strike': new_short,
+        'long_strike': new_long,
         'contracts': pos['contracts'],
         'initial_credit_per_contract': round(target_option['new_credit_total'] / pos['contracts'], 2),
         'initial_credit_total': target_option['remaining_profit'],
@@ -1553,7 +1582,8 @@ def auto_roll_worker():
                                 options = sim.get('roll_options', [])
                                 if options:
                                     best_target = options[0]['target_expiry']
-                                    res = execute_roll(p['id'], best_target, is_automated=True)
+                                    best_short = options[0].get('short_strike')
+                                    res = execute_roll(p['id'], best_target, target_short_strike=best_short, is_automated=True)
                                     print(f"[OFFSHORE AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
                                     continue
                             elif is_live:
@@ -1577,7 +1607,8 @@ def auto_roll_worker():
                                 options = sim.get('roll_options', [])
                                 if options:
                                     best_target = options[0]['target_expiry']
-                                    res = execute_roll(p['id'], best_target, is_automated=True)
+                                    best_short = options[0].get('short_strike')
+                                    res = execute_roll(p['id'], best_target, target_short_strike=best_short, is_automated=True)
                                     print(f"[AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
         except Exception as e:
             print(f"[AUTO-ROLL ERROR]: {e}")
@@ -1827,7 +1858,8 @@ class DeskHandler(BaseHTTPRequestHandler):
         elif self.path == '/api/roll_execute':
             pos_id = payload.get('position_id')
             target_expiry = payload.get('target_expiry')
-            res = execute_roll(pos_id, target_expiry, is_automated=False)
+            target_short_strike = payload.get('target_short_strike')
+            res = execute_roll(pos_id, target_expiry, target_short_strike=target_short_strike, is_automated=False)
             self.send_json(res)
         elif self.path == '/api/close_position':
             pos_id = payload.get('position_id')

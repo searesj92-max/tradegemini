@@ -1376,18 +1376,23 @@
                 <thead class="text-slate-400 uppercase border-b border-slate-800">
                   <tr>
                     <th class="py-2.5">Novo Vencimento</th>
+                    <th class="py-2.5">Strike Proposto (Defesa)</th>
                     <th class="py-2.5">Dias (DTE)</th>
                     <th class="py-2.5 text-right">Débito Fechamento</th>
                     <th class="py-2.5 text-right">Novo Crédito</th>
-                    <th class="py-2.5 text-right">Custo Líquido Rolagem</th>
+                    <th class="py-2.5 text-right">Custo Líquido</th>
                     <th class="py-2.5 text-right">Lucro Preservado</th>
-                    <th class="py-2.5 text-center">Ação Manual (1 Clique)</th>
+                    <th class="py-2.5 text-center">Ação Manual</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800 text-slate-200">
                   ${options.map(opt => `
                     <tr class="hover:bg-slate-800/40">
                       <td class="py-3 font-semibold mono text-white">${opt.target_expiry_formatted}</td>
+                      <td class="py-3 mono">
+                        <span class="font-bold ${opt.shift > 0 ? 'text-cyan-300' : 'text-slate-200'}">${opt.short_strike}P / ${opt.long_strike}P</span>
+                        <span class="text-[10px] block ${opt.shift > 0 ? 'text-cyan-400 font-semibold' : 'text-slate-400'}">${opt.label}</span>
+                      </td>
                       <td class="py-3 mono text-slate-400">${opt.target_dte}d</td>
                       <td class="py-3 text-right mono text-rose-400">-$${opt.close_cost_total.toFixed(2)}</td>
                       <td class="py-3 text-right mono text-emerald-400">+$${opt.new_credit_total.toFixed(2)}</td>
@@ -1397,7 +1402,7 @@
                         <span class="text-[10px] text-slate-400 block">${opt.pct_profit_preserved}% retido</span>
                       </td>
                       <td class="py-3 text-center">
-                        <button onclick="confirmExecuteRoll('${pos.id}', '${opt.target_expiry}')" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-semibold text-xs shadow-md shadow-indigo-600/20 transition">
+                        <button onclick="confirmExecuteRoll('${pos.id}', '${opt.target_expiry}', ${opt.short_strike})" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-semibold text-xs shadow-md shadow-indigo-600/20 transition">
                           Rolar Agora
                         </button>
                       </td>
@@ -1418,8 +1423,8 @@
       }
     }
 
-    async function confirmExecuteRoll(posId, targetExpiry) {
-      if (!confirm(`Deseja confirmar a rolagem dessa posição para o vencimento ${targetExpiry}?`)) {
+    async function confirmExecuteRoll(posId, targetExpiry, targetShortStrike) {
+      if (!confirm(`Deseja confirmar a rolagem dessa posição para o vencimento ${targetExpiry} com Strike Vendido ${targetShortStrike || 'Automático'}?`)) {
         return;
       }
 
@@ -1427,7 +1432,7 @@
         const res = await fetch('/api/roll_execute', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({position_id: posId, target_expiry: targetExpiry})
+          body: JSON.stringify({position_id: posId, target_expiry: targetExpiry, target_short_strike: targetShortStrike})
         });
         const data = await res.json();
         if (data.success) {

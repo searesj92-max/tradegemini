@@ -1345,8 +1345,17 @@ def simulate_roll(pos_id):
                         'ask_new_long': ask_new_long
                     })
             
-    # Ordena: maior preservação de lucro com preferência para strikes rebaixados (mais seguros)
-    roll_options.sort(key=lambda x: (1 if x['pct_profit_preserved'] >= 70.0 else 0, x['shift'], x['pct_profit_preserved']), reverse=True)
+    # Ordena com prioridade máxima para a janela ágil de ~15 dias (10 a 22 dias de DTE),
+    # garantindo lucro preservado >= 70% e strike rebaixado para segurança máxima:
+    def roll_priority_score(x):
+        is_sweet_spot = 1 if 10 <= x['target_dte'] <= 22 else 0 # Janela ágil de ~15 dias
+        profit_ok = 1 if x['pct_profit_preserved'] >= 70.0 else 0
+        shift = x['shift'] # quanto mais rebaixado o strike, maior a folga
+        profit_pct = x['pct_profit_preserved']
+        dte_rank = -x['target_dte'] # prefere prazos menores para giro rápido
+        return (is_sweet_spot, profit_ok, shift, profit_pct, dte_rank)
+
+    roll_options.sort(key=roll_priority_score, reverse=True)
     
     return {
         'position': eval_pos,

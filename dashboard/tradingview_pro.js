@@ -42,6 +42,10 @@
       this.isDrawing = false;
       this.isLoadingMore = false;
       this.hasMoreHistory = true;
+      this.ws = null;
+      this.wsReconnectTimeout = null;
+      this.lastWsMessageTime = 0;
+      this.currentPOC = null;
 
       this.initLayout();
       this.initChart();
@@ -109,8 +113,8 @@
                 <button class="tv-indicator-toggle options-btn active" id="${this.container.id}_toggle_options" title="Régua de Strikes e Breakeven de Opções da Derive">
                   <i class="fa-solid fa-crosshairs"></i> Níveis Opções
                 </button>
-                <button class="tv-indicator-toggle active" id="${this.container.id}_toggle_volume" title="Volume Profile na Base">
-                  <i class="fa-solid fa-chart-column"></i> Vol
+                <button class="tv-indicator-toggle active" id="${this.container.id}_toggle_volume" title="Volume Profile (POC) e Histograma em Tempo Real">
+                  <i class="fa-solid fa-chart-column"></i> Vol / POC
                 </button>
               </div>
             </div>
@@ -441,6 +445,9 @@
           this.renderLegendValues(last, prev);
         }
 
+        // Connect zero-delay real-time WebSocket for live tick & volume streaming
+        this.connectWebSocket();
+
       } catch (err) {
         console.error('[TV PRO ERROR] Failed to load market candles:', err);
       }
@@ -564,6 +571,28 @@
 
       this.sma20wSeries.setData(this.options.showBMSB ? sma20wData : []);
       this.ema21wSeries.setData(this.options.showBMSB ? ema21wData : []);
+
+      // 3. Volume Profile: Point of Control (POC)
+      if (this.candlesData && this.candlesData.length > 0) {
+        const buckets = {};
+        for (let i = 0; i < this.candlesData.length; i++) {
+          const c = this.candlesData[i];
+          const v = this.volumeData[i] ? this.volumeData[i].value : 0;
+          const mid = (c.high + c.low + c.close) / 3;
+          const bucket = Math.round(mid / 250) * 250;
+          buckets[bucket] = (buckets[bucket] || 0) + v;
+        }
+        let maxV = 0;
+        let bestPoc = null;
+        for (const b in buckets) {
+          if (buckets[b] > maxV) {
+            maxV = buckets[b];
+            bestPoc = parseFloat(b);
+          }
+        }
+        this.currentPOC = bestPoc;
+        this.updatePOCPriceLine();
+      }
     }
 
     calcSMA(data, period) {
@@ -616,16 +645,25 @@
     }
 
     updateOptionsPriceLines() {
-      // Remove old price lines
-      if (this.priceLines.shortStrike) this.candlestickSeries.removePriceLine(this.priceLines.shortStrike);
-      if (this.priceLines.longStrike) this.candlestickSeries.removePriceLine(this.priceLines.longStrike);
-      if (this.priceLines.breakeven) this.candlestickSeries.removePriceLine(this.priceLines.breakeven);
-      this.priceLines = {};
+      // Remove old options price lines
+      if (this.priceLines.shortStrike) {
+        this.candlestickSeries.removePriceLine(this.priceLines.shortStrike);
+        delete this.priceLines.shortStrike;
+      }
+      if (this.priceLines.longStrike) {
+        this.candlestickSeries.removePriceLine(this.priceLines.longStrike);
+        delete this.priceLines.longStrike;
+      }
+      if (this.priceLines.breakeven) {
+        this.candlestickSeries.removePriceLine(this.priceLines.breakeven);
+        delete this.priceLines.breakeven;
+      }
 
       if (!this.options.showOptions || !this.options.optionsDeskData) return;
 
       const { shortStrike, longStrike, breakeven } = this.options.optionsDeskData;
       const LC = window.LightweightCharts;
+      if (!LC) return;
 
       if (shortStrike) {
         this.priceLines.shortStrike = this.candlestickSeries.createPriceLine({
@@ -659,6 +697,26 @@
           title: `⚡ BREAKEVEN $${Number(breakeven).toLocaleString()}`
         });
       }
+    }
+
+    updatePOCPriceLine() {
+      if (this.priceLines.poc) {
+        this.candlestickSeries.removePriceLine(this.priceLines.poc);
+        delete this.priceLines.poc;
+      }
+      if (!this.options.showVolume || !this.currentPOC) return;
+
+      const LC = window.LightweightCharts;
+      if (!LC) return;
+
+      this.priceLines.poc = this.candlestickSeries.createPriceLine({
+        price: this.currentPOC,
+        color: '#f59e0b',
+        lineWidth: 1,
+        lineStyle: LC.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `📊 POC VOLUME $${Number(this.currentPOC).toLocaleString()}`
+      });
     }
 
     /* ----------------------------------------------------
@@ -1099,6 +1157,7 @@
           this.options.showVolume = !this.options.showVolume;
           volBtn.classList.toggle('active', this.options.showVolume);
           this.volumeSeries.applyOptions({ visible: this.options.showVolume });
+          this.updatePOCPriceLine();
         });
       }
 
@@ -1261,10 +1320,90 @@
     }
 
     /* ----------------------------------------------------
-       9. LIVE TICKER POLLING (Updates Last Candle Live)
+       9. LIVE WEBSOCKET & TICKER STREAM (Zero-Delay Realtime)
        ---------------------------------------------------- */
+    connectWebSocket() {
+      if (this.ws) {
+        try {
+          this.ws.onclose = null;
+          this.ws.onerror = null;
+          this.ws.close();
+        } catch (e) {}
+        this.ws = null;
+      }
+      if (this.wsReconnectTimeout) {
+        clearTimeout(this.wsReconnectTimeout);
+        this.wsReconnectTimeout = null;
+      }
+
+      const sym = (this.currentSymbol || 'BTCUSDT').toLowerCase();
+      const intervalMap = {
+        '1m': '1m', '5m': '5m', '15m': '15m',
+        '1h': '1h', '4h': '4h', '1d': '1d', '1w': '1w'
+      };
+      const interval = intervalMap[this.currentTimeframe] || '4h';
+      const wsUrl = `wss://stream.binance.com:9443/ws/${sym}@kline_${interval}`;
+
+      try {
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onmessage = (event) => {
+          try {
+            this.lastWsMessageTime = Date.now();
+            const data = JSON.parse(event.data);
+            if (!data || !data.k) return;
+            const k = data.k;
+            const candleTime = Math.floor(k.t / 1000);
+            const open = parseFloat(k.o);
+            const high = parseFloat(k.h);
+            const low = parseFloat(k.l);
+            const close = parseFloat(k.c);
+            const volume = parseFloat(k.v);
+
+            const candleObj = { time: candleTime, open, high, low, close };
+            const volumeObj = {
+              time: candleTime,
+              value: volume,
+              color: close >= open ? 'rgba(8, 153, 129, 0.35)' : 'rgba(242, 54, 69, 0.35)'
+            };
+
+            this.candlestickSeries.update(candleObj);
+            this.volumeSeries.update(volumeObj);
+
+            if (this.candlesData && this.candlesData.length > 0) {
+              const last = this.candlesData[this.candlesData.length - 1];
+              if (last.time === candleTime) {
+                this.candlesData[this.candlesData.length - 1] = candleObj;
+                this.volumeData[this.volumeData.length - 1] = volumeObj;
+              } else if (candleTime > last.time) {
+                this.candlesData.push(candleObj);
+                this.volumeData.push(volumeObj);
+                this.calculateAndSetIndicators();
+              }
+              const prev = this.candlesData.length > 1 ? this.candlesData[this.candlesData.length - 2] : candleObj;
+              this.renderLegendValues(candleObj, prev);
+            }
+          } catch (err) {}
+        };
+
+        this.ws.onerror = (err) => {
+          // graceful fallback
+        };
+
+        this.ws.onclose = () => {
+          if (this.chart) {
+            this.wsReconnectTimeout = setTimeout(() => this.connectWebSocket(), 3000);
+          }
+        };
+      } catch (err) {
+        console.warn('[TV PRO WS] WebSocket init failed:', err);
+      }
+    }
+
     startRealtimePolling() {
       setInterval(async () => {
+        // If WebSocket is actively receiving real-time ticks, skip polling
+        if (Date.now() - this.lastWsMessageTime < 8000) return;
         if (!this.candlesData || this.candlesData.length === 0) return;
         try {
           const sym = this.currentSymbol;
@@ -1286,10 +1425,8 @@
           const prevCandle = this.candlesData.length > 1 ? this.candlesData[lastIdx - 1] : lastCandle;
           this.renderLegendValues(lastCandle, prevCandle);
 
-        } catch (e) {
-          // silent fallback
-        }
-      }, 2500);
+        } catch (e) {}
+      }, 3000);
     }
 
     handleResize() {
@@ -1328,6 +1465,16 @@
     }
 
     destroy() {
+      if (this.wsReconnectTimeout) {
+        clearTimeout(this.wsReconnectTimeout);
+        this.wsReconnectTimeout = null;
+      }
+      if (this.ws) {
+        this.ws.onclose = null;
+        this.ws.onerror = null;
+        this.ws.close();
+        this.ws = null;
+      }
       if (this.resizeObserver) {
         this.resizeObserver.disconnect();
       }

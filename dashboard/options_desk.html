@@ -56,10 +56,13 @@
             <span class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-semibold border border-indigo-500/30">Derive.xyz</span>
             <span id="session-badge" class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span id="session-text">Ancap</span>
+              <span id="session-text">Derive Mainnet</span>
             </span>
-            <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700">
-              Saldo: <b id="subacct-balance" class="text-emerald-400">$320.81</b> USDC
+            <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700" title="Saldo Total das 2 Carteiras">
+              Custódia: <b id="subacct-balance" class="text-emerald-400">$2,235.29</b> USDC (<span id="subacct-free" class="text-cyan-300">$1,148.83</span> livre)
+            </span>
+            <span class="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+              #1: <b id="acct1-bal" class="text-slate-300 ml-1">$320.81</b> | #2: <b id="acct2-bal" class="text-slate-300 ml-1">$1,914.48</b>
             </span>
           </div>
           <p class="hidden sm:block text-xs text-slate-400">Trava de Alta com Puts (Elídio Carvalho) • Matriz de Decisão Quant • Rolagem Dupla</p>
@@ -577,6 +580,14 @@
         </div>
 
         <div>
+          <label class="text-xs text-slate-400 uppercase font-medium">Carteira de Execução (Derive Subconta)</label>
+          <select id="inp-subaccount" onchange="updateCreditPreview()" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1">
+            <option value="116804">Carteira #2 (#116804) — Saldo: $1,914.48 | Livre: $899.06 USDC (Recomendada)</option>
+            <option value="116270">Carteira #1 (#116270) — Saldo: $320.81 | Livre: $249.77 USDC</option>
+          </select>
+        </div>
+
+        <div>
           <div class="flex justify-between items-center">
             <label class="text-xs text-slate-400 uppercase font-medium">Vencimento da Derive (com Liquidez)</label>
             <span id="expiry-liquidity-tag" class="text-[11px] text-emerald-400 font-semibold"></span>
@@ -710,11 +721,25 @@
         document.getElementById('spot-btc').textContent = `$${Number(data.btc_spot).toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 1})}`;
         document.getElementById('spot-eth').textContent = `$${Number(data.eth_spot).toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 1})}`;
         
-        if (data.subaccount_id) document.getElementById('subacct-id').textContent = '#' + data.subaccount_id;
-        if (data.real_balance !== undefined) document.getElementById('subacct-balance').textContent = `$${Number(data.real_balance).toFixed(2)}`;
+        window.latestAccountInfo = data;
+        if (data.subaccount_id && document.getElementById('subacct-id')) document.getElementById('subacct-id').textContent = '#' + data.subaccount_id;
+        if (data.total_balance_usdc !== undefined && document.getElementById('subacct-balance')) {
+          document.getElementById('subacct-balance').textContent = `$${Number(data.total_balance_usdc).toFixed(2)}`;
+        }
+        if (data.total_free_margin_usdc !== undefined && document.getElementById('subacct-free')) {
+          document.getElementById('subacct-free').textContent = `$${Number(data.total_free_margin_usdc).toFixed(2)}`;
+        }
+        if (data.accounts) {
+          if (data.accounts.account_1 && document.getElementById('acct1-bal')) {
+            document.getElementById('acct1-bal').textContent = `$${Number(data.accounts.account_1.balance_usdc).toFixed(2)}`;
+          }
+          if (data.accounts.account_2 && document.getElementById('acct2-bal')) {
+            document.getElementById('acct2-bal').textContent = `$${Number(data.accounts.account_2.balance_usdc).toFixed(2)}`;
+          }
+        }
         if (data.has_session_key) {
           const sessionText = document.getElementById('session-text');
-          if (sessionText) sessionText.textContent = `Derive Mainnet: ${data.session_label || 'Ancap'}`;
+          if (sessionText) sessionText.textContent = `Derive Mainnet`;
         }
 
         if (data.iv_regime) {
@@ -1500,8 +1525,24 @@
       if (elCredit) {
         elCredit.textContent = `+$${totalCredit.toFixed(2)} USDC (~R$ ${totalCreditBRL.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})})`;
       }
+      
+      const subSelect = document.getElementById('inp-subaccount');
+      const subVal = subSelect ? subSelect.value : '116804';
+      let freeMarg = 899.06;
+      if (window.latestAccountInfo && window.latestAccountInfo.accounts) {
+        if (subVal === '116804' && window.latestAccountInfo.accounts.account_2) {
+          freeMarg = window.latestAccountInfo.accounts.account_2.free_margin;
+        } else if (subVal === '116270' && window.latestAccountInfo.accounts.account_1) {
+          freeMarg = window.latestAccountInfo.accounts.account_1.free_margin;
+        }
+      }
+
       if (elMargin) {
-        elMargin.textContent = `~$${marginReq.toFixed(2)} USDC`;
+        if (marginReq > freeMarg) {
+          elMargin.innerHTML = `<span class="text-rose-400 font-bold">~$${marginReq.toFixed(2)} USDC <span class="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded border border-rose-500/40">⚠️ Excede Margem Livre ($${freeMarg.toFixed(2)})</span></span>`;
+        } else {
+          elMargin.innerHTML = `<span class="text-slate-300">~$${marginReq.toFixed(2)} USDC <span class="text-[10px] text-emerald-400 font-normal">(Margem livre: $${freeMarg.toFixed(2)})</span></span>`;
+        }
       }
     }
 
@@ -1539,18 +1580,35 @@
       const longStrike = parseFloat(document.getElementById('inp-long').value);
       const contracts = parseFloat(document.getElementById('inp-contracts').value);
       const credit = parseFloat(document.getElementById('inp-credit').value);
+      
+      const subSelect = document.getElementById('inp-subaccount');
+      const targetSub = subSelect ? subSelect.value : '116804';
+      let availableFree = targetSub === '116804' ? 899.06 : 249.77;
+      if (window.latestAccountInfo && window.latestAccountInfo.accounts) {
+        if (targetSub === '116804' && window.latestAccountInfo.accounts.account_2) {
+          availableFree = window.latestAccountInfo.accounts.account_2.free_margin;
+        } else if (targetSub === '116270' && window.latestAccountInfo.accounts.account_1) {
+          availableFree = window.latestAccountInfo.accounts.account_1.free_margin;
+        }
+      }
+
+      const marginReq = (shortStrike - longStrike - credit) * contracts;
+      if (isLive && marginReq > availableFree) {
+        alert(`❌ OPERAÇÃO BLOQUEADA POR MARGEM:\nA margem de garantia necessária (~$${marginReq.toFixed(2)} USDC) é superior ao saldo livre disponível na Carteira selecionada #${targetSub} ($${availableFree.toFixed(2)} USDC livres).\n\nPor favor, reduza a quantidade de contratos para caber no seu colateral disponível.`);
+        return;
+      }
 
       if (isLive) {
-        const marginReq = (shortStrike - longStrike - credit) * contracts;
         const totalCred = credit * contracts;
         const conf = confirm(
           `⚡ CONFIRMAÇÃO DE EXECUÇÃO REAL DERIVE:\n\n` +
+          `• Carteira: Subconta #${targetSub}\n` +
           `• Ativo: ${currency}\n` +
           `• Vende: ${shortStrike}P / Compra: ${longStrike}P\n` +
           `• Quantidade: ${contracts} contratos\n` +
-          `• Margem de Risco: ~$${marginReq.toFixed(2)} USDC (Saldo disponível: $292.04)\n` +
+          `• Margem de Risco: ~$${marginReq.toFixed(2)} USDC (Saldo livre: $${availableFree.toFixed(2)})\n` +
           `• Crédito Adiantado: +$${totalCred.toFixed(2)} USDC\n\n` +
-          `Deseja enviar a ordem para a Derive com a Session Key Ancap?`
+          `Deseja enviar a ordem para a Derive com a Session Key?`
         );
         if (!conf) return;
       }
@@ -1568,6 +1626,7 @@
         credit_per_contract: credit,
         short_price: 0,
         long_price: 0,
+        subaccount_id: parseInt(targetSub),
         tp_pct: parseFloat(document.getElementById('inp-tp').value),
         auto_roll_enabled: document.getElementById('inp-autoroll').checked,
         auto_roll_trigger_dte: parseInt(document.getElementById('inp-trigger-dte').value),
@@ -1688,15 +1747,24 @@
     }
 
     function prefillModalFromSim() {
-      const shortS = document.getElementById('sim-strike-short').value;
-      const longS = document.getElementById('sim-strike-long').value;
-      const credit = document.getElementById('sim-credit-unit').value;
-      const contracts = parseFloat(document.getElementById('sim-out-contracts').textContent) || 0.1;
+      const shortS = parseFloat(document.getElementById('sim-strike-short').value) || 60000;
+      const longS = parseFloat(document.getElementById('sim-strike-long').value) || 50000;
+      const credit = parseFloat(document.getElementById('sim-credit-unit').value) || 350;
+      
+      const spreadWidth = Math.max(1, shortS - longS);
+      const freeMarg = window.latestAccountInfo && window.latestAccountInfo.accounts && window.latestAccountInfo.accounts.account_2
+        ? window.latestAccountInfo.accounts.account_2.free_margin
+        : (window.latestAccountInfo && window.latestAccountInfo.total_free_margin_usdc ? window.latestAccountInfo.total_free_margin_usdc : 899.06);
+
+      // Limita contratos sugeridos para caber com segurança na margem livre da subconta real
+      const safeContr = Math.floor(((freeMarg * 0.85) / spreadWidth) * 100) / 100;
+      const simContr = parseFloat(document.getElementById('sim-out-contracts').textContent) || 0.1;
+      const finalContracts = Math.max(0.01, Math.min(simContr, safeContr > 0 ? safeContr : 0.05));
 
       document.getElementById('inp-short').value = shortS;
       document.getElementById('inp-long').value = longS;
       document.getElementById('inp-credit').value = credit;
-      document.getElementById('inp-contracts').value = contracts;
+      document.getElementById('inp-contracts').value = finalContracts;
       openNewModal();
     }
 

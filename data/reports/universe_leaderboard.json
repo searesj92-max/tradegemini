@@ -183,7 +183,12 @@
       "payoff_ratio": 1.09,
       "gertrude_verdict": "ESTACIONADO (Promissor mas Inconclusivo)",
       "gertrude_status": "parked",
-      "gertrude_badge": "🟡 ESTACIONADO (Observação)"
+      "gertrude_badge": "🟡 ESTACIONADO (Observação)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Abaixo da EMA 21 (Aguardando Wedge Pop)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 4,
@@ -227,7 +232,12 @@
       "payoff_ratio": 1.34,
       "gertrude_verdict": "ESTACIONADO (Promissor mas Inconclusivo)",
       "gertrude_status": "parked",
-      "gertrude_badge": "🟡 ESTACIONADO (Observação)"
+      "gertrude_badge": "🟡 ESTACIONADO (Observação)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_signal": "SINAL_VERMELHO",
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 6,
@@ -315,7 +325,12 @@
       "payoff_ratio": 1.89,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Abaixo da EMA 21 (Aguardando Wedge Pop)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 10,
@@ -337,7 +352,12 @@
       "payoff_ratio": 1.53,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERDE",
+      "oliver_macro_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 11,
@@ -359,7 +379,12 @@
       "payoff_ratio": 1.88,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 12,
@@ -403,7 +428,12 @@
       "payoff_ratio": 0.45,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERDE",
+      "oliver_macro_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 14,
@@ -425,7 +455,12 @@
       "payoff_ratio": 1.24,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_signal": "SINAL_VERMELHO",
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 15,
@@ -557,7 +592,12 @@
       "payoff_ratio": 0.96,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_signal": "SINAL_VERMELHO",
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 21,
@@ -579,7 +619,12 @@
       "payoff_ratio": 1.0,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Tendência Verde (Acima da EMA 21)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 22,
@@ -601,7 +646,12 @@
       "payoff_ratio": 1.34,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Abaixo da EMA 21 (Aguardando Wedge Pop)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 23,
@@ -623,7 +673,12 @@
       "payoff_ratio": 0.8,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Abaixo da EMA 21 (Aguardando Wedge Pop)",
+      "oliver_lupa_signal": null,
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 24,
@@ -799,7 +854,12 @@
       "payoff_ratio": 0.03,
       "gertrude_verdict": "REJEITADO (Risco Elevado ou Baixa Assimetria)",
       "gertrude_status": "rejected",
-      "gertrude_badge": "🔴 REJEITADO (Não Ativar)"
+      "gertrude_badge": "🔴 REJEITADO (Não Ativar)",
+      "oliver_macro_semaphore": "VERMELHO",
+      "oliver_macro_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_phase": "Fase 6: Tendência de Baixa (Sinal Vermelho)",
+      "oliver_lupa_signal": "SINAL_VERMELHO",
+      "is_oliver_fractal_buy": false
     },
     {
       "rank": 32,

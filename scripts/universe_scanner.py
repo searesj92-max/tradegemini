@@ -59,6 +59,18 @@ def scan_universe(
 
     print(f"[*] Varrendo {len(selected_coins)} ativos mais líquidos por {days} dias ({timeframe})...")
 
+    # Load latest Oliver Kell scan cache if available
+    oliver_map = {}
+    scan_file = ROOT / "data" / "market_scan_latest.json"
+    if scan_file.exists():
+        try:
+            scan_data = json.loads(scan_file.read_text(encoding="utf-8"))
+            items = scan_data if isinstance(scan_data, list) else (scan_data.get("results") or scan_data.get("all_results") or [])
+            for item in items:
+                oliver_map[item.get("coin")] = item
+        except Exception:
+            pass
+
     results = []
     for idx, c in enumerate(selected_coins):
         sym = c["name"]
@@ -74,6 +86,7 @@ def scan_universe(
 
             if bt_res.get("status") == "ok":
                 s = bt_res["summary"]
+                ok_info = oliver_map.get(sym, {})
                 results.append({
                     "rank": 0,
                     "coin": sym,
@@ -90,7 +103,12 @@ def scan_universe(
                     "payoff_ratio": s["payoff_ratio"],
                     "gertrude_verdict": s["gertrude_verdict"],
                     "gertrude_status": s["gertrude_status"],
-                    "gertrude_badge": s["gertrude_badge"]
+                    "gertrude_badge": s["gertrude_badge"],
+                    "oliver_macro_semaphore": ok_info.get("oliver_macro_semaphore", "VERMELHO"),
+                    "oliver_macro_phase": ok_info.get("oliver_macro_phase", "—"),
+                    "oliver_lupa_phase": ok_info.get("oliver_lupa_phase", "—"),
+                    "oliver_lupa_signal": ok_info.get("oliver_lupa_signal", "WAIT"),
+                    "is_oliver_fractal_buy": bool(ok_info.get("is_oliver_fractal_buy", False)),
                 })
         except Exception as e:
             print(f"[-] Erro em {sym}: {e}", file=sys.stderr)

@@ -45,6 +45,9 @@ ENV = load_env()
 DERIVE_SESSION_KEY = os.environ.get('DERIVE_SESSION_KEY') or ENV.get('DERIVE_SESSION_KEY', '')
 DERIVE_WALLET = os.environ.get('DERIVE_WALLET') or ENV.get('DERIVE_WALLET', '')
 DERIVE_SUBACCOUNT_ID = os.environ.get('DERIVE_SUBACCOUNT_ID') or ENV.get('DERIVE_SUBACCOUNT_ID', '116270')
+DERIVE_WALLET_2 = os.environ.get('DERIVE_WALLET_2') or ENV.get('DERIVE_WALLET_2', '')
+DERIVE_SUBACCOUNT_ID_2 = os.environ.get('DERIVE_SUBACCOUNT_ID_2') or ENV.get('DERIVE_SUBACCOUNT_ID_2', '116804')
+DERIVE_SESSION_KEY_2 = os.environ.get('DERIVE_SESSION_KEY_2') or ENV.get('DERIVE_SESSION_KEY_2', '')
 DERIVE_ENV = os.environ.get('DERIVE_ENV') or ENV.get('DERIVE_ENV', 'mainnet')
 DERIVE_ETH_CHAIN = os.environ.get('DERIVE_ETH_CHAIN') or ENV.get('DERIVE_ETH_CHAIN', 'ETHEREUM')
 
@@ -97,65 +100,87 @@ def ensure_derive_data():
 # Ensure ABIs on module load
 ensure_derive_data()
 
-def get_derive_account_info():
+def get_derive_client_for_wallet(wallet_address=None, subaccount_id=None):
+    """Retorna HTTPClient autenticado para a Carteira 1 ou Carteira 2"""
     ensure_derive_data()
-    sub_id = int(DERIVE_SUBACCOUNT_ID) if str(DERIVE_SUBACCOUNT_ID).isdigit() else 116270
-    wallet = DERIVE_WALLET or '0xbeA1443321572d2DF7a87011a9755739A40574FF'
-    has_key = bool(DERIVE_SESSION_KEY)
-    if has_key:
-        try:
-            from pathlib import Path
-            from derive_py._clients.rest.http.client import load_client_config, HTTPClient
-            env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
-            config = load_client_config(env_file=env_p)
-            client = HTTPClient(config)
-            sub = client.fetch_subaccount(sub_id)
-            collaterals = sub.state.collaterals
-            usdc = next((c for c in collaterals if c.asset_name == 'USDC'), None)
-            balance = float(usdc.amount) if usdc else 292.04
-            init_m = float(getattr(sub.state, 'initial_margin', 0.0))
-            sub_val = float(getattr(sub.state, 'subaccount_value', balance))
-            free_m = max(0.0, balance - init_m)
-            return {
-                'connected': True,
-                'subaccount_id': sub_id,
-                'wallet': str(config.wallet),
-                'balance_usdc': round(balance, 2),
-                'initial_margin': round(init_m, 2),
-                'subaccount_value': round(sub_val, 2),
-                'free_margin': round(free_m, 2),
-                'margin_type': getattr(sub.state, 'margin_type', 'SM'),
-                'positions_count': len(getattr(sub.state, 'positions', [])),
-                'session_label': 'Ancap (Ativa)',
-                'chain': 'Mainnet'
-            }
-        except Exception as e:
-            print(f"[DERIVE CLIENT ERROR] {e}")
-    return {
-        'connected': True,
-        'subaccount_id': sub_id,
-        'wallet': wallet,
-        'balance_usdc': 292.04,
-        'initial_margin': 0.0,
-        'subaccount_value': 292.04,
-        'free_margin': 292.04,
-        'margin_type': 'SM',
-        'positions_count': 0,
-        'session_label': 'Ancap (Ativa)',
-        'chain': 'Mainnet'
-    }
+    from derive_py._clients.rest.http.client import HTTPClient, ClientConfig
+    from pydantic import SecretStr
+    from eth_typing import ChecksumAddress
+    from derive_py.data_types import Chain
 
-def place_derive_spread_order(currency, expiry, short_strike, long_strike, contracts, short_price, long_price):
+    is_w2 = False
+    if wallet_address and DERIVE_WALLET_2 and str(wallet_address).lower() == str(DERIVE_WALLET_2).lower():
+        is_w2 = True
+    elif subaccount_id and DERIVE_SUBACCOUNT_ID_2 and str(subaccount_id) == str(DERIVE_SUBACCOUNT_ID_2):
+        is_w2 = True
+
+    if is_w2 and DERIVE_SESSION_KEY_2 and DERIVE_WALLET_2:
+        w = DERIVE_WALLET_2
+        sk = DERIVE_SESSION_KEY_2
+        sub_id = int(DERIVE_SUBACCOUNT_ID_2)
+    else:
+        w = DERIVE_WALLET or '0xbeA1443321572d2DF7a87011a9755739A40574FF'
+        sk = DERIVE_SESSION_KEY
+        sub_id = int(DERIVE_SUBACCOUNT_ID) if str(DERIVE_SUBACCOUNT_ID).isdigit() else 116270
+
+    cfg = ClientConfig(
+        session_key=SecretStr(sk),
+        wallet=ChecksumAddress(w),
+        subaccount_id=sub_id,
+        chain=Chain.ETHEREUM,
+        rpc_endpoints=None
+    )
+    return HTTPClient(cfg), sub_id, w
+
+def get_derive_account_info(subaccount_id=None, wallet_address=None):
+    ensure_derive_data()
+    try:
+        client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
+        sub = client.fetch_subaccount(sub_id)
+        collaterals = getattr(sub.state, 'collaterals', [])
+        usdc = next((c for c in collaterals if c.asset_name == 'USDC'), None)
+        balance = float(usdc.amount) if usdc else 292.04
+        init_m = float(getattr(sub.state, 'initial_margin', 0.0))
+        sub_val = float(getattr(sub.state, 'subaccount_value', balance))
+        free_m = max(0.0, balance - init_m)
+        return {
+            'connected': True,
+            'subaccount_id': sub_id,
+            'wallet': wallet,
+            'balance_usdc': round(balance, 2),
+            'initial_margin': round(init_m, 2),
+            'subaccount_value': round(sub_val, 2),
+            'free_margin': round(free_m, 2),
+            'margin_type': getattr(sub.state, 'margin_type', 'SM'),
+            'positions_count': len(getattr(sub.state, 'positions', [])),
+            'session_label': f'Carteira {"#2" if sub_id == 116804 else "#1"} (Ativa)',
+            'chain': 'Mainnet'
+        }
+    except Exception as e:
+        print(f"[DERIVE CLIENT ERROR] {e}")
+        sub_id = int(subaccount_id) if subaccount_id and str(subaccount_id).isdigit() else 116270
+        wallet = wallet_address or DERIVE_WALLET
+        return {
+            'connected': True,
+            'subaccount_id': sub_id,
+            'wallet': wallet,
+            'balance_usdc': 292.04,
+            'initial_margin': 0.0,
+            'subaccount_value': 292.04,
+            'free_margin': 292.04,
+            'margin_type': 'SM',
+            'positions_count': 0,
+            'session_label': 'Fallback',
+            'chain': 'Mainnet'
+        }
+
+def place_derive_spread_order(currency, expiry, short_strike, long_strike, contracts, short_price, long_price, wallet_address=None, subaccount_id=None):
     try:
         ensure_derive_data()
-        from pathlib import Path
         from decimal import Decimal
-        from derive_py._clients.rest.http.client import load_client_config, HTTPClient
         from derive_py.data_types import Direction, OrderType
         
-        env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
-        config = load_client_config(env_file=env_p)
-        client = HTTPClient(config)
+        client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
         
         short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"
         long_inst = f"{currency}-{expiry}-{int(long_strike)}-P"
@@ -267,7 +292,7 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
     except Exception as e:
         return {'success': False, 'error': f"Erro ao enviar ordem na Derive: {str(e)}"}
 
-def close_derive_spread_order(currency, expiry, short_strike, long_strike, contracts):
+def close_derive_spread_order(currency, expiry, short_strike, long_strike, contracts, wallet_address=None, subaccount_id=None):
     """
     Encerra uma trava de alta na Derive de forma segura e atômica on-chain:
     1. Recompra a Short Put (Direction.buy) no Best Ask para liquidar a obrigação.
@@ -275,14 +300,10 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
     """
     try:
         ensure_derive_data()
-        from pathlib import Path
         from decimal import Decimal
-        from derive_py._clients.rest.http.client import load_client_config, HTTPClient
         from derive_py.data_types import Direction, OrderType
         
-        env_p = Path(ENV_FILE) if os.path.exists(ENV_FILE) else None
-        config = load_client_config(env_file=env_p)
-        client = HTTPClient(config)
+        client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
         
         short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"
         long_inst = f"{currency}-{expiry}-{int(long_strike)}-P"
@@ -567,6 +588,146 @@ def get_bmsb_status(currency="BTC"):
     _BMSB_CACHE[currency] = {'ts': now, 'data': res}
     return res
 
+_OLIVER_CACHE = {}
+
+def get_oliver_kell_status(currency="BTC"):
+    """Calcula o Ciclo de 6 Fases de Oliver Kell (EMAs 9/21 Diário) e Semáforo Fractal Semanal (1S)."""
+    now = time.time()
+    cached = _OLIVER_CACHE.get(currency)
+    if cached and (now - cached['ts']) < 600:
+        return cached['data']
+
+    spot = get_spot_price(currency)
+    symbol = "BTCUSDT" if currency == "BTC" else "ETHUSDT"
+    try:
+        url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval=1d&limit=260"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            klines = json.loads(resp.read().decode("utf-8"))
+        closes = [float(k[4]) for k in klines]
+        highs = [float(k[2]) for k in klines]
+        lows = [float(k[3]) for k in klines]
+        opens = [float(k[1]) for k in klines]
+        if spot > 0 and closes:
+            closes[-1] = spot
+
+        def _ema_series(vals, period):
+            if not vals:
+                return []
+            res_ema = [vals[0]]
+            k_m = 2.0 / (period + 1.0)
+            for v in vals[1:]:
+                res_ema.append(v * k_m + res_ema[-1] * (1.0 - k_m))
+            return res_ema
+
+        ema9_d = _ema_series(closes, 9)
+        ema21_d = _ema_series(closes, 21)
+        # Semanal equivalente no diário (9S = 63d, 21S = 147d)
+        ema9_w = _ema_series(closes, 63)
+        ema21_w = _ema_series(closes, 147)
+
+        trs = [highs[0] - lows[0]]
+        for i in range(1, len(closes)):
+            trs.append(max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])))
+        atr14 = sum(trs[-14:]) / min(len(trs), 14)
+
+        cur_c = closes[-1]
+        cur_o = opens[-1]
+        cur_l = lows[-1]
+        e9 = ema9_d[-1]
+        e21 = ema21_d[-1]
+        e21_prev = ema21_d[-4] if len(ema21_d) >= 4 else e21
+        w21 = ema21_w[-1]
+        w21_prev = ema21_w[-8] if len(ema21_w) >= 8 else w21
+
+        weekly_green = (cur_c > w21) and (w21 >= w21_prev * 0.997)
+        daily_green = (cur_c > e21) and (e9 >= e21 * 0.998)
+        semaphore = "VERDE" if (weekly_green and daily_green) else ("AMARELO" if weekly_green or daily_green else "VERMELHO")
+
+        ext_atr = (cur_c - e21) / atr14 if atr14 > 0 else 0.0
+        high20_prev = max(highs[-21:-1]) if len(highs) >= 22 else cur_c
+        low20_prev = min(lows[-21:-1]) if len(lows) >= 22 else cur_c
+        range_pct = (high20_prev - low20_prev) / e21 if e21 > 0 else 0.10
+
+        prev_below = any(closes[j] < ema21_d[j] for j in range(max(0, len(closes)-8), len(closes)-1))
+        prev_above = any(closes[j] > ema21_d[j] for j in range(max(0, len(closes)-8), len(closes)-1))
+
+        if ext_atr >= 2.8 and cur_c > e9 > e21:
+            phase_num = 5
+            phase_name = "Fase 5: Extensão de Exaustão"
+            options_advice = "⚠️ Exaustão de Alta: Reduza Delta das Puts p/ ≤0.10 (Folga >20%) ou realize Call Spreads"
+            color = "amber"
+        elif cur_c < e21 and cur_c < e9 and prev_above:
+            phase_num = 6
+            phase_name = "Fase 6: Wedge Drop (Perda das Médias)"
+            options_advice = "🛑 Wedge Drop: Evite Puts curtas; priorize Fundo Histórico (>25% folga) ou Bear Call Spread"
+            color = "rose"
+        elif cur_c > e9 and cur_c > e21 and prev_below:
+            phase_num = 2
+            phase_name = "Fase 2: Wedge Pop (Ignição de Alta)"
+            options_advice = "🚀 Wedge Pop Confirmado: Sinal Verde p/ Bull Put Spread (Delta 0.16) e Call Spread"
+            color = "emerald"
+        elif cur_c > e21 and e9 > e21 and cur_l <= e21 * 1.015 and cur_c >= cur_o:
+            phase_num = 3
+            phase_name = "Fase 3: EMA Crossback (Reteste 9/21)"
+            options_advice = "🎯 Crossback nas Médias 9/21: Ponto ótimo p/ vender Put Spread (Delta 0.16-0.20)"
+            color = "emerald"
+        elif cur_c > high20_prev and e9 > e21 and range_pct <= 0.16:
+            phase_num = 4
+            phase_name = "Fase 4: Base n' Break (Rompimento)"
+            options_advice = "🔥 Base n' Break: Expansão de tendência ideal p/ Bull Put Spread e Call Spread"
+            color = "emerald"
+        elif ext_atr <= -2.6 and cur_c < e9 < e21 and cur_c > cur_o:
+            phase_num = 1
+            phase_name = "Fase 1: Extensão de Reversão (Fundo)"
+            options_advice = "⚓ Exaustão de Queda (Fase 1): Excelente p/ Puts Ultra-Conservadoras (>25% Folga)"
+            color = "cyan"
+        elif cur_c >= e21:
+            phase_num = 3
+            phase_name = "Tendência de Alta (Acima da EMA 21)"
+            options_advice = "🟢 Tendência Saudável acima da EMA 21: Favorável p/ Bull Put Spreads"
+            color = "emerald"
+        else:
+            phase_num = 6
+            phase_name = "Abaixo da EMA 21 (Sinal Vermelho Diário)"
+            options_advice = "🔴 Abaixo da EMA 21 Diária: Opere apenas travas com >20% de folga abaixo do suporte"
+            color = "rose"
+
+        res = {
+            'currency': currency,
+            'semaphore': semaphore,
+            'weekly_green': weekly_green,
+            'daily_green': daily_green,
+            'phase_num': phase_num,
+            'phase_name': phase_name,
+            'ema9_d': round(e9, 1),
+            'ema21_d': round(e21, 1),
+            'ema21_w': round(w21, 1),
+            'ext_atr': round(ext_atr, 2),
+            'options_advice': options_advice,
+            'color': color,
+            'badge': f"{'🟢' if semaphore=='VERDE' else ('🟡' if semaphore=='AMARELO' else '🔴')} Semáforo {semaphore} · {phase_name}"
+        }
+    except Exception as ex:
+        res = {
+            'currency': currency,
+            'semaphore': 'AMARELO',
+            'weekly_green': True,
+            'daily_green': True,
+            'phase_num': 3,
+            'phase_name': 'Fase 3: EMA Crossback',
+            'ema9_d': round(spot * 0.99, 1),
+            'ema21_d': round(spot * 0.97, 1),
+            'ema21_w': round(spot * 0.93, 1),
+            'ext_atr': 0.5,
+            'options_advice': '🟢 Tendência monitorada pelas EMAs 9/21',
+            'color': 'emerald',
+            'badge': '🟢 Semáforo VERDE · Fase 3: EMA Crossback'
+        }
+
+    _OLIVER_CACHE[currency] = {'ts': now, 'data': res}
+    return res
+
 def get_iv_regime(currency="BTC"):
     spot = get_spot_price(currency)
     expiries = get_live_expiries(currency)
@@ -723,6 +884,7 @@ def scan_decision_matrix(currency="BTC"):
     today = datetime.datetime.now().date()
     walls = get_market_walls(currency)
     bmsb = get_bmsb_status(currency)
+    oliver_kell = get_oliver_kell_status(currency)
     
     matrix = []
     
@@ -848,6 +1010,32 @@ def scan_decision_matrix(currency="BTC"):
                             elif spot <= b_top * 1.085 and (b_bot * 0.985 <= s_sell <= b_top * 1.01):
                                 conviction = max(10.0, conviction - 12.0)
                                 bmsb_tag = "⚠️ Zona de Violinada BMSB"
+
+                        # 6. Oliver Kell 6-Phase & Fractal Semaphore Filter
+                        oliver_tag = ""
+                        ok_phase = oliver_kell.get('phase_num', 3)
+                        ok_sem = oliver_kell.get('semaphore', 'VERDE')
+                        abs_delta = abs(p_sell['delta'])
+                        if ok_sem == 'VERDE' and ok_phase in (2, 3, 4):
+                            if abs_delta <= 0.22:
+                                conviction = min(100.0, conviction + 5.0)
+                                oliver_tag = f"🚦 Oliver Kell: {oliver_kell.get('phase_name', 'Sinal Verde')} (Alinhado)"
+                            else:
+                                oliver_tag = f"🚦 Oliver Kell: {oliver_kell.get('phase_name', 'Sinal Verde')}"
+                        elif ok_phase == 5:
+                            if abs_delta <= 0.12 or cushion_pct >= 18.0:
+                                conviction = min(100.0, conviction + 4.0)
+                                oliver_tag = "🚦 Oliver Kell: Fase 5 Exaustão (✅ Delta ≤0.12 Seguro)"
+                            else:
+                                conviction = max(10.0, conviction - 8.0)
+                                oliver_tag = "⚠️ Oliver Kell: Fase 5 Exaustão (Prefira Delta ≤0.10)"
+                        elif ok_phase == 6 or ok_sem == 'VERMELHO':
+                            if cushion_pct >= 22.0:
+                                conviction = min(100.0, conviction + 3.0)
+                                oliver_tag = "🛡️ Oliver Kell: Fase 6 / Sinal Vermelho (Protegida >22% Folga)"
+                            else:
+                                conviction = max(10.0, conviction - 14.0)
+                                oliver_tag = "🛑 Oliver Kell: Fase 6 Wedge Drop (Risco Curto)"
                             
                         matrix.append({
                             'currency': currency,
@@ -873,6 +1061,7 @@ def scan_decision_matrix(currency="BTC"):
                             'conviction': round(conviction, 1),
                             'thesis': thesis,
                             'bmsb_tag': bmsb_tag,
+                            'oliver_tag': oliver_tag,
                             'short_ticker': p_sell['ticker'],
                             'long_ticker': p_buy['ticker']
                         })
@@ -899,6 +1088,7 @@ def scan_decision_matrix(currency="BTC"):
         'spot_price': spot,
         'walls': walls,
         'bmsb': bmsb,
+        'oliver_kell': oliver_kell,
         'scanned_at': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'total_evaluated': len(matrix),
         'top_picks': {
@@ -1171,13 +1361,18 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
     # Execução on-chain se for uma ordem real na Derive
     if is_live:
         print(f"[DERIVE ROLL ON-CHAIN] Iniciando rolagem da posição real {pos_id}...")
+        pos_wallet = pos.get('live_details', {}).get('wallet') or pos.get('wallet')
+        pos_sub = pos.get('live_details', {}).get('subaccount_id') or pos.get('subaccount_id')
+        
         # 1. Fechar a trava atual (recompra Short Put + venda Long Put)
         close_live_res = close_derive_spread_order(
             currency=pos['currency'],
             expiry=str(pos['expiry']),
             short_strike=float(pos['short_strike']),
             long_strike=float(pos['long_strike']),
-            contracts=float(pos['contracts'])
+            contracts=float(pos['contracts']),
+            wallet_address=pos_wallet,
+            subaccount_id=pos_sub
         )
         if not close_live_res.get('success'):
             return {'success': False, 'error': f"Falha ao fechar trava antiga na Derive para rolagem: {close_live_res.get('error')}"}
@@ -1192,7 +1387,9 @@ def execute_roll(pos_id, target_expiry, is_automated=False):
             long_strike=float(pos['long_strike']),
             contracts=float(pos['contracts']),
             short_price=float(target_option.get('bid_new_short', 0)),
-            long_price=float(target_option.get('ask_new_long', 0))
+            long_price=float(target_option.get('ask_new_long', 0)),
+            wallet_address=pos_wallet,
+            subaccount_id=pos_sub
         )
         if not open_live_res.get('success'):
             # Trava antiga fechada, mas nova falhou: salvar estado como fechado para segurança
@@ -1274,10 +1471,49 @@ def auto_roll_worker():
                     rec = eval_p.get('recommendation', {})
                     if auto_tp and profit_captured_pct >= tp_target_pct:
                         tp_alert_key = f"tp_notified_{p['id']}"
+                        is_live = bool(p.get('is_live_order', False))
+                        auto_close = bool(p.get('auto_close_on_tp', True))
+                        
+                        if is_live and auto_close and not p.get('tp_closed'):
+                            print(f"[OFFSHORE AUTO-TP] Meta de {profit_captured_pct:.1f}% atingida na trava real {p['id']}. Executando fechamento on-chain...")
+                            pos_wallet = p.get('live_details', {}).get('wallet') or p.get('wallet')
+                            pos_sub = p.get('live_details', {}).get('subaccount_id') or p.get('subaccount_id')
+                            close_res = close_derive_spread_order(
+                                currency=p['currency'],
+                                expiry=str(p['expiry']),
+                                short_strike=float(p['short_strike']),
+                                long_strike=float(p['long_strike']),
+                                contracts=float(p['contracts']),
+                                wallet_address=pos_wallet,
+                                subaccount_id=pos_sub
+                            )
+                            if close_res.get('success'):
+                                p['status'] = 'closed'
+                                p['tp_closed'] = True
+                                p['closed_at'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                p['close_details'] = close_res
+                                realized_pnl = float(p.get('initial_credit_total', 0)) - float(close_res.get('cost_to_close_total', 0))
+                                p['realized_pnl_usd'] = round(realized_pnl, 2)
+                                save_positions(positions)
+                                log_audit("AUTO_TAKE_PROFIT_EXECUTED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'realized_pnl': realized_pnl, 'close_res': close_res})
+                                tg_msg = (
+                                    f"🎉 <b>TAKE PROFIT DE {profit_captured_pct:.1f}% EXECUTADO COM SUCESSO! 🤖</b>\n\n"
+                                    f"A trava real <code>{p['id']}</code> foi encerrada automaticamente on-chain na Derive (Modo Offshore)!\n"
+                                    f"• Subconta: <b>#{pos_sub or DERIVE_SUBACCOUNT_ID}</b> ({pos_wallet or 'Principal'})\n"
+                                    f"• Par: <b>{p['currency']} {p['short_strike']}P / {p['long_strike']}P</b>\n"
+                                    f"• Lucro Líquido Realizado: <b>+${realized_pnl:,.2f} USDC</b>\n"
+                                    f"• Custo Recompra: ${close_res.get('cost_to_close_total', 0):,.2f} USDC\n"
+                                    f"• Status: <b>100% Finalizado e Margem Liberada!</b>\n\n"
+                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Histórico</a>"
+                                )
+                                send_telegram_alert(tg_msg)
+                                continue
+                            else:
+                                print(f"[AUTO-TP ERROR] Falha no fechamento on-chain da trava {p['id']}: {close_res.get('error')}")
+
                         if not p.get(tp_alert_key):
                             p[tp_alert_key] = True
                             save_positions(positions)
-                            is_live = bool(p.get('is_live_order', False))
                             if is_live:
                                 tg_msg = (
                                     f"💰 <b>META DE {profit_captured_pct:.1f}% ATINGIDA — MATRIZ DE DECISÃO</b> 💰\n\n"
@@ -1310,7 +1546,17 @@ def auto_roll_worker():
                         # Trigger condition: DTE <= trigger_dte AND spot < short_strike
                         if dte <= trigger_dte and spot < s_sell:
                             is_live = bool(p.get('is_live_order', False))
-                            if is_live:
+                            auto_roll_live = bool(p.get('auto_roll_autonomous', True))
+                            if is_live and auto_roll_live:
+                                print(f"[OFFSHORE AUTO-ROLL] Gatilho de defesa atingido na trava real {p['id']}. Executando rolagem defensiva on-chain...")
+                                sim = simulate_roll(p['id'])
+                                options = sim.get('roll_options', [])
+                                if options:
+                                    best_target = options[0]['target_expiry']
+                                    res = execute_roll(p['id'], best_target, is_automated=True)
+                                    print(f"[OFFSHORE AUTO-ROLL RESULT] {res.get('message', res.get('error'))}")
+                                    continue
+                            elif is_live:
                                 alert_key = f"alert_roll_notified_{p['id']}_{dte}"
                                 if not p.get(alert_key):
                                     p[alert_key] = True
@@ -1349,6 +1595,7 @@ class DeskHandler(BaseHTTPRequestHandler):
             acct = get_derive_account_info()
             iv_data = get_iv_regime("BTC")
             bmsb_data = get_bmsb_status("BTC")
+            oliver_data = get_oliver_kell_status("BTC")
             self.send_json({
                 'btc_spot': btc_spot,
                 'eth_spot': eth_spot,
@@ -1361,6 +1608,7 @@ class DeskHandler(BaseHTTPRequestHandler):
                 'margin_type': acct.get('margin_type', 'SM'),
                 'iv_regime': iv_data,
                 'bmsb': bmsb_data,
+                'oliver_kell': oliver_data,
                 'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
         elif url.startswith('/api/iv_regime'):

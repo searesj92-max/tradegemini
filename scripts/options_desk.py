@@ -246,6 +246,11 @@ def place_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         if expected_credit > 0 and real_net_credit < (expected_credit * 0.75):
             return {'success': False, 'error': f"Slippage excessivo detectado: crédito real do livro (${real_net_credit:.2f}) é inferior a 75% do cotado em tela (${expected_credit:.2f}). Abortado para evitar execução desfavorável."}
 
+        # Check 4: Trava Anti-Pó / Rentabilidade Mínima Real (Nunca operar por centavos engolidos por taxas)
+        total_credit_usd = real_net_credit * float(contracts)
+        if total_credit_usd < 15.0:
+            return {'success': False, 'error': f"Operação rejeitada: crédito total de ${total_credit_usd:.2f} USDC é insignificante frente às taxas de corretagem da Derive (~$3.80). Mínimo exigido: $15.00 USDC líquidos para valer a pena."}
+
         # 1. Buy Long Put FIRST (wing hedge - garante o colateral e define a perda máxima antes de vender)
         res_long = client.orders.create(
             amount=Decimal(str(contracts)),
@@ -941,10 +946,11 @@ def scan_decision_matrix(currency="BTC"):
                 width = s_sell - s_buy
                 if width_min <= width <= width_max:
                     net_credit = p_sell['bid'] - p_buy['ask']
-                    if net_credit > 0 and net_credit < width:
+                    # Anti-Pó: descartar qualquer trava com crédito menor que $100/BTC (menos de $10 em 0.10 BTC não compensa taxas)
+                    if net_credit >= 100.0 and net_credit < width:
                         margin = width - net_credit
                         rom = (net_credit / margin) * 100
-                        if rom < 0.5:
+                        if rom < 1.0:
                             continue
                             
                         # 1. Breakeven & Safety Cushion

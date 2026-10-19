@@ -1570,45 +1570,11 @@ def auto_roll_worker():
                     rec = eval_p.get('recommendation', {})
                     if auto_tp and profit_captured_pct >= tp_target_pct:
                         tp_alert_key = f"tp_notified_{p['id']}"
-                        is_live = bool(p.get('is_live_order', False))
-                        auto_close = bool(p.get('auto_close_on_tp', True))
-                        
-                        if is_live and auto_close and not p.get('tp_closed'):
-                            print(f"[OFFSHORE AUTO-TP] Meta de {profit_captured_pct:.1f}% atingida na trava real {p['id']}. Executando fechamento on-chain...")
-                            pos_wallet = p.get('live_details', {}).get('wallet') or p.get('wallet')
-                            pos_sub = p.get('live_details', {}).get('subaccount_id') or p.get('subaccount_id')
-                            close_res = close_derive_spread_order(
-                                currency=p['currency'],
-                                expiry=str(p['expiry']),
-                                short_strike=float(p['short_strike']),
-                                long_strike=float(p['long_strike']),
-                                contracts=float(p['contracts']),
-                                wallet_address=pos_wallet,
-                                subaccount_id=pos_sub
-                            )
-                            if close_res.get('success'):
-                                p['status'] = 'closed'
-                                p['tp_closed'] = True
-                                p['closed_at'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                p['close_details'] = close_res
-                                realized_pnl = float(p.get('initial_credit_total', 0)) - float(close_res.get('cost_to_close_total', 0))
-                                p['realized_pnl_usd'] = round(realized_pnl, 2)
-                                save_positions(positions)
-                                log_audit("AUTO_TAKE_PROFIT_EXECUTED", {'pos_id': p['id'], 'profit_pct': profit_captured_pct, 'realized_pnl': realized_pnl, 'close_res': close_res})
-                                tg_msg = (
-                                    f"🎉 <b>TAKE PROFIT DE {profit_captured_pct:.1f}% EXECUTADO COM SUCESSO! 🤖</b>\n\n"
-                                    f"A trava real <code>{p['id']}</code> foi encerrada automaticamente on-chain na Derive (Modo Offshore)!\n"
-                                    f"• Subconta: <b>#{pos_sub or DERIVE_SUBACCOUNT_ID}</b> ({pos_wallet or 'Principal'})\n"
-                                    f"• Par: <b>{p['currency']} {p['short_strike']}P / {p['long_strike']}P</b>\n"
-                                    f"• Lucro Líquido Realizado: <b>+${realized_pnl:,.2f} USDC</b>\n"
-                                    f"• Custo Recompra: ${close_res.get('cost_to_close_total', 0):,.2f} USDC\n"
-                                    f"• Status: <b>100% Finalizado e Margem Liberada!</b>\n\n"
-                                    f"🔗 <a href='https://botrade-hyperliquid.onrender.com/options'>Abrir Histórico</a>"
-                                )
-                                send_telegram_alert(tg_msg)
-                                continue
-                            else:
-                                print(f"[AUTO-TP ERROR] Falha no fechamento on-chain da trava {p['id']}: {close_res.get('error')}")
+                        # Proteção de Capital: NUNCA fechar automaticamente na corretora para não queimar
+                        # o lucro do usuário em spread e taxas de recompra do book.
+                        # A trava deve seguir até o vencimento para buscar 100% do lucro sem taxas,
+                        # a menos que o usuário solicite expressamente o fechamento manual (/fechar).
+                        auto_close = False
 
                         if not p.get(tp_alert_key):
                             p[tp_alert_key] = True

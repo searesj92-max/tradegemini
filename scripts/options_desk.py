@@ -331,6 +331,27 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
         print(f"[DERIVE CLOSE EXEC] Subconta alvo: #{sub_id} ({wallet}) | Contratos: {contracts} | Par: {short_inst} / {long_inst}")
         
+        # Verificação On-Chain prévia: só envia ordens se houver posição aberta real desses instrumentos
+        try:
+            sub_info = client.fetch_subaccount(sub_id)
+            pos_map = {p.instrument_name: float(p.amount) for p in getattr(sub_info.state, 'positions', [])}
+            short_amt = abs(pos_map.get(short_inst, 0.0))
+            long_amt = abs(pos_map.get(long_inst, 0.0))
+            if short_amt == 0 and long_amt == 0:
+                print(f"[DERIVE CLOSE SKIP] Posições {short_inst} e {long_inst} já estão zeradas on-chain na Subconta #{sub_id}!")
+                return {
+                    'success': True,
+                    'subaccount_id': sub_id,
+                    'cost_to_close_total': 0.0,
+                    'short_close_order_id': 'already_zero',
+                    'long_close_order_id': 'already_zero',
+                    'message': f"Posição {short_inst} / {long_inst} já se encontra 100% liquidada on-chain na Derive (Subconta #{sub_id})."
+                }
+            if short_amt > 0:
+                contracts = min(contracts, short_amt)
+        except Exception as e_check:
+            print(f"[DERIVE POS CHECK WARNING] {e_check}")
+
         # Cancela ordens residuais antigas desses instrumentos antes de fechar
         try:
             client.orders.cancel_by_instrument(instrument_name=short_inst)

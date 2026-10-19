@@ -22,6 +22,16 @@ from send_telegram import send
 POSITIONS_FILE = ROOT_DIR / "data" / "options_positions.json"
 
 def get_live_btc_price():
+    # 1. Prioriza o preço de Índice oficial da própria Derive (mesmo preço usado na margem e liquidação)
+    try:
+        import options_desk
+        spot = options_desk.get_spot_price("BTC")
+        if spot and spot > 1000:
+            return float(spot)
+    except Exception:
+        pass
+
+    # 2. Fallback secundário na Binance
     try:
         url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})

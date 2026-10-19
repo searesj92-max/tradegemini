@@ -10,7 +10,7 @@
     "initial_credit_total": 80.4,
     "initial_margin_total": 819.6,
     "opened_at": "2026-10-12 16:18:42",
-    "status": "active",
+    "status": "closed",
     "target_take_profit_pct": 80.0,
     "auto_take_profit_enabled": true,
     "auto_close_on_tp": true,
@@ -28,7 +28,15 @@
       "max_profit": 80.4,
       "max_loss": 819.6
     },
-    "roll_count": 0
+    "roll_count": 0,
+    "tp_closed": true,
+    "closed_at": "2026-10-19 10:46:25",
+    "close_details": {
+      "success": true,
+      "tx_hash": "0x9d75820a30e2f9309936a3149b69905c17fba1dc3839d8ee3fd4ae28480ac969",
+      "message": "Trava liquidada on-chain na Derive (Settled)"
+    },
+    "realized_pnl_usd": 24.52
   },
   {
     "id": "pos-btc-75000-70000-20261127-1791587688",

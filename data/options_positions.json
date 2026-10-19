@@ -81,7 +81,7 @@
     "initial_credit_total": 2.8,
     "initial_margin_total": 600.0,
     "opened_at": "2026-10-18 21:18:00",
-    "status": "active",
+    "status": "closed",
     "target_take_profit_pct": 80.0,
     "auto_take_profit_enabled": true,
     "auto_close_on_tp": true,
@@ -101,6 +101,8 @@
       "max_profit": 2.8,
       "max_loss": 597.2
     },
-    "roll_count": 0
+    "roll_count": 0,
+    "closed_at": "2026-10-19 08:51:45",
+    "realized_pnl_usd": -1.90
   }
 ]

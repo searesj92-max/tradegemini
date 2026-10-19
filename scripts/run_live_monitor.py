@@ -45,15 +45,18 @@ def run_monitor():
     TRAILING_STEP_PCT = 30.0
     active_snapshot: dict[str, dict] = {}
 
-    # Start Telegram Interactive Bot in background thread
-    try:
-        import threading
-        from telegram_bot_service import run_telegram_bot_daemon
-        tg_thread = threading.Thread(target=run_telegram_bot_daemon, daemon=True, name="TelegramBotThread")
-        tg_thread.start()
-        print("[*] Telegram Interactive Bot iniciado em segundo plano com sucesso.")
-    except Exception as tg_init_err:
-        print(f"[Aviso] Telegram Bot não iniciado: {tg_init_err}")
+    # Start Telegram Interactive Bot in background thread (ONLY if NOT on Render / defer to dedicated VPS daemon)
+    if not os.environ.get("RENDER") and os.environ.get("ENABLE_STANDALONE_TELEGRAM_BOT") == "true":
+        try:
+            import threading
+            from telegram_bot_service import run_telegram_bot_daemon
+            tg_thread = threading.Thread(target=run_telegram_bot_daemon, daemon=True, name="TelegramBotThread")
+            tg_thread.start()
+            print("[*] Telegram Interactive Bot iniciado em segundo plano com sucesso.")
+        except Exception as tg_init_err:
+            print(f"[Aviso] Telegram Bot não iniciado: {tg_init_err}")
+    else:
+        print("[*] Telegram Bot ignorado no run_live_monitor (serviço dedicado rodando 24/7 na VPS).")
 
     while True:
         try:

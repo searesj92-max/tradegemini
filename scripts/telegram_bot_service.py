@@ -461,18 +461,21 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
     if cmd in ("/start", "/help", "/ajuda", "ajuda", "help", "menu"):
         msg = (
             "🎯 *OPTIONS DESK — BOTRADE BOT (PUT SPREADS)*\n\n"
-            "Monitoramento 24/7 exclusivo das suas operações com opções Put Spreads na Derive (Carteira Tangem):\n\n"
+            "Monitoramento 24/7 e Controle Total das suas operações com opções Put Spreads na Derive (Carteira Tangem):\n\n"
             "• `/travas` ou `/posicoes` - 💼 Relatório detalhado das suas travas ativas e PnL\n"
-            "• `/relatorio` ou `/status` - 📊 Resumo executivo de margem, crédito e distâncias de segurança\n"
+            "• `/fechar` - 🛑 *ENCERRAMENTO DE EMERGÊNCIA* (Recompra e liquida trava na Derive imediatamente)\n"
+            "• `/rolar` - 🔄 *ROLAGEM DE DEFESA* (Rola trava para próximo vencimento se mercado cair)\n"
+            "• `/relatorio` ou `/status` - 📊 Resumo executivo de margem, crédito e distâncias\n"
             "• `/lucro` - 💰 Total de crédito embolsado e alvos de Take Profit\n"
             "• `/opcoes` - 🛡️ Radar de novas oportunidades com maior folga\n"
             "• `/iv` - 🌡️ Termômetro de Volatilidade do Bitcoin\n\n"
-            "_Toque nos botões interativos abaixo para consultar:_"
+            "_Toque nos botões interativos abaixo para operar ou consultar:_"
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}, {"text": "📊 Relatório Consolidado", "callback_data": "daily_report"}],
-                [{"text": "🎯 Radar de Opções (/opcoes)", "callback_data": "options_radar"}, {"text": "🌡️ Termômetro IV (/iv)", "callback_data": "options_iv"}],
+                [{"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}, {"text": "🛑 Fechar Trava", "callback_data": "menu_close"}],
+                [{"text": "🎯 Radar Derive (/opcoes)", "callback_data": "options_radar"}, {"text": "🔄 Rolar Trava", "callback_data": "menu_roll"}],
+                [{"text": "📊 Relatório Geral", "callback_data": "daily_report"}, {"text": "🌡️ Termômetro IV", "callback_data": "options_iv"}],
                 [{"text": "🌐 Abrir App da Derive", "url": "https://app.derive.xyz"}]
             ]
         }
@@ -599,15 +602,118 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
                     f"  🤖 *Status:* {rec.get('badge', 'EM ANDAMENTO')}\n"
                 )
             lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-            markup = {
-                "inline_keyboard": [
-                    [{"text": "🌐 Abrir no Painel Web", "url": "https://botrade-hyperliquid.onrender.com/options"}],
-                    [{"text": "🔄 Atualizar Posições", "callback_data": "options_positions"}]
-                ]
-            }
+            lines.append("👉 _Toque no botão vermelho abaixo para fechar qualquer trava antecipadamente na Derive com 1 clique:_")
+            kb = [
+                [{"text": "🌐 Abrir no Painel Web", "url": "https://botrade-hyperliquid.onrender.com/options"}],
+            ]
+            for p in active:
+                pos_id = p.get('id')
+                s_k = p.get('short_strike', 0)
+                l_k = p.get('long_strike', 0)
+                kb.append([
+                    {"text": f"🛑 Fechar Trava {s_k:,.0f}P", "callback_data": f"req_close_{pos_id}"},
+                    {"text": f"🔄 Rolar {s_k:,.0f}P", "callback_data": f"sim_roll_{pos_id}"}
+                ])
+            kb.append([{"text": "🔄 Atualizar Posições", "callback_data": "options_positions"}])
+            markup = {"inline_keyboard": kb}
             send_message(chat_id, "\n".join(lines), markup)
         except Exception as e:
             send_message(chat_id, f"❌ *Erro ao listar travas:* {e}")
+        return
+
+    # 10.1 FECHAR TRAVA MANUALMENTE (EMERGÊNCIA / ANTECIPAÇÃO)
+    if cmd in ("/fechar", "/fechar_trava", "/encerrar", "/panico", "fechar", "encerrar", "panico"):
+        try:
+            import options_desk
+            raw_pos = options_desk.load_positions()
+            active = [p for p in raw_pos if p.get('status') == 'active']
+            if not active:
+                send_message(chat_id, "ℹ️ *Você não possui travas ativas na Derive para fechar no momento.*")
+                return
+
+            lines = [
+                "🛑 *MESA DE EMERGÊNCIA — ENCERRAMENTO ANTECIPADO (DERIVE)*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                "Selecione abaixo a trava que deseja **recomprar a mercado e encerrar imediatamente** on-chain na Derive:\n"
+            ]
+            kb = []
+            for p in active:
+                pos_id = p.get('id')
+                s_k = p.get('short_strike', 0)
+                l_k = p.get('long_strike', 0)
+                cur = p.get('currency', 'BTC')
+                lines.append(f"• *{cur} {s_k:,.0f}P / {l_k:,.0f}P* (`{pos_id}`)")
+                kb.append([{"text": f"🛑 Confirmar Fechamento {s_k:,.0f}P/{l_k:,.0f}P", "callback_data": f"req_close_{pos_id}"}])
+
+            kb.append([{"text": "❌ Cancelar", "callback_data": "options_positions"}])
+            send_message(chat_id, "\n".join(lines), {"inline_keyboard": kb})
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao processar comando de fechamento: {e}")
+        return
+
+    # 10.2 ROLAR TRAVA DEFENSIVA
+    if cmd in ("/rolar", "/rolagem", "rolar", "rolagem"):
+        try:
+            import options_desk
+            raw_pos = options_desk.load_positions()
+            active = [p for p in raw_pos if p.get('status') == 'active']
+            if not active:
+                send_message(chat_id, "ℹ️ *Você não possui travas ativas na Derive para rolar no momento.*")
+                return
+
+            lines = [
+                "🔄 *MESA DEFENSIVA — ROLAGEM DE TRAVA (DERIVE)*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                "Selecione a trava que deseja simular e rolar para defender contra quedas:\n"
+            ]
+            kb = []
+            for p in active:
+                pos_id = p.get('id')
+                s_k = p.get('short_strike', 0)
+                l_k = p.get('long_strike', 0)
+                lines.append(f"• *BTC {s_k:,.0f}P / {l_k:,.0f}P* (`{pos_id}`)")
+                kb.append([{"text": f"🔄 Simular Rolagem {s_k:,.0f}P", "callback_data": f"sim_roll_{pos_id}"}])
+
+            kb.append([{"text": "❌ Cancelar", "callback_data": "options_positions"}])
+            send_message(chat_id, "\n".join(lines), {"inline_keyboard": kb})
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao processar rolagem: {e}")
+        return
+
+    # 10.3 MODO DESENVOLVEDOR — CRIAR / MODIFICAR CÓDIGO VIA ANTIGRAVITY CLI
+    if cmd in ("/dev", "/codar", "/code", "/codigo"):
+        instrucao = " ".join(cmd_parts[1:]).strip()
+        if not instrucao:
+            send_message(
+                chat_id,
+                "ℹ️ *MODO DESENVOLVEDOR (ANTIGRAVITY CODE ENGINE)*\n\n"
+                "Para pedir ao Antigravity para criar ou alterar código, digite:\n"
+                "`/dev <sua instrução>`\n\n"
+                "*Exemplos:*\n"
+                "• `/dev Adicione um log no arquivo options_desk.py`\n"
+                "• `/dev Crie um script para calcular o retorno anualizado das travas`\n"
+                "• `/dev Verifique os últimos 10 logs de erro do sistema`"
+            )
+            return
+
+        send_message(chat_id, f"🛠️ *Antigravity iniciando tarefa no projeto...*\n_\"{instrucao}\"_\n\n⏳ Analisando arquivos e aplicando alterações...")
+        try:
+            import subprocess
+            proc = subprocess.run(
+                ["/usr/local/bin/agy", "-p", instrucao, "--dangerously-skip-permissions"],
+                cwd="/home/ubuntu/botrade",
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            out = proc.stdout.strip() or proc.stderr.strip() or "Tarefa executada com sucesso pelo Antigravity."
+            if len(out) > 3800:
+                out = out[:3800] + "\n\n... (saída longa truncada)"
+            send_message(chat_id, f"🤖 *Resultado do Antigravity (VPS):*\n\n{out}")
+        except subprocess.TimeoutExpired:
+            send_message(chat_id, "⚠️ A tarefa no código levou mais de 2 minutos e foi pausada.")
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro na execução do Antigravity: {e}")
         return
 
     # 11. TERMÔMETRO DE VOLATILIDADE (IV RANK)
@@ -638,10 +744,74 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             send_message(chat_id, f"❌ *Erro ao consultar IV:* {e}")
         return
 
-    send_message(
-        chat_id,
-        f"❓ *Comando não reconhecido:* `{text}`\n\nDigite `/travas` para ver suas posições ativas, `/opcoes` para novas oportunidades, `/relatorio` para o resumo executivo ou `/ajuda` para o menu completo."
-    )
+    # 12. PERGUNTA LIVRE / CHAT COM A IA (ANTIGRAVITY / GEMINI) OU VÍDEO DO YOUTUBE
+    try:
+        from google import genai
+        from google.genai import types
+        import re
+        from ai_context import get_live_project_context
+
+        ai_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if not ai_key:
+            env_file = ROOT / ".env"
+            if env_file.exists():
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("GEMINI_API_KEY="):
+                        ai_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        break
+        client = genai.Client(api_key=ai_key)
+
+        def generate_with_fallback(contents):
+            for model_name in ["gemini-3.8-flash", "gemini-3.5-flash-lite"]:
+                try:
+                    r = client.models.generate_content(model=model_name, contents=contents)
+                    if r and r.text:
+                        return r.text.strip(), model_name
+                except Exception as err:
+                    print(f"[-] Aviso: modelo {model_name} indisponivel ({err}). Tentando fallback...")
+            raise RuntimeError("Nenhum modelo Gemini respondeu no momento.")
+
+        # Detecta se há link do YouTube na mensagem
+        yt_match = re.search(r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/)[a-zA-Z0-9_\-]+[^\s]*)', text)
+        if yt_match:
+            yt_url = yt_match.group(1).strip()
+            user_instruction = text.replace(yt_url, "").strip() or "Faça um resumo executivo completo e estruturado deste vídeo, destacando a tese, estratégias operacionais, indicadores ou lições práticas de mercado."
+            send_message(chat_id, "🎬 *Link do YouTube detectado!*\n_Assistindo e processando o vídeo com a inteligência multimodal do Gemini... Isso pode levar alguns segundos._")
+
+            yt_part = types.Part.from_uri(file_uri=yt_url, mime_type="video/*")
+            prompt_video = (
+                "Você é o analista quantitativo do projeto Botrade. O usuário enviou o vídeo acima para análise detalhada.\n"
+                f"INSTRUÇÃO DO USUÁRIO: {user_instruction}\n\n"
+                "Estruture sua resposta em markdown claro e agradável:\n"
+                "1. 📌 Resumo da Tese / Ideia Central\n"
+                "2. 📊 Estratégias, Setups ou Indicadores citados\n"
+                "3. ⚠️ Riscos e Pontos de Atenção\n"
+                "4. 💡 Conclusão & Aplicação Prática para a nossa mesa de trading"
+            )
+
+            ai_reply, used_model = generate_with_fallback([yt_part, prompt_video])
+            # Envia em blocos se exceder o limite do Telegram (4096 caracteres)
+            if len(ai_reply) > 4000:
+                chunks = [ai_reply[i:i+3900] for i in range(0, len(ai_reply), 3900)]
+                for idx, c in enumerate(chunks, 1):
+                    send_message(chat_id, f"🎬 *Análise do Vídeo (Parte {idx}/{len(chunks)} • {used_model}):*\n\n{c}")
+            else:
+                send_message(chat_id, f"🎬 *Análise do Vídeo do YouTube ({used_model}):*\n\n{ai_reply}")
+            return
+
+        # Chat normal com contexto do projeto
+        send_message(chat_id, "🤖 _Consultando Antigravity / Gemini com dados ao vivo da mesa..._")
+        sys_ctx = get_live_project_context()
+        full_prompt = f"{sys_ctx}\n\nPERGUNTA DO USUÁRIO NO TELEGRAM:\n{text}"
+
+        ai_reply, used_model = generate_with_fallback(full_prompt)
+        send_message(chat_id, f"🤖 *Antigravity / Gemini ({used_model}):*\n\n{ai_reply}")
+        return
+    except Exception as e:
+        send_message(
+            chat_id,
+            f"❌ *Erro ao processar mensagem com a IA:* {e}\n\nSe enviou um link, verifique se o vídeo é público."
+        )
 
 
 def handle_callback_query(cq: dict):
@@ -721,17 +891,181 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, msg, markup)
         return
 
+    if data == "menu_close":
+        answer_callback(cq_id, "Abrindo mesa de emergência...")
+        handle_command(chat_id, "/fechar")
+        return
+
+    if data == "menu_roll":
+        answer_callback(cq_id, "Abrindo mesa defensiva...")
+        handle_command(chat_id, "/rolar")
+        return
+
+    # Pedido de confirmação de fechamento
+    if data.startswith("req_close_"):
+        target_id = data.replace("req_close_", "")
+        answer_callback(cq_id, "Preparando confirmação...")
+        try:
+            import options_desk
+            raw_pos = options_desk.load_positions()
+            pos = next((x for x in raw_pos if x.get("id") == target_id), None)
+            if not pos:
+                send_message(chat_id, "❌ Trava não encontrada.")
+                return
+
+            short_k = pos.get("short_strike", 0)
+            long_k = pos.get("long_strike", 0)
+            cur = pos.get("currency", "BTC")
+            contracts = pos.get("contracts", 0)
+            sub_id = pos.get("live_details", {}).get("subaccount_id") or pos.get("subaccount_id", 116804)
+
+            prompt_msg = (
+                "⚠️ *CONFIRMAÇÃO DE FECHAMENTO ANTECIPADO (DERIVE)* ⚠️\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"Você está prestes a liquidar a mercado a seguinte trava:\n\n"
+                f"• *Par:* `{cur} {short_k:,.0f}P / {long_k:,.0f}P`\n"
+                f"• *Vencimento:* `{pos.get('expiry')}`\n"
+                f"• *Contratos:* `{contracts}` {cur}\n"
+                f"• *Subconta Derive:* `#{sub_id}`\n\n"
+                "Ao confirmar, o robô enviará ordens taker imediatas para **recomprar a perna vendida** e eliminar todo o risco on-chain, liberando a margem da sua custódia Tangem.\n\n"
+                "*DESEJA EXECUTAR O FECHAMENTO AGORA?*"
+            )
+            markup = {
+                "inline_keyboard": [
+                    [{"text": "🚨 SIM, LIQUIDAR NA DERIVE AGORA", "callback_data": f"do_close_{target_id}"}],
+                    [{"text": "❌ Cancelar e Manter Ativa", "callback_data": "options_positions"}]
+                ]
+            }
+            if msg_id:
+                edit_message(chat_id, msg_id, prompt_msg, markup)
+            else:
+                send_message(chat_id, prompt_msg, markup)
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao preparar confirmação: {e}")
+        return
+
+    # Execução on-chain de fechamento
+    if data.startswith("do_close_"):
+        target_id = data.replace("do_close_", "")
+        answer_callback(cq_id, "Enviando ordens para a Derive...")
+        send_message(chat_id, "⏳ *Executando fechamento on-chain na Derive... Aguarde confirmação imediata.*")
+        try:
+            import options_desk
+            raw_pos = options_desk.load_positions()
+            pos = next((x for x in raw_pos if x.get("id") == target_id), None)
+            if not pos:
+                send_message(chat_id, "❌ Trava não encontrada.")
+                return
+
+            pos_wallet = pos.get("live_details", {}).get("wallet") or pos.get("wallet")
+            pos_sub = pos.get("live_details", {}).get("subaccount_id") or pos.get("subaccount_id")
+            res = options_desk.close_derive_spread_order(
+                currency=pos.get("currency", "BTC"),
+                expiry=str(pos.get("expiry")),
+                short_strike=float(pos.get("short_strike")),
+                long_strike=float(pos.get("long_strike")),
+                contracts=float(pos.get("contracts")),
+                wallet_address=pos_wallet,
+                subaccount_id=pos_sub
+            )
+            if res.get("success"):
+                pos["status"] = "closed"
+                pos["closed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                pos["close_details"] = res
+                cost = float(res.get("cost_to_close_total", 0.0))
+                realized_pnl = float(pos.get("initial_credit_total", 0.0)) - cost
+                pos["realized_pnl_usd"] = round(realized_pnl, 2)
+                options_desk.save_positions(raw_pos)
+                options_desk.log_audit("MANUAL_TELEGRAM_EMERGENCY_CLOSE", {"pos_id": target_id, "res": res, "realized_pnl": realized_pnl})
+
+                success_msg = (
+                    "✅ *TRAVA ENCERRADA COM SUCESSO NA DERIVE!* 🏁\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"• *Par:* BTC {pos.get('short_strike'):,.0f}P / {pos.get('long_strike'):,.0f}P\n"
+                    f"• *Subconta:* #{pos_sub}\n"
+                    f"• *Crédito Recebido Inicialmente:* `+${pos.get('initial_credit_total', 0):.2f} USDC`\n"
+                    f"• *Custo de Recompra:* `${cost:.2f} USDC`\n"
+                    f"• *Resultado Líquido Realizado:* *`{'+' if realized_pnl >= 0 else ''}${realized_pnl:.2f} USDC`*\n"
+                    f"• *Margem:* 🟢 *100% Desbloqueada e Salva!*\n"
+                    "━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                )
+                markup = {"inline_keyboard": [[{"text": "💼 Ver Minhas Travas", "callback_data": "options_positions"}]]}
+                send_message(chat_id, success_msg, markup)
+            else:
+                send_message(chat_id, f"❌ *Falha no fechamento on-chain da Derive:* {res.get('error')}")
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro crítico ao fechar trava: {e}")
+        return
+
+    # Simulação de rolagem
+    if data.startswith("sim_roll_"):
+        target_id = data.replace("sim_roll_", "")
+        answer_callback(cq_id, "Calculando opções de rolagem...")
+        try:
+            import options_desk
+            sim = options_desk.simulate_roll(target_id)
+            if not sim.get("success"):
+                send_message(chat_id, f"❌ Não foi possível simular rolagem: {sim.get('error')}")
+                return
+
+            opts = sim.get("roll_options", [])
+            lines = [
+                f"🛡️ *SIMULAÇÃO DE ROLAGEM DEFENSIVA:*",
+                f"• *Trava Atual:* BTC {sim.get('current_short_strike'):,.0f}P ({sim.get('current_dte')}d restantes)",
+                f"• *Custo para Fechar Atual:* `${sim.get('close_cost_total'):.2f} USDC`",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                "*OPÇÕES DE ROLAGEM COM CRÉDITO OU DEFESA:*\n"
+            ]
+            kb = []
+            for i, o in enumerate(opts[:3], 1):
+                tgt_exp = o['target_expiry']
+                tgt_short = o.get('short_strike', sim.get('current_short_strike'))
+                net_cost = o['net_roll_cost']
+                cost_str = f"Crédito: +${abs(net_cost):.2f}" if net_cost <= 0 else f"Custo: -${net_cost:.2f}"
+                lines.append(
+                    f"*{i}. Vcto: {tgt_exp} ({o['new_dte']}d)* — Strike: ${tgt_short:,.0f}P\n"
+                    f"   • *Balanço:* `{cost_str}` | *Folga:* `+{o.get('new_cushion_pct', 0):.1f}%`\n"
+                )
+                kb.append([{"text": f"🛡️ Rolar para {tgt_exp} (${tgt_short:,.0f}P)", "callback_data": f"do_roll_{target_id}_{tgt_exp}_{int(tgt_short)}"}])
+
+            kb.append([{"text": "❌ Cancelar", "callback_data": "options_positions"}])
+            send_message(chat_id, "\n".join(lines), {"inline_keyboard": kb})
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao simular rolagem: {e}")
+        return
+
+    # Execução de rolagem
+    if data.startswith("do_roll_"):
+        parts = data.split("_")
+        target_id = parts[2]
+        target_exp = parts[3]
+        target_short = float(parts[4]) if len(parts) > 4 else None
+        answer_callback(cq_id, "Executando rolagem...")
+        send_message(chat_id, "⏳ *Executando rolagem defensiva na Derive... Aguarde.*")
+        try:
+            import options_desk
+            res = options_desk.execute_roll(target_id, target_exp, target_short_strike=target_short, is_automated=False)
+            if res.get("success"):
+                send_message(chat_id, f"✅ *ROLAGEM EXECUTADA COM SUCESSO!*\n\n{res.get('message', '')}")
+            else:
+                send_message(chat_id, f"❌ *Falha na rolagem:* {res.get('error')}")
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao executar rolagem: {e}")
+        return
+
     answer_callback(cq_id)
 
 
 def register_bot_commands():
     commands = [
-        {"command": "planilha", "description": "📊 Planilha ao vivo (atualiza a todo momento)"},
-        {"command": "arbitragem", "description": "⚡ Radar de arbitragem on-chain (spreads ao vivo)"},
-        {"command": "lucro", "description": "💰 Rendimento real acumulado e base de ontem"},
-        {"command": "defi", "description": "🎯 Radar da faixa ($2,596 a $2,798) e saídas"},
-        {"command": "saldo", "description": "💼 Saldo consolidado e valorização patrimonial"},
-        {"command": "relatorio", "description": "📑 Relatório de fechamento 24h"},
+        {"command": "travas", "description": "💼 Suas travas ativas, PnL e botão de fechar"},
+        {"command": "dev", "description": "🛠️ Criar ou alterar código via Antigravity Engine"},
+        {"command": "fechar", "description": "🛑 Fechar trava imediatamente na Derive (Emergência)"},
+        {"command": "rolar", "description": "🔄 Rolar trava para defender de quedas"},
+        {"command": "opcoes", "description": "🎯 Radar de novas oportunidades com maior folga"},
+        {"command": "relatorio", "description": "📊 Relatório executivo de margem e segurança"},
+        {"command": "lucro", "description": "💰 Crédito embolsado e alvos de Take Profit"},
+        {"command": "iv", "description": "🌡️ Termômetro de Volatilidade do Bitcoin"},
         {"command": "ajuda", "description": "❓ Menu interativo de comandos"}
     ]
     res = tg_api_call("setMyCommands", {"commands": commands})

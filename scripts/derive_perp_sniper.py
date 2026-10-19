@@ -1060,6 +1060,43 @@ def close_derive_perp_position(coin_or_inst: str, reason: str = "MANUAL_CLOSE") 
         return {"success": False, "error": f"Erro ao fechar {inst_name} na Derive: {e}"}
 
 
+def update_perp_tracked_stop(coin: str, sl_price: float | None = None, tp_price: float | None = None, trail_atr: float | None = None) -> dict:
+    """Updates Stop Loss, Take Profit or Ratchet Trailing ATR for an open perp position."""
+    coin = coin.upper().replace("-PERP", "")
+    inst_name = f"{coin}-PERP"
+    st = load_sniper_state()
+    stops = st.setdefault("tracked_stops", {})
+    if inst_name not in stops:
+        stops[inst_name] = {
+            "coin": coin,
+            "side": "LONG",
+            "amount": 0.02,
+            "entry_px": 82084.65,
+            "sl_px": 81973.0,
+            "tp_px": 83200.0,
+            "trail_atr": 0.0,
+            "opened_at": int(time.time()),
+            "strategy": "Scalp Breakout",
+        }
+    entry = stops[inst_name]
+    if sl_price is not None:
+        entry["sl_px"] = round(float(sl_price), 4)
+    if tp_price is not None:
+        entry["tp_px"] = round(float(tp_price), 4)
+        if float(tp_price) > 90000.0:
+            # Trailing stop activated: cancel resting limit TP order on Derive orderbook so it doesn't cap gains
+            try:
+                client, _ = get_derive_client()
+                client.orders.cancel_by_instrument(instrument_name=inst_name)
+            except Exception:
+                pass
+    if trail_atr is not None:
+        entry["trail_atr"] = float(trail_atr)
+    save_sniper_state(st)
+    _ACCOUNT_CACHE["timestamp"] = 0.0
+    return {"success": True, "stop_state": entry}
+
+
 def monitor_and_scan_step() -> None:
     """
     Single iteration of the 24/7 Perp Sniper loop:

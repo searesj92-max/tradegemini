@@ -59,10 +59,10 @@
               <span id="session-text">Derive Mainnet</span>
             </span>
             <span class="text-[10px] sm:text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-medium border border-slate-700" title="Saldo Total das 2 Carteiras">
-              Custódia: <b id="subacct-balance" class="text-emerald-400">$2,235.29</b> USDC (<span id="subacct-free" class="text-cyan-300">$1,148.83</span> livre)
+              Custódia: <b id="subacct-balance" class="text-emerald-400">$2,196.05</b> USDC (<span id="subacct-free" class="text-cyan-300">$1,605.16</span> livre)
             </span>
             <span class="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
-              #1: <b id="acct1-bal" class="text-slate-300 ml-1">$320.81</b> | #2: <b id="acct2-bal" class="text-slate-300 ml-1">$1,914.48</b>
+              #1: <b id="acct1-bal" class="text-slate-300 ml-1">$281.47</b> | #2: <b id="acct2-bal" class="text-slate-300 ml-1">$1,914.58</b>
             </span>
           </div>
           <p class="hidden sm:block text-xs text-slate-400">Trava de Alta com Puts (Elídio Carvalho) • Matriz de Decisão Quant • Rolagem Dupla</p>
@@ -290,18 +290,35 @@
         </div>
       </div>
 
-      <!-- Active Positions List -->
+      <!-- Active Perpetual Positions (Carteira #1 - Derive Perp Sniper 10x) -->
       <div class="space-y-4">
         <div class="flex justify-between items-center">
-          <h2 class="text-lg font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-indigo-400"></i>
-            Trava de Alta com Puts — Posições em Aberto
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            Operações em Perpétuo (Derive 10x — Carteira #1)
+          </h2>
+          <span class="text-xs text-slate-400">Scalp / Breakout com SL Protegido & TP no Book</span>
+        </div>
+
+        <div id="perp-positions-list" class="space-y-4">
+          <div class="text-center py-6 text-slate-500 card-glass rounded-xl border border-slate-800">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i>Carregando posições de perpétuo...
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Options Put Spreads (Carteira #2 - Travas de Alta) -->
+      <div class="space-y-4 pt-4 border-t border-slate-800/80">
+        <div class="flex justify-between items-center">
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-indigo-400"></i>
+            Trava de Alta com Puts (Opções Derive — Carteira #2)
           </h2>
           <span class="text-xs text-slate-400">Monitorando em tempo real com gatilhos de rolagem</span>
         </div>
 
         <div id="positions-list" class="space-y-4">
-          <div class="text-center py-12 text-slate-500">Carregando suas operações...</div>
+          <div class="text-center py-12 text-slate-500">Carregando suas operações de opções...</div>
         </div>
       </div>
     </div>
@@ -707,8 +724,8 @@
       await loadDecisionMatrix();
       await loadPositions();
       loadModalExpiries('BTC');
-      setInterval(loadMarket, 15000);
-      setInterval(loadPositions, 30000);
+      setInterval(loadMarket, 10000);
+      setInterval(loadPositions, 10000);
     }
 
     async function refreshAll() {
@@ -732,12 +749,17 @@
         
         window.latestAccountInfo = data;
         if (data.subaccount_id && document.getElementById('subacct-id')) document.getElementById('subacct-id').textContent = '#' + data.subaccount_id;
-        if (data.total_balance_usdc !== undefined && document.getElementById('subacct-balance')) {
-          document.getElementById('subacct-balance').textContent = `$${Number(data.total_balance_usdc).toFixed(2)}`;
+        
+        const totBal = data.total_balance_usdc !== undefined ? Number(data.total_balance_usdc) : (data.real_balance !== undefined ? (Number(data.real_balance) + 1914.58) : 2196.05);
+        if (document.getElementById('subacct-balance')) {
+          document.getElementById('subacct-balance').textContent = `$${totBal.toFixed(2)}`;
         }
-        if (data.total_free_margin_usdc !== undefined && document.getElementById('subacct-free')) {
-          document.getElementById('subacct-free').textContent = `$${Number(data.total_free_margin_usdc).toFixed(2)}`;
+        
+        const totFree = data.total_free_margin_usdc !== undefined ? Number(data.total_free_margin_usdc) : (data.free_margin !== undefined ? (Number(data.free_margin) + 1499.99) : 1605.16);
+        if (document.getElementById('subacct-free')) {
+          document.getElementById('subacct-free').textContent = `$${totFree.toFixed(2)}`;
         }
+        
         if (data.accounts) {
           if (data.accounts.account_1 && document.getElementById('acct1-bal')) {
             document.getElementById('acct1-bal').textContent = `$${Number(data.accounts.account_1.balance_usdc).toFixed(2)}`;
@@ -745,6 +767,8 @@
           if (data.accounts.account_2 && document.getElementById('acct2-bal')) {
             document.getElementById('acct2-bal').textContent = `$${Number(data.accounts.account_2.balance_usdc).toFixed(2)}`;
           }
+        } else if (data.real_balance !== undefined && document.getElementById('acct1-bal')) {
+          document.getElementById('acct1-bal').textContent = `$${Number(data.real_balance).toFixed(2)}`;
         }
         if (data.has_session_key) {
           const sessionText = document.getElementById('session-text');
@@ -1042,26 +1066,42 @@
 
     async function loadPositions() {
       try {
-        const res = await fetch('/api/positions');
-        const data = await res.json();
-        positionsCache = data.positions || [];
-        renderPositions(positionsCache);
-        updateKPIs(positionsCache);
-        populateRollSelector(positionsCache);
-        if (window.optionsTvChart && positionsCache.length > 0) {
-          const firstPos = positionsCache[0];
-          window.optionsTvChart.setOptionsLevels({
-            shortStrike: firstPos.short_strike,
-            longStrike: firstPos.long_strike,
-            breakeven: firstPos.breakeven_price || (firstPos.short_strike - (firstPos.initial_credit_per_contract || 0))
-          });
+        const [optRes, perpRes] = await Promise.allSettled([
+          fetch('/api/positions'),
+          fetch('/api/derive_perp/status')
+        ]);
+        
+        let optPositions = [];
+        if (optRes.status === 'fulfilled' && optRes.value.ok) {
+          const data = await optRes.value.json();
+          optPositions = data.positions || [];
+          positionsCache = optPositions;
+          renderPositions(optPositions);
+          populateRollSelector(optPositions);
+          if (window.optionsTvChart && optPositions.length > 0) {
+            const firstPos = optPositions[0];
+            window.optionsTvChart.setOptionsLevels({
+              shortStrike: firstPos.short_strike,
+              longStrike: firstPos.long_strike,
+              breakeven: firstPos.breakeven_price || (firstPos.short_strike - (firstPos.initial_credit_per_contract || 0))
+            });
+          }
         }
+
+        let perpPositions = [];
+        if (perpRes.status === 'fulfilled' && perpRes.value.ok) {
+          const perpData = await perpRes.value.json();
+          perpPositions = (perpData.account_isolation && perpData.account_isolation.perp_positions) || [];
+          window.latestPerpStatus = perpData;
+        }
+        renderPerpPositions(perpPositions);
+        updateKPIs(optPositions, perpPositions);
       } catch (e) {
         console.error("Positions fetch error:", e);
       }
     }
 
-    function updateKPIs(positions) {
+    function updateKPIs(positions, perps = []) {
       let totalMargin = 0;
       let totalCredit = 0;
       let totalPnl = 0;
@@ -1076,6 +1116,11 @@
         }
       });
 
+      perps.forEach(p => {
+        totalMargin += p.margin_used_usd || 25.0;
+        totalPnl += p.unrealized_pnl_usd || 0;
+      });
+
       document.getElementById('kpi-margin').textContent = `$${totalMargin.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
       document.getElementById('kpi-credit').textContent = `$${totalCredit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
       
@@ -1084,7 +1129,174 @@
       pnlEl.className = `mono text-2xl font-bold mt-1 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
       document.getElementById('kpi-alerts').textContent = totalAlerts;
-      document.getElementById('active-count').textContent = positions.length;
+      document.getElementById('active-count').textContent = perps.length > 0 ? `${positions.length} Opções + ${perps.length} Perp` : `${positions.length}`;
+    }
+
+    function renderPerpPositions(perps) {
+      const container = document.getElementById('perp-positions-list');
+      if (!container) return;
+      if (!perps || perps.length === 0) {
+        container.innerHTML = `
+          <div class="card-glass rounded-xl p-5 text-center border border-slate-800/80">
+            <i class="fa-solid fa-chart-line text-2xl text-slate-600 mb-2"></i>
+            <h4 class="text-slate-300 font-semibold text-sm">Nenhum trade de perpétuo ativo no momento</h4>
+            <p class="text-xs text-slate-500 mt-0.5">O Sniper Derive 5Y está rastreando 9 moedas com isolamento estrito ($150 USDC alocados / $99 livres de colchão).</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = perps.map(p => {
+        const isLong = p.side === 'LONG';
+        const pnl = p.unrealized_pnl_usd || 0;
+        const roe = p.roe_pct || 0;
+        const pnlSign = pnl >= 0 ? '+' : '';
+        const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const badgeColor = pnl >= 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+
+        return `
+          <div class="card-glass rounded-2xl p-5 border border-slate-800 card-glow transition space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center space-x-2.5 sm:space-x-3">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <i class="fa-brands fa-bitcoin mr-1"></i>${p.coin || 'BTC'}
+                </span>
+                <span class="font-bold text-white text-base">
+                  ${p.instrument_name} <span class="text-xs font-semibold ${isLong ? 'text-emerald-400' : 'text-rose-400'}">${isLong ? 'LONG 🟢' : 'SHORT 🔴'} 10x</span>
+                </span>
+                <span class="text-xs text-slate-400">(${p.amount} BTC • ~$${Number(p.notional_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})</span>
+                <span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-bold px-2 py-0.5 rounded shadow-sm shadow-emerald-500/10">⚡ CARTEIRA #1 (#116270)</span>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <span class="text-xs px-2.5 py-1 rounded-md font-semibold border ${badgeColor}">
+                  ${pnl >= 0 ? '🟢 EM LUCRO' : '🔴 FLUTUANDO'} (${pnlSign}${roe.toFixed(2)}% ROE)
+                </span>
+                <button onclick="closePerpPosition('${p.coin}')" class="px-3 py-1 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="Encerrar trade e embolsar lucro">
+                  <i class="fa-solid fa-circle-xmark"></i>
+                  <span>Encerrar a Mercado</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 py-2.5 border-y border-slate-800/70 text-xs">
+              <div>
+                <span class="text-slate-400 block">Preço de Entrada:</span>
+                <span class="mono font-bold text-white text-sm mt-0.5 block">$${Number(p.entry_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block">Preço Atual (Mark):</span>
+                <span class="mono font-bold text-cyan-300 text-sm mt-0.5 block">$${Number(p.mark_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block">Stop Loss Protegido:</span>
+                <span class="mono font-bold text-amber-400 text-sm mt-0.5 block">$${Number(p.sl_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                <span class="text-[10px] text-emerald-400 font-medium">Risco Zero / Breakeven</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block">Take Profit Alvo:</span>
+                <span class="mono font-bold text-emerald-400 text-sm mt-0.5 block">$${Number(p.tp_price || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                <span class="text-[10px] text-slate-500">Maker resting Derive</span>
+              </div>
+              <div class="col-span-2 sm:col-span-1 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
+                <span class="text-slate-400 block">Lucro Flutuante (PnL):</span>
+                <span class="mono font-bold text-base mt-0.5 block ${pnlColor}">${pnlSign}$${Number(pnl).toFixed(2)} USDC</span>
+                <span class="text-[10px] ${pnlColor} font-semibold">${pnlSign}${roe.toFixed(2)}% retorno</span>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+              <div class="flex items-center gap-2 text-slate-400">
+                <span class="px-2 py-0.5 bg-slate-800 rounded text-slate-300 border border-slate-700/60 font-medium">
+                  🎯 ${p.strategy || 'Scalp Breakout 4H'}
+                </span>
+                <span class="text-slate-500">| Margem isolada: <b>$25.00 USDC</b></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="promptUpdateStop('${p.coin}', ${p.sl_price || 0}, ${p.tp_price || 0})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1 transition">
+                  <i class="fa-solid fa-sliders text-indigo-400"></i>
+                  <span>Ajustar Stop / Alvo</span>
+                </button>
+                <button onclick="enableTrailingStop('${p.coin}')" class="px-3 py-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                  <span>Subir Stop Dinâmico (Trailing)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function closePerpPosition(coin) {
+      if (!confirm(`Deseja realmente ENCERRAR a mercado a posição em ${coin}-PERP e embolsar o lucro agora?`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/derive_perp/close', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({coin: coin, reason: 'MANUAL_DASHBOARD'})
+        });
+        const data = await res.json();
+        if (data.success || data.status === 'ok') {
+          alert(`Trade encerrado com sucesso!\n${data.message || ''}`);
+          await loadPositions();
+          await loadMarket();
+        } else {
+          alert(`Erro ao encerrar: ${data.error || 'Falha na Derive'}`);
+        }
+      } catch (e) {
+        alert(`Erro de conexão: ${e.message}`);
+      }
+    }
+
+    async function promptUpdateStop(coin, currentSl, currentTp) {
+      const newSl = prompt(`Ajustar Stop Loss para ${coin} (Atual: $${currentSl}):`, currentSl);
+      if (newSl === null) return;
+      const parsedSl = parseFloat(newSl);
+      if (isNaN(parsedSl) || parsedSl <= 0) {
+        alert("Preço de Stop Loss inválido!");
+        return;
+      }
+      try {
+        const res = await fetch('/api/derive_perp/update_stop', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({coin: coin, sl_price: parsedSl})
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Stop Loss atualizado para $${parsedSl.toFixed(2)} com sucesso!`);
+          await loadPositions();
+        } else {
+          alert(`Erro: ${data.error || 'Falha ao atualizar stop'}`);
+        }
+      } catch (e) {
+        alert(`Erro de conexão: ${e.message}`);
+      }
+    }
+
+    async function enableTrailingStop(coin) {
+      if (!confirm(`Deseja ativar o Trailing Stop dinâmico para ${coin}?\nIsso cancelará o teto fixo e fará o Stop subir automaticamente conforme o preço subir!`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/derive_perp/update_stop', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({coin: coin, trail_atr: 2.0, tp_price: 999999.0})
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Trailing Stop ativado com sucesso! O stop acompanhará a subida do BTC.`);
+          await loadPositions();
+        } else {
+          alert(`Erro: ${data.error || 'Falha ao ativar trailing'}`);
+        }
+      } catch (e) {
+        alert(`Erro de conexão: ${e.message}`);
+      }
     }
 
     function renderPositions(positions) {

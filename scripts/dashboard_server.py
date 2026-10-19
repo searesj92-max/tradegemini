@@ -27,6 +27,7 @@ from derive_perp_sniper import (
     update_perp_sniper_config,
     execute_derive_perp_entry,
     close_derive_perp_position,
+    update_perp_tracked_stop,
     start_perp_sniper_daemon,
 )
 
@@ -398,6 +399,27 @@ class BotradeDashboardHandler(SimpleHTTPRequestHandler):
                 coin = str(data.get("coin", query.get("coin", ["SOL"])[0])).upper()
                 reason = str(data.get("reason", "MANUAL_CLOSE"))
                 res = close_derive_perp_position(coin, reason=reason)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(res, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}, ensure_ascii=False).encode("utf-8"))
+            return
+
+        if path == "/api/derive_perp/update_stop":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len).decode("utf-8") if content_len > 0 else "{}"
+                data = json.loads(body)
+                coin = str(data.get("coin", "BTC")).upper()
+                sl_px = data.get("sl_price")
+                tp_px = data.get("tp_price")
+                trail_atr = data.get("trail_atr")
+                res = update_perp_tracked_stop(coin, sl_price=sl_px, tp_price=tp_px, trail_atr=trail_atr)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.end_headers()

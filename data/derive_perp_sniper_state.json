@@ -15,17 +15,17 @@
     "BTC-PERP": {
       "coin": "BTC",
       "side": "LONG",
-      "amount": 0.01,
-      "entry_px": 81972.6,
-      "sl_px": 81650.0,
-      "tp_px": 82672.6,
+      "amount": 0.02,
+      "entry_px": 82084.65,
+      "sl_px": 81973.0,
+      "tp_px": 83200.0,
       "trail_atr": 0.0,
       "atr": 450.0,
-      "opened_at": 1792369280,
-      "strategy": "Sunday Close Breakout Scalp (10x)"
+      "opened_at": 1792371540,
+      "strategy": "Sunday Close Breakout Scalp (0.02 BTC / ~$25 isolada)"
     }
   },
   "trade_history": [],
-  "last_scan_ts": 1792369336,
-  "last_scan_str": "00:22:25 UTC"
+  "last_scan_ts": 1792371540,
+  "last_scan_str": "21:59:00 BRT"
 }

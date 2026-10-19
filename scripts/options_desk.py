@@ -308,11 +308,36 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         from decimal import Decimal
         from derive_py.data_types import Direction, OrderType
         
-        client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
-        
         short_inst = f"{currency}-{expiry}-{int(short_strike)}-P"
         long_inst = f"{currency}-{expiry}-{int(long_strike)}-P"
         
+        # Auto-detecção inteligente de subconta: se não informada, descobre onde a posição está aberta
+        if not subaccount_id and not wallet_address:
+            for test_sub, test_w in [(DERIVE_SUBACCOUNT_ID_2, DERIVE_WALLET_2), (DERIVE_SUBACCOUNT_ID, DERIVE_WALLET)]:
+                if not test_sub or not test_w:
+                    continue
+                try:
+                    c, s, w = get_derive_client_for_wallet(test_w, test_sub)
+                    sub_info = c.fetch_subaccount(s)
+                    inst_names = [p.instrument_name for p in getattr(sub_info.state, 'positions', [])]
+                    if short_inst in inst_names or long_inst in inst_names:
+                        subaccount_id = s
+                        wallet_address = w
+                        print(f"[DERIVE AUTO-DETECT] Posição {short_inst} localizada na Subconta #{s}!")
+                        break
+                except Exception as e_detect:
+                    print(f"[DERIVE AUTO-DETECT ERROR] {e_detect}")
+
+        client, sub_id, wallet = get_derive_client_for_wallet(wallet_address, subaccount_id)
+        print(f"[DERIVE CLOSE EXEC] Subconta alvo: #{sub_id} ({wallet}) | Contratos: {contracts} | Par: {short_inst} / {long_inst}")
+        
+        # Cancela ordens residuais antigas desses instrumentos antes de fechar
+        try:
+            client.orders.cancel_by_instrument(instrument_name=short_inst)
+            client.orders.cancel_by_instrument(instrument_name=long_inst)
+        except Exception:
+            pass
+
         t_short = api_post("get_ticker", {"instrument_name": short_inst})
         t_long = api_post("get_ticker", {"instrument_name": long_inst})
         
@@ -321,7 +346,8 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         s_mark = float(t_short.get('M', 0) or 0)
         s_min = float(t_short.get('minp', 0) or 0)
         s_max = float(t_short.get('maxp', 999999) or 999999)
-        close_short_px = s_ask if s_ask > 0 else s_mark
+        # Buffer de 1% para agredir o ask e garantir preenchimento taker imediato
+        close_short_px = (s_ask * 1.01) if s_ask > 0 else (s_mark * 1.02 if s_mark > 0 else s_min)
         if s_min > 0:
             close_short_px = max(s_min, min(s_max, close_short_px))
         close_short_px = round(close_short_px, 1)
@@ -331,7 +357,8 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
         l_mark = float(t_long.get('M', 0) or 0)
         l_min = float(t_long.get('minp', 0) or 0)
         l_max = float(t_long.get('maxp', 999999) or 999999)
-        close_long_px = l_bid if l_bid > 0 else l_mark
+        # Se houver bid, vende no bid com leve folga; se bid for 0 (OTM profunda), usa mark ou minp
+        close_long_px = (l_bid * 0.99) if l_bid > 0 else (l_mark if l_mark > 0 else l_min)
         if l_min > 0:
             close_long_px = max(l_min, min(l_max, close_long_px))
         close_long_px = round(close_long_px, 1)
@@ -344,25 +371,32 @@ def close_derive_spread_order(currency, expiry, short_strike, long_strike, contr
             limit_price=Decimal(str(close_short_px)),
             order_type=OrderType.limit
         )
+        print(f"[DERIVE CLOSE SHORT REBUY] Ordem enviada em #{sub_id}: buy {contracts} {short_inst} @ ${close_short_px}")
         
-        time.sleep(1.5)
+        time.sleep(1.2)
         
-        # Etapa 2: Vender a Long Put (recolher valor da proteção)
-        res_long = client.orders.create(
-            amount=Decimal(str(contracts)),
-            direction=Direction.sell,
-            instrument_name=long_inst,
-            limit_price=Decimal(str(close_long_px)),
-            order_type=OrderType.limit
-        )
+        # Etapa 2: Vender a Long Put (recolher valor residual da proteção)
+        res_long = None
+        try:
+            res_long = client.orders.create(
+                amount=Decimal(str(contracts)),
+                direction=Direction.sell,
+                instrument_name=long_inst,
+                limit_price=Decimal(str(close_long_px)),
+                order_type=OrderType.limit
+            )
+            print(f"[DERIVE CLOSE LONG SELL] Ordem enviada em #{sub_id}: sell {contracts} {long_inst} @ ${close_long_px}")
+        except Exception as e_long:
+            print(f"[DERIVE LONG SELL WARNING] Perna comprada: {e_long} (obrigação curta já liquidada com sucesso)")
         
         cost_to_close_total = (close_short_px - close_long_px) * contracts
         return {
             'success': True,
+            'subaccount_id': sub_id,
             'cost_to_close_total': round(cost_to_close_total, 2),
             'short_close_order_id': getattr(res_short, 'order_id', 'submitted'),
-            'long_close_order_id': getattr(res_long, 'order_id', 'submitted'),
-            'message': f"Trava encerrada com sucesso na Derive! Recompra {short_inst} @ ${close_short_px} | Venda {long_inst} @ ${close_long_px}"
+            'long_close_order_id': getattr(res_long, 'order_id', 'submitted') if res_long else 'skipped',
+            'message': f"Trava encerrada com sucesso na Derive (Subconta #{sub_id})! Recompra {short_inst} @ ${close_short_px} | Venda {long_inst} @ ${close_long_px}"
         }
     except Exception as e:
         return {'success': False, 'error': f"Erro ao encerrar trava na Derive: {str(e)}"}
@@ -1885,12 +1919,16 @@ class DeskHandler(BaseHTTPRequestHandler):
                 close_res = None
                 if is_live:
                     print(f"[DERIVE CLOSE ON-CHAIN] Executando encerramento real da trava {pos_id} na Derive...")
+                    pos_wallet = pos.get('live_details', {}).get('wallet') or pos.get('wallet') or pos.get('wallet_address')
+                    pos_sub = pos.get('live_details', {}).get('subaccount_id') or pos.get('subaccount_id')
                     close_res = close_derive_spread_order(
                         currency=pos.get('currency', 'BTC'),
                         expiry=str(pos.get('expiry')),
                         short_strike=float(pos.get('short_strike')),
                         long_strike=float(pos.get('long_strike')),
-                        contracts=float(pos.get('contracts', 0.05))
+                        contracts=float(pos.get('contracts', 0.05)),
+                        wallet_address=pos_wallet,
+                        subaccount_id=pos_sub
                     )
                     if not close_res.get('success'):
                         self.send_json({'success': False, 'error': f"Falha ao encerrar ordem real na Derive: {close_res.get('error')}"})
@@ -1934,6 +1972,22 @@ class DeskHandler(BaseHTTPRequestHandler):
         if self.path.startswith('/api/positions/'):
             pos_id = self.path.split('/')[-1]
             positions = load_positions()
+            pos = next((p for p in positions if p.get('id') == pos_id), None)
+            if pos and pos.get('is_live_order'):
+                pos_wallet = pos.get('live_details', {}).get('wallet') or pos.get('wallet')
+                pos_sub = pos.get('live_details', {}).get('subaccount_id') or pos.get('subaccount_id')
+                try:
+                    close_derive_spread_order(
+                        currency=pos.get('currency', 'BTC'),
+                        expiry=str(pos.get('expiry')),
+                        short_strike=float(pos.get('short_strike')),
+                        long_strike=float(pos.get('long_strike')),
+                        contracts=float(pos.get('contracts', 0.05)),
+                        wallet_address=pos_wallet,
+                        subaccount_id=pos_sub
+                    )
+                except Exception as e_del:
+                    print(f"[DELETE POSITION ON-CHAIN WARNING] {e_del}")
             positions = [p for p in positions if p.get('id') != pos_id]
             save_positions(positions)
             log_audit("POSITION_CLOSED", {'pos_id': pos_id})

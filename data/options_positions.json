@@ -41,7 +41,7 @@
     "initial_credit_total": 32.25,
     "initial_margin_total": 217.75,
     "opened_at": "2026-10-09",
-    "status": "active",
+    "status": "closed",
     "target_take_profit_pct": 80.0,
     "auto_take_profit_enabled": true,
     "auto_close_on_tp": true,
@@ -58,7 +58,17 @@
       "short_price": 1406.0,
       "long_price": 761.0
     },
-    "roll_count": 0
+    "roll_count": 0,
+    "tp_closed": true,
+    "closed_at": "2026-10-18 21:44:20",
+    "close_details": {
+      "success": true,
+      "cost_to_close_total": 38.1,
+      "short_close_order_id": "submitted",
+      "long_close_order_id": "submitted",
+      "message": "Trava encerrada com sucesso na Derive! Recompra BTC-20261127-75000-P @ $1383.0 | Venda BTC-20261127-70000-P @ $621.0"
+    },
+    "realized_pnl_usd": -5.85
   },
   {
     "id": "pos-btc-68000-62000-20261030-1792369080",

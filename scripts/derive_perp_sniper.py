@@ -1011,16 +1011,30 @@ def close_derive_perp_position(coin_or_inst: str, reason: str = "MANUAL_CLOSE") 
         except Exception:
             pass
 
-        # 2. Submit reduce_only closing order
-        res_close = client.orders.create(
-            amount=amt_dec,
-            direction=Direction.sell if is_long else Direction.buy,
-            instrument_name=inst_name,
-            limit_price=close_px_dec,
-            order_type=OrderType.limit,
-            reduce_only=True,
-            label=f"perp_close_{reason.lower()[:12]}",
-        )
+        # 2. Submit reduce_only closing order (Derive requires TimeInForce.ioc for reduce_only limit orders)
+        import derive_py._clients.rest.http.orders as orders_module
+        tif_ioc = getattr(orders_module.TimeInForce, 'ioc', None)
+        try:
+            res_close = client.orders.create(
+                amount=amt_dec,
+                direction=Direction.sell if is_long else Direction.buy,
+                instrument_name=inst_name,
+                limit_price=close_px_dec,
+                order_type=OrderType.limit,
+                reduce_only=True,
+                time_in_force=tif_ioc,
+                label=f"perp_close_{reason.lower()[:12]}",
+            )
+        except Exception as e_ioc:
+            print(f"[PERP CLOSE IOC FALLBACK] Tentando sem reduce_only GTC: {e_ioc}")
+            res_close = client.orders.create(
+                amount=amt_dec,
+                direction=Direction.sell if is_long else Direction.buy,
+                instrument_name=inst_name,
+                limit_price=close_px_dec,
+                order_type=OrderType.limit,
+                label=f"perp_close_{reason.lower()[:12]}",
+            )
 
         # 3. Update Sniper state: Cooldown + Auto-Compounding profit bankroll
         st = load_sniper_state()

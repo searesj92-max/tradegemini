@@ -59,5 +59,38 @@
       "long_price": 761.0
     },
     "roll_count": 0
+  },
+  {
+    "id": "pos-btc-68000-62000-20261030-1792369080",
+    "currency": "BTC",
+    "expiry": "20261030",
+    "short_strike": 68000.0,
+    "long_strike": 62000.0,
+    "contracts": 0.1,
+    "initial_credit_per_contract": 28.0,
+    "initial_credit_total": 2.8,
+    "initial_margin_total": 600.0,
+    "opened_at": "2026-10-18 21:18:00",
+    "status": "active",
+    "target_take_profit_pct": 80.0,
+    "auto_take_profit_enabled": true,
+    "auto_close_on_tp": true,
+    "auto_roll_enabled": true,
+    "auto_roll_autonomous": true,
+    "auto_roll_trigger_dte": 3,
+    "auto_roll_max_cost_pct": 35.0,
+    "is_live_order": true,
+    "live_details": {
+      "wallet": "0xcAF703008810dCDc7F97d84b5CCCb0F5B99D59bD",
+      "subaccount_id": 116804,
+      "short_order_id": "submitted",
+      "long_order_id": "submitted",
+      "instrument": "BTC $68,000/$62,000 Put Spread Oct 30",
+      "total_received": 2.8,
+      "breakeven": 67972.0,
+      "max_profit": 2.8,
+      "max_loss": 597.2
+    },
+    "roll_count": 0
   }
 ]

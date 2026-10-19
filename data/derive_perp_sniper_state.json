@@ -1,0 +1,31 @@
+{
+  "enabled": true,
+  "allocated_capital_usdc": 150.0,
+  "min_free_margin_floor_usdc": 99.0,
+  "max_concurrent_positions": 2,
+  "leverage": 10.0,
+  "auto_compounding": true,
+  "realized_perp_pnl_usdc": 0.0,
+  "total_perp_trades": 0,
+  "win_perp_trades": 0,
+  "cooldown_hours": 4.0,
+  "coin_cooldowns": {},
+  "last_signal_bar_ts": {},
+  "tracked_stops": {
+    "BTC-PERP": {
+      "coin": "BTC",
+      "side": "LONG",
+      "amount": 0.01,
+      "entry_px": 81972.6,
+      "sl_px": 81650.0,
+      "tp_px": 82672.6,
+      "trail_atr": 0.0,
+      "atr": 450.0,
+      "opened_at": 1792369280,
+      "strategy": "Sunday Close Breakout Scalp (10x)"
+    }
+  },
+  "trade_history": [],
+  "last_scan_ts": 1792369336,
+  "last_scan_str": "00:22:25 UTC"
+}

@@ -37,9 +37,15 @@ import time
 import urllib.request
 from decimal import Decimal
 from datetime import datetime, timezone
+import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR / "scripts"))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 STATE_FILE = ROOT_DIR / "data" / "derive_perp_sniper_state.json"
 STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
 ENV_FILE = ROOT_DIR / ".env"
@@ -308,10 +314,12 @@ def fetch_isolated_account_snapshot(force: bool = False) -> dict:
         sub = client.fetch_subaccount(sub_id)
         collaterals = getattr(sub.state, "collaterals", [])
         usdc = next((c for c in collaterals if c.asset_name == "USDC"), None)
-        balance_usdc = float(usdc.amount) if usdc else 320.81
-        initial_margin = float(getattr(sub.state, "initial_margin", 0.0))
+        balance_usdc = float(usdc.amount) if usdc else 265.18
+        pos_init_m = float(getattr(sub.state, "positions_initial_margin", 0.0) or 0.0)
+        oo_margin = float(getattr(sub.state, "open_orders_margin", 0.0) or 0.0)
+        used_margin = pos_init_m + oo_margin
         subaccount_value = float(getattr(sub.state, "subaccount_value", balance_usdc))
-        free_margin = max(0.0, balance_usdc - initial_margin)
+        free_margin = max(0.0, balance_usdc - used_margin)
 
         raw_positions = getattr(sub.state, "positions", [])
         perp_positions = []
@@ -370,7 +378,7 @@ def fetch_isolated_account_snapshot(force: bool = False) -> dict:
         effective_perp_bankroll = max(50.0, round(base_alloc + comp_bonus, 2))
         floor_usdc = float(st.get("min_free_margin_floor_usdc", 99.0))
         available_for_new_perp = max(0.0, min(effective_perp_bankroll - perp_margin_used_est, free_margin - floor_usdc))
-        options_margin_locked = max(0.0, round(initial_margin - perp_margin_used_est, 2))
+        options_margin_locked = max(0.0, round(used_margin - perp_margin_used_est, 2))
 
         snap = {
             "connected": True,
@@ -379,7 +387,7 @@ def fetch_isolated_account_snapshot(force: bool = False) -> dict:
             "total_cash_usdc": round(balance_usdc, 2),
             "total_equity_usdc": round(subaccount_value, 2),
             "subaccount_value_usdc": round(subaccount_value, 2),
-            "total_initial_margin_usdc": round(initial_margin, 2),
+            "total_initial_margin_usdc": round(used_margin, 2),
             "options_margin_locked_usdc": options_margin_locked,
             "options_Reserved_floor_usdc": round(floor_usdc, 2),
             "protected_floor_usdc": round(floor_usdc, 2),
@@ -1293,4 +1301,13 @@ def start_perp_sniper_daemon() -> None:
 
 
 if __name__ == "__main__":
-    print(json.dumps(get_full_perp_sniper_status(force_scan=True), indent=2, ensure_ascii=False))
+    if len(sys.argv) > 1 and sys.argv[1] == "--daemon":
+        print("[*] Derive Perp Sniper V5 rodando em modo Daemon 24/7 (Loop de 15s)...")
+        while True:
+            try:
+                monitor_and_scan_step()
+            except Exception as e:
+                print(f"[DERIVE PERP SNIPER LOOP ERROR] {e}")
+            time.sleep(15.0)
+    else:
+        print(json.dumps(get_full_perp_sniper_status(force_scan=True), indent=2, ensure_ascii=False))

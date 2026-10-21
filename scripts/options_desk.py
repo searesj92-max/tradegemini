@@ -140,15 +140,17 @@ def get_derive_account_info(subaccount_id=None, wallet_address=None):
         collaterals = getattr(sub.state, 'collaterals', [])
         usdc = next((c for c in collaterals if c.asset_name == 'USDC'), None)
         balance = float(usdc.amount) if usdc else 0.0
-        init_m = float(getattr(sub.state, 'initial_margin', 0.0))
+        pos_init_m = float(getattr(sub.state, 'positions_initial_margin', 0.0) or 0.0)
+        open_orders_m = float(getattr(sub.state, 'open_orders_margin', 0.0) or 0.0)
+        used_m = pos_init_m + open_orders_m
         sub_val = float(getattr(sub.state, 'subaccount_value', balance))
-        free_m = max(0.0, balance - init_m)
+        free_m = max(0.0, balance - used_m)
         return {
             'connected': True,
             'subaccount_id': sub_id,
             'wallet': wallet,
             'balance_usdc': round(balance, 2),
-            'initial_margin': round(init_m, 2),
+            'initial_margin': round(used_m, 2),
             'subaccount_value': round(sub_val, 2),
             'free_margin': round(free_m, 2),
             'margin_type': getattr(sub.state, 'margin_type', 'SM'),

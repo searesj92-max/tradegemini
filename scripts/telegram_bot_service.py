@@ -463,6 +463,8 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             "🎯 *OPTIONS DESK — BOTRADE BOT (PUT SPREADS)*\n\n"
             "Monitoramento 24/7 e Controle Total das suas operações com opções Put Spreads na Derive (Carteira Tangem):\n\n"
             "• `/travas` ou `/posicoes` - 💼 Relatório detalhado das suas travas ativas e PnL\n"
+            "• `/perps` ou `/radar` - ⚡ *RADAR PERPÉTUOS DERIVE* (ADA, SOL, LINK, DOGE... Alavancado 10x)\n"
+            "• `/entrar_perp <moeda>` - 🚀 Executar trade alavancado com Stop Loss e Take Profit automáticos\n"
             "• `/fechar` - 🛑 *ENCERRAMENTO DE EMERGÊNCIA* (Recompra e liquida trava na Derive imediatamente)\n"
             "• `/rolar` - 🔄 *ROLAGEM DE DEFESA* (Rola trava para próximo vencimento se mercado cair)\n"
             "• `/relatorio` ou `/status` - 📊 Resumo executivo de margem, crédito e distâncias\n"
@@ -473,10 +475,10 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
         )
         markup = {
             "inline_keyboard": [
-                [{"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}, {"text": "🛑 Fechar Trava", "callback_data": "menu_close"}],
-                [{"text": "🎯 Radar Derive (/opcoes)", "callback_data": "options_radar"}, {"text": "🔄 Rolar Trava", "callback_data": "menu_roll"}],
+                [{"text": "⚡ Radar Perpétuos (/perps)", "callback_data": "refresh_perps"}, {"text": "💼 Minhas Travas (/travas)", "callback_data": "options_positions"}],
+                [{"text": "🎯 Radar Opções (/opcoes)", "callback_data": "options_radar"}, {"text": "🔄 Rolar Trava", "callback_data": "menu_roll"}],
                 [{"text": "📊 Relatório Geral", "callback_data": "daily_report"}, {"text": "🌡️ Termômetro IV", "callback_data": "options_iv"}],
-                [{"text": "🌐 Abrir App da Derive", "url": "https://app.derive.xyz"}]
+                [{"text": "🛑 Fechar Trava", "callback_data": "menu_close"}, {"text": "🌐 Abrir Derive", "url": "https://app.derive.xyz"}]
             ]
         }
         send_message(chat_id, msg, markup)
@@ -742,6 +744,83 @@ def handle_command(chat_id: int | str, text: str, message_id: int = None):
             send_message(chat_id, "\n".join(lines), markup)
         except Exception as e:
             send_message(chat_id, f"❌ *Erro ao consultar IV:* {e}")
+        return
+
+    # 11.2 RADAR DE PERPÉTUOS DERIVE (SNIPER 5Y SPECIALIST — SUB #116270)
+    if cmd in ("/perps", "/perp", "/sniper", "/radar", "perps", "perp", "sniper", "radar"):
+        try:
+            import derive_perp_sniper
+            status = derive_perp_sniper.get_full_perp_sniper_status(force_scan=True)
+            acct = status.get("account_isolation", {})
+            radar = status.get("radar", [])
+            cash = acct.get("total_cash_usdc", 265.18)
+            free = acct.get("free_margin_total_usdc", 265.18)
+            open_perps = acct.get("perp_positions", [])
+
+            lines = [
+                "⚡ *DERIVE PERP SNIPER — RADAR AO VIVO (SUB #116270)*",
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                f"• *Saldo na Subconta:* `${cash:,.2f} USDC` (Margem Livre: `${free:,.2f}`)",
+                f"• *Alavancagem Padrão:* `10x Isolada` (Stop Loss Dinâmico ATR)",
+                f"• *Slots em Uso:* `{len(open_perps)}/2` posições ativas\n"
+            ]
+
+            if open_perps:
+                lines.append("*POSIÇÕES ATIVAS SENDO ACOMPANHADAS:*")
+                for p in open_perps:
+                    pnl_sign = "+" if p.get("unrealized_pnl_usd", 0) >= 0 else ""
+                    lines.append(
+                        f"• *{p['instrument_name']} ({p['side']})* | Entrada: `${p['entry_price']}`\n"
+                        f"  PnL Atual: `{pnl_sign}${p.get('unrealized_pnl_usd', 0):.2f}` (`{p.get('roe_pct', 0):+.1f}% ROE`)\n"
+                        f"  🛑 SL: `${p.get('sl_price', '—')}` | 🎯 TP: `${p.get('tp_price', '—')}`"
+                    )
+                lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+            lines.append("*RADAR DE ATIVOS DERIVE (PRONTIDÃO PARA ENTRAR):*")
+            kb = []
+            for r in radar[:6]:
+                score = r.get("readiness_score", 0)
+                coin = r.get("coin")
+                side = r.get("projected_side", "—")
+                icon = "🔥" if score >= 90 else ("🟡" if score >= 70 else "⚪")
+                sl = r.get("projected_sl", 0)
+                tp = r.get("projected_tp", 0)
+                lines.append(
+                    f"{icon} *{coin}-PERP* ({r.get('timeframe')}) • Score: `{score:.0f}/100`\n"
+                    f"  • Preço: `${r.get('mark_price')}` | Projeção: *{side}*\n"
+                    f"  • 🛑 SL: `${sl:.4f}` | 🎯 TP: `${tp:.4f}`\n"
+                    f"  • Gatilho: _{r.get('signal_reason', 'Aguardando confluência')}_\n"
+                )
+                if score >= 70:
+                    kb.append([{"text": f"🚀 Entrar em {coin}-PERP ({side})", "callback_data": f"req_perp_{coin}"}])
+
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            lines.append("👉 Toque no botão acima para autorizar a entrada ou digite:\n`/entrar_perp <moeda>` (Ex: `/entrar_perp ADA`)")
+
+            kb.append([{"text": "🔄 Atualizar Radar", "callback_data": "refresh_perps"}])
+            send_message(chat_id, "\n".join(lines), {"inline_keyboard": kb})
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao consultar radar de perpétuos: {e}")
+        return
+
+    # 11.3 EXECUTAR ENTRADA PERP MANUALMENTE
+    if cmd in ("/entrar_perp", "/operar_perp", "/comprar_perp", "/vender_perp"):
+        if len(cmd_parts) < 2:
+            send_message(chat_id, "ℹ️ *Uso do Comando:*\n`/entrar_perp <MOEDA>`\n\n*Exemplos:*\n• `/entrar_perp ADA`\n• `/entrar_perp LINK`\n• `/entrar_perp SOL`")
+            return
+        coin_target = cmd_parts[1].upper().replace("-PERP", "")
+        send_message(chat_id, f"⚡ *Preparando entrada em {coin_target}-PERP na Derive...*")
+        try:
+            import derive_perp_sniper
+            ev = derive_perp_sniper.evaluate_coin_specialist(coin_target)
+            side = ev.get("projected_side", "LONG") if ev else "LONG"
+            res = derive_perp_sniper.execute_derive_perp_entry(coin_target, side, manual=True)
+            if res.get("success"):
+                send_message(chat_id, f"✅ *Ordem enviada com sucesso para {coin_target}-PERP!*\n\n{res.get('message', '')}")
+            else:
+                send_message(chat_id, f"⚠️ *Não foi possível executar:* {res.get('error')}")
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro na execução: {e}")
         return
 
     # 12. PERGUNTA LIVRE / CHAT COM A IA (ANTIGRAVITY / GEMINI) OU VÍDEO DO YOUTUBE
@@ -1053,11 +1132,65 @@ def handle_callback_query(cq: dict):
             send_message(chat_id, f"❌ Erro ao executar rolagem: {e}")
         return
 
+    if data == "refresh_perps":
+        answer_callback(cq_id, "Atualizando radar...")
+        handle_command(chat_id, "/perps")
+        return
+
+    if data.startswith("req_perp_"):
+        coin = data.replace("req_perp_", "").upper()
+        answer_callback(cq_id, f"Preparando {coin}...")
+        try:
+            import derive_perp_sniper
+            ev = derive_perp_sniper.evaluate_coin_specialist(coin)
+            side = ev.get("projected_side", "LONG") if ev else "LONG"
+            px = ev.get("mark_price", 0) if ev else 0
+            sl = ev.get("projected_sl", 0) if ev else 0
+            tp = ev.get("projected_tp", 0) if ev else 0
+            msg = (
+                f"🚀 *CONFIRMAÇÃO DE ENTRADA ALAVANCADA*\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"• Contrato: *{coin}-PERP ({side})*\n"
+                f"• Subconta: `#116270` ($265 USDC livres)\n"
+                f"• Preço Atual: `${px}`\n"
+                f"• 🛑 Stop Loss Automático: `${sl:.4f}`\n"
+                f"• 🎯 Take Profit Alvo: `${tp:.4f}`\n"
+                f"• Alavancagem: *10x Isolada*\n\n"
+                f"Deseja enviar a ordem a mercado agora e ativar o monitoramento de saída no lucro ou stop?"
+            )
+            kb = [
+                [{"text": f"✅ Confirmar Entrada em {coin}", "callback_data": f"exec_perp_{coin}"}],
+                [{"text": "❌ Cancelar", "callback_data": "refresh_perps"}]
+            ]
+            send_message(chat_id, msg, {"inline_keyboard": kb})
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro ao preparar entrada: {e}")
+        return
+
+    if data.startswith("exec_perp_"):
+        coin = data.replace("exec_perp_", "").upper()
+        answer_callback(cq_id, f"Enviando ordem {coin}...")
+        send_message(chat_id, f"⏳ *Executando ordem a mercado para {coin}-PERP na Derive...*")
+        try:
+            import derive_perp_sniper
+            ev = derive_perp_sniper.evaluate_coin_specialist(coin)
+            side = ev.get("projected_side", "LONG") if ev else "LONG"
+            res = derive_perp_sniper.execute_derive_perp_entry(coin, side, manual=True)
+            if res.get("success"):
+                send_message(chat_id, f"✅ *ORDEM EXECUTADA COM SUCESSO!* 🚀\n\n{res.get('message', '')}")
+            else:
+                send_message(chat_id, f"⚠️ *Não foi possível executar:* {res.get('error')}")
+        except Exception as e:
+            send_message(chat_id, f"❌ Erro na execução de {coin}: {e}")
+        return
+
     answer_callback(cq_id)
 
 
 def register_bot_commands():
     commands = [
+        {"command": "perps", "description": "⚡ Radar Perpétuos Derive (ADA, SOL, LINK... 10x)"},
+        {"command": "entrar_perp", "description": "🚀 Executar entrada alavancada com SL/TP"},
         {"command": "travas", "description": "💼 Suas travas ativas, PnL e botão de fechar"},
         {"command": "dev", "description": "🛠️ Criar ou alterar código via Antigravity Engine"},
         {"command": "fechar", "description": "🛑 Fechar trava imediatamente na Derive (Emergência)"},
